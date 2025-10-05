@@ -448,6 +448,190 @@ MIT License - see LICENSE file for details
 Created for the Caramba AI platform project.
 Powered by [Ollama](https://ollama.com).
 
+---
+
+## Systemd Service (Production Deployment)
+
+Agent-Forge can run as a systemd service for continuous autonomous operation in production environments.
+
+### Features
+
+- ✅ **Automatic startup** on system boot
+- ✅ **Automatic restart** on failure (up to 5 times)
+- ✅ **Resource limits** (80% CPU, 4GB RAM)
+- ✅ **Systemd watchdog** integration (60-second keepalive)
+- ✅ **Graceful shutdown** (30-second timeout)
+- ✅ **Security hardening** (PrivateTmp, ProtectSystem, NoNewPrivileges)
+- ✅ **Structured logging** via systemd journal
+
+### Installation
+
+```bash
+# Install as system service (creates user, installs to /opt/agent-forge)
+sudo ./scripts/install-service.sh
+
+# Configure GitHub token (required!)
+sudo nano /etc/default/agent-forge
+# Add: BOT_GITHUB_TOKEN=your_token_here
+
+# Configure repositories
+sudo nano /opt/agent-forge/polling_config.yaml
+
+# Start service
+sudo systemctl start agent-forge
+
+# Enable auto-start on boot
+sudo systemctl enable agent-forge
+```
+
+### Service Management
+
+```bash
+# Check status
+sudo systemctl status agent-forge
+
+# View logs (follow)
+sudo journalctl -u agent-forge -f
+
+# View today's logs
+sudo journalctl -u agent-forge --since today
+
+# Restart service
+sudo systemctl restart agent-forge
+
+# Stop service
+sudo systemctl stop agent-forge
+
+# Disable auto-start
+sudo systemctl disable agent-forge
+```
+
+### Health Monitoring
+
+```bash
+# Check if service is running
+systemctl is-active agent-forge
+
+# Check if service is enabled
+systemctl is-enabled agent-forge
+
+# View service health status
+systemctl show agent-forge --property=ActiveState,SubState,Result
+```
+
+### Configuration
+
+Edit `/etc/default/agent-forge` for environment variables:
+
+```bash
+# GitHub credentials (required)
+BOT_GITHUB_TOKEN=ghp_your_token_here
+
+# Service configuration
+LOG_LEVEL=INFO
+POLLING_INTERVAL=300        # 5 minutes
+WEB_UI_PORT=8080
+MONITORING_PORT=8765
+
+# Resource limits  
+MAX_CONCURRENT_ISSUES=3
+```
+
+Edit `/opt/agent-forge/polling_config.yaml` for polling settings:
+
+```yaml
+interval_seconds: 300
+github:
+  username: "your-bot-name"
+repositories:
+  - "owner/repo1"
+  - "owner/repo2"
+watch_labels:
+  - "agent-ready"
+  - "auto-assign"
+max_concurrent_issues: 3
+```
+
+### Troubleshooting
+
+#### Service won't start
+
+```bash
+# Check service status
+sudo systemctl status agent-forge
+
+# View full logs
+sudo journalctl -u agent-forge -n 100 --no-pager
+
+# Check systemd unit file
+sudo systemctl cat agent-forge
+
+# Validate configuration
+/opt/agent-forge/venv/bin/python3 -m agents.service_manager --help
+```
+
+#### Permission errors
+
+```bash
+# Check ownership
+ls -la /opt/agent-forge/
+
+# Fix permissions
+sudo chown -R agent-forge:agent-forge /opt/agent-forge/
+sudo chmod 775 /opt/agent-forge/{logs,data,config}
+```
+
+#### Service crashes/restarts frequently
+
+```bash
+# Check resource usage
+systemctl show agent-forge --property=CPUUsageNSec,MemoryCurrent
+
+# View crash logs
+sudo journalctl -u agent-forge --priority=err --since today
+
+# Increase resource limits
+sudo systemctl edit agent-forge
+# Add:
+# [Service]
+# MemoryLimit=8G
+# CPUQuota=150%
+```
+
+#### Watchdog timeout
+
+If service shows watchdog timeout, increase the interval:
+
+```bash
+sudo systemctl edit agent-forge
+# Add:
+# [Service]
+# WatchdogSec=120
+```
+
+### Uninstallation
+
+```bash
+# Stop and remove service
+sudo ./scripts/uninstall-service.sh
+
+# Optional: Backup data before removal
+# Script will prompt for backup location
+```
+
+### Architecture
+
+The service manager runs all Agent-Forge components in a single process:
+
+- **Polling Service**: Monitors GitHub for assigned issues (5-minute intervals)
+- **Monitoring Service**: WebSocket server for real-time progress tracking
+- **Web UI**: Static file server for dashboards (port 8080)
+- **Watchdog**: Keepalive signals to systemd every 30 seconds
+
+All services shut down gracefully on SIGTERM (systemd stop) with cleanup.
+
+---
+
 ## Roadmap
 
 ### ✅ Completed (v0.2.0)

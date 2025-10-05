@@ -1,2 +1,4 @@
 requests>=2.31.0
 pyyaml>=6.0
+systemd-python>=235  # For systemd notify/watchdog support
+websockets>=12.0  # For monitoring dashboard
