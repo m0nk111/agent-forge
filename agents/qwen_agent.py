@@ -12,6 +12,7 @@ Model: Configurable (default: qwen2.5-coder:7b)
 import argparse
 import json
 import sys
+import os
 from pathlib import Path
 from typing import Dict, Optional, List, Any
 import time
@@ -105,6 +106,48 @@ class QwenAgent:
             }
         }
     
+    def load_project_docs(self) -> Dict[str, str]:
+        """Load key project documentation files automatically
+        
+        Addresses Issue #1: Agent lacks access to project documentation
+        Automatically reads critical docs from project root and docs/ folder.
+        
+        Returns:
+            dict: Mapping of doc filename to content
+        """
+        docs = {}
+        doc_candidates = [
+            'ARCHITECTURE.md',
+            'PORTS.md',
+            'FEATURES.md',
+            'SECURITY.md',
+            'README.md',
+            '.github/copilot-instructions.md',
+            'docs/ARCHITECTURE.md',
+            'docs/PORTS.md',
+            'docs/FEATURES.md',
+            'docs/CONVENTIONS.md',
+            'docs/API.md'
+        ]
+        
+        for doc_file in doc_candidates:
+            doc_path = self.project_root / doc_file
+            if doc_path.exists() and doc_path.is_file():
+                try:
+                    content = doc_path.read_text(encoding='utf-8')
+                    # Store with relative path as key
+                    docs[doc_file] = content
+                    self.print_info(f"Loaded documentation: {doc_file} ({len(content)} chars)")
+                except Exception as e:
+                    self.print_warning(f"Failed to read {doc_file}: {e}")
+        
+        if docs:
+            self.print_success(f"Loaded {len(docs)} documentation file(s)")
+        else:
+            self.print_info("No documentation files found in project")
+        
+        return docs
+    
     def print_header(self, text: str):
         """Print colored header"""
         print(f"\n{Colors.HEADER}{Colors.BOLD}{'='*80}{Colors.ENDC}")
@@ -176,6 +219,9 @@ class QwenAgent:
         phase = self.phases[phase_num]
         self.print_header(f"PHASE {phase_num}: {phase['name']} ({phase['hours']}h)")
         
+        # Load project documentation (Issue #1 solution)
+        project_docs = self.load_project_docs()
+        
         # System prompt with project context
         context_config = self.config.get('context', {})
         conventions = context_config.get('conventions', {})
@@ -188,6 +234,25 @@ class QwenAgent:
                 conventions_text += f"\n{category.replace('_', ' ').title()}:\n"
                 for rule in rules:
                     conventions_text += f"  • {rule}\n"
+        
+        # Build documentation section (Issue #1 solution)
+        docs_text = ""
+        if project_docs:
+            docs_text = "\n=== PROJECT DOCUMENTATION ===\n"
+            # Prioritize certain docs for system prompt
+            priority_docs = ['ARCHITECTURE.md', 'docs/ARCHITECTURE.md', '.github/copilot-instructions.md']
+            for doc_name in priority_docs:
+                if doc_name in project_docs:
+                    content = project_docs[doc_name]
+                    # Truncate if too long (keep first 2000 chars)
+                    if len(content) > 2000:
+                        content = content[:2000] + "\n... (truncated)"
+                    docs_text += f"\n--- {doc_name} ---\n{content}\n"
+            
+            # Add reference to other available docs
+            other_docs = [d for d in project_docs.keys() if d not in priority_docs]
+            if other_docs:
+                docs_text += f"\nOther available documentation: {', '.join(other_docs)}\n"
         
         system_prompt = f"""You are an expert Python developer working on: {self.project_name}
 {f"({self.project_issue})" if self.project_issue else ""}
@@ -205,6 +270,7 @@ Tech stack:
 {f"Reference services/modules:" if context_config.get('reference_services') else ""}
 {chr(10).join('- ' + ref for ref in context_config.get('reference_services', []))}
 {conventions_text}
+{docs_text}
 
 You must generate COMPLETE, WORKING, PRODUCTION-READY code.
 Include:
