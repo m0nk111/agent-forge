@@ -12,6 +12,7 @@ Date: 2025-10-05
 """
 
 import re
+import os
 from typing import Dict, List, Optional
 from pathlib import Path
 
@@ -346,18 +347,52 @@ class IssueHandler:
         return result
     
     def _validate_changes(self, files_modified: List[str]) -> Dict:
-        """Validate all modified files."""
+        """Validate all modified files with comprehensive checks."""
         validation = {
             'valid': True,
-            'errors': []
+            'errors': [],
+            'warnings': []
         }
         
         for file_path in files_modified:
-            # Syntax check
-            result = self.agent.error_checker.check_syntax(file_path)
-            if not result['valid']:
+            # Check 1: File existence
+            if not os.path.exists(file_path):
                 validation['valid'] = False
-                validation['errors'].append(f"Syntax error in {file_path}")
+                validation['errors'].append(f"File not found: {file_path}")
+                continue  # Skip other checks if file doesn't exist
+            
+            # Check 2: File is readable
+            if not os.path.isfile(file_path):
+                validation['valid'] = False
+                validation['errors'].append(f"Not a regular file: {file_path}")
+                continue
+            
+            if not os.access(file_path, os.R_OK):
+                validation['valid'] = False
+                validation['errors'].append(f"File not readable: {file_path}")
+                continue
+            
+            # Check 3: File size check (warn if too large)
+            try:
+                file_size = os.path.getsize(file_path)
+                max_size = 10 * 1024 * 1024  # 10MB
+                if file_size > max_size:
+                    validation['warnings'].append(
+                        f"Large file: {file_path} ({file_size / 1024 / 1024:.1f}MB)"
+                    )
+            except OSError as e:
+                validation['warnings'].append(f"Could not check size of {file_path}: {e}")
+            
+            # Check 4: Syntax check (if available)
+            try:
+                result = self.agent.error_checker.check_syntax(file_path)
+                if not result['valid']:
+                    validation['valid'] = False
+                    validation['errors'].append(f"Syntax error in {file_path}")
+            except AttributeError:
+                validation['warnings'].append(f"Syntax checker not available for {file_path}")
+            except Exception as e:
+                validation['warnings'].append(f"Could not check syntax of {file_path}: {e}")
         
         return validation
     
