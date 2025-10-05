@@ -827,6 +827,395 @@ gh api repos/owner/repo/collaborators/m0nk111-bot -X PUT
 - **Performance**: Fast response times with metrics tracking
 - **Scalability**: Handle hundreds of operations per hour
 
+---
+
+### 13. Coordinator Agent (Issue #36)
+
+The **Coordinator Agent** is the "brain" of the multi-agent system. It analyzes GitHub issues, breaks them down into sub-tasks, assigns work to appropriate agents based on skills and availability, monitors progress, and dynamically adapts execution plans when blockers are encountered.
+
+**Key Features**:
+- 🧠 **LLM-Powered Planning**: Use Qwen2.5:72b or Claude for intelligent task breakdown
+- 📊 **Complexity Analysis**: Automatic issue complexity assessment
+- 🎯 **Smart Assignment**: Match tasks to agents based on skills, role, and current load
+- 📈 **Progress Monitoring**: Real-time tracking of task completion and blockers
+- 🔄 **Dynamic Adaptation**: Automatically adjust plans when blockers are detected
+- 🤖 **Bot Integration**: All notifications routed through bot agent
+- 💾 **Plan Persistence**: Save/load execution plans as JSON
+- 🔗 **Dependency Resolution**: Topological sort ensures correct task ordering
+
+**Python API**:
+```python
+from agents.coordinator_agent import CoordinatorAgent
+from pathlib import Path
+
+# Initialize coordinator with LLM and bot
+coordinator = CoordinatorAgent(
+    agent_id="coordinator",
+    llm_agent=qwen_agent,  # LLM for planning
+    bot_agent=bot,         # Bot for notifications
+    config_file=Path("config/coordinator_config.yaml")
+)
+
+# Register available agents
+coordinator.register_agent(
+    agent_id="qwen-dev",
+    role="developer",
+    skills=["python", "javascript", "testing"],
+    max_concurrent_tasks=3
+)
+
+coordinator.register_agent(
+    agent_id="pr-reviewer",
+    role="reviewer",
+    skills=["code-review", "security", "best-practices"],
+    max_concurrent_tasks=5
+)
+
+# Analyze issue and create execution plan
+plan = await coordinator.analyze_issue(
+    repo="m0nk111/agent-forge",
+    issue_number=42
+)
+
+print(f"Created plan: {plan.plan_id}")
+print(f"Sub-tasks: {len(plan.sub_tasks)}")
+print(f"Required roles: {', '.join(plan.required_roles)}")
+print(f"Estimated effort: {plan.total_estimated_effort}m")
+
+# Assign tasks to agents
+assignments = await coordinator.assign_tasks(plan)
+
+for assignment in assignments:
+    task = next(t for t in plan.sub_tasks if t.id == assignment.task_id)
+    print(f"  {task.title} → {assignment.agent_id}")
+
+# Monitor progress
+status = await coordinator.monitor_progress(plan.plan_id)
+
+print(f"Completion: {status['completion_percentage']:.1f}%")
+print(f"Pending: {status['status_counts']['pending']}")
+print(f"In Progress: {status['status_counts']['in_progress']}")
+print(f"Completed: {status['status_counts']['completed']}")
+print(f"Blocked: {status['status_counts']['blocked']}")
+
+# Adapt plan if blockers encountered
+if status['blockers']:
+    updated_plan = await coordinator.adapt_plan(
+        plan_id=plan.plan_id,
+        blockers=status['blockers']
+    )
+    print(f"Plan adapted: {len(updated_plan.sub_tasks)} tasks (was {len(plan.sub_tasks)})")
+```
+
+**CLI Usage**:
+```bash
+# Analyze issue and create plan
+python -m agents.coordinator_agent analyze \
+  --repo m0nk111/agent-forge \
+  --issue 42
+
+# Assign tasks
+python -m agents.coordinator_agent assign \
+  --plan-id plan-42-20240104-120000
+
+# Monitor progress
+python -m agents.coordinator_agent monitor \
+  --plan-id plan-42-20240104-120000
+
+# View plan status
+python -m agents.coordinator_agent status \
+  --plan-id plan-42-20240104-120000
+```
+
+**Planning Workflow**:
+```
+1. Fetch Issue Data
+   ├─ Get issue from GitHub
+   └─ Extract title, body, labels
+
+2. Analyze Complexity (LLM)
+   ├─ Assess complexity (low/medium/high)
+   ├─ Estimate effort (hours)
+   ├─ Identify risks
+   └─ Determine scope (bugfix/feature/refactor)
+
+3. Create Sub-Tasks (LLM)
+   ├─ Break down into actionable tasks
+   ├─ Set dependencies between tasks
+   ├─ Estimate effort per task
+   ├─ Assign priorities (1-5)
+   └─ Identify required skills
+
+4. Build Dependency Graph
+   ├─ Extract task relationships
+   ├─ Create directed graph
+   └─ Validate no cycles
+
+5. Identify Required Roles
+   ├─ Map tasks to agent roles
+   └─ Determine coordinator/developer/reviewer/tester needs
+
+6. Create Execution Plan
+   ├─ Generate unique plan ID
+   ├─ Calculate total estimated effort
+   └─ Set status to PLANNING
+
+7. Notify via Bot
+   └─ Comment on issue with plan summary
+```
+
+**Configuration** (`config/coordinator_config.yaml`):
+```yaml
+coordinator:
+  agent_id: coordinator
+  role: coordinator
+  
+  llm:
+    model: qwen2.5:72b        # Primary LLM for planning
+    endpoint: http://localhost:11434
+    temperature: 0.3          # Lower = more deterministic
+    max_tokens: 4096
+  
+  fallback_llm:
+    model: qwen2.5:7b         # Fallback if primary unavailable
+  
+  planning:
+    max_sub_tasks: 20         # Maximum tasks per plan
+    default_task_effort: 30   # Default minutes per task
+    max_concurrent_tasks: 5   # Max parallel tasks per agent
+  
+  monitoring:
+    check_interval: 300       # Check progress every 5 minutes
+    blocker_threshold: 1800   # Flag blockers after 30 minutes
+    auto_detect_blockers: true
+    notify_progress: true
+  
+  agents:
+    qwen-dev:
+      role: developer
+      skills: [python, javascript, testing]
+      max_concurrent_tasks: 3
+    
+    bot-agent:
+      role: bot
+      skills: [github-operations, notifications]
+      max_concurrent_tasks: 10
+    
+    pr-reviewer:
+      role: reviewer
+      skills: [code-review, security, best-practices]
+      max_concurrent_tasks: 5
+  
+  assignment:
+    strategy: skill_match     # Match based on skills
+    skill_weights:
+      exact_match: 10         # Exact skill match bonus
+      related: 5              # Related skill bonus
+      general: 2              # General capability bonus
+    
+    auto_assign:
+      - pattern: "implement"
+        role: developer
+      - pattern: "test"
+        role: tester
+      - pattern: "review"
+        role: reviewer
+  
+  dependencies:
+    auto_detect: true
+    patterns:
+      - design → implement → test → document → deploy
+  
+  blockers:
+    auto_resolve: true
+    categories:
+      missing_dependency:
+        handler: create_installation_task
+      permission:
+        handler: escalate_to_human
+      technical:
+        handler: create_research_task
+      waiting:
+        handler: notify_and_wait
+  
+  notifications:
+    templates:
+      plan_created: "🎯 **Execution Plan Created**..."
+      task_assigned: "📋 **Task Assigned**..."
+      blocker_detected: "🔴 **Blocker Detected**..."
+      plan_adapted: "🔄 **Plan Adapted**..."
+      progress_update: "📊 **Progress Update**..."
+```
+
+**Agent Matching Algorithm**:
+```python
+def calculate_agent_score(task, agent):
+    score = 0
+    
+    # Role match (10 points for exact match)
+    if matches_role(task, agent.role):
+        score += 10
+    
+    # Load factor (prefer less loaded agents)
+    load_factor = agent.current_task_count / agent.max_concurrent_tasks
+    score += (1 - load_factor) * 5
+    
+    return score
+```
+
+**Dependency Resolution**:
+```
+Topological Sort Algorithm:
+
+1. Calculate in-degree for each task
+   (number of dependencies)
+
+2. Add tasks with in-degree 0 to queue
+   (no dependencies)
+
+3. Process queue:
+   - Remove task from queue
+   - Add to sorted list
+   - For each dependent task:
+     - Decrease its in-degree
+     - If in-degree becomes 0, add to queue
+
+4. Sort tasks at same level by priority
+
+Result: Tasks ordered by dependencies,
+        parallel tasks grouped by priority
+```
+
+**Progress Monitoring**:
+```python
+# Monitor checks every 5 minutes (configurable)
+status = {
+    'plan_id': 'plan-42-20240104-120000',
+    'status': 'EXECUTING',
+    'completion_percentage': 66.7,
+    'status_counts': {
+        'pending': 0,
+        'in_progress': 1,
+        'completed': 2,
+        'blocked': 0,
+        'failed': 0
+    },
+    'completed_tasks': [
+        'task-42-1: Design architecture',
+        'task-42-2: Implement core logic'
+    ],
+    'blockers': []  # Empty if no blockers
+}
+```
+
+**Plan Adaptation**:
+```python
+# When blocker detected
+blocker = {
+    'task_id': 'task-42-3',
+    'issue': 'Missing dependency: requests library',
+    'solution': 'Install requests library'
+}
+
+# Coordinator creates new task
+new_task = SubTask(
+    id='task-42-3-fix-1',
+    title='Install requests library',
+    description='Add requests to requirements.txt and install',
+    priority=5,  # High priority
+    estimated_effort=15,
+    depends_on=[]
+)
+
+# Insert before blocked task
+plan.sub_tasks.insert(2, new_task)
+
+# Update dependencies
+plan.dependencies_graph['task-42-3'] = ['task-42-3-fix-1']
+plan.dependencies_graph['task-42-3-fix-1'] = []
+
+# Notify via bot
+await bot.add_comment(
+    repo=plan.repository,
+    issue_number=plan.issue_number,
+    body=f"🔄 Plan adapted to resolve blocker on {blocker['task_id']}"
+)
+```
+
+**Integration Example**:
+```python
+# Complete workflow from issue to execution
+
+# 1. Coordinator analyzes issue
+plan = await coordinator.analyze_issue("m0nk111/agent-forge", 42)
+
+# 2. Assigns tasks to agents
+assignments = await coordinator.assign_tasks(plan)
+
+# 3. Developer agent works on assigned tasks
+for assignment in assignments:
+    if assignment.agent_id == "qwen-dev":
+        task = coordinator.get_plan(plan.plan_id).sub_tasks[assignment.task_id]
+        
+        # Agent implements the task
+        result = await qwen_agent.execute_task(task.description)
+        
+        # Update task status
+        task.status = TaskStatus.COMPLETED
+        task.completed_at = datetime.now()
+
+# 4. Coordinator monitors progress
+status = await coordinator.monitor_progress(plan.plan_id)
+
+# 5. Bot notifies team of progress
+await bot.add_comment(
+    repo=plan.repository,
+    issue_number=plan.issue_number,
+    body=f"📊 Progress: {status['completion_percentage']:.1f}% complete"
+)
+
+# 6. If blockers detected, adapt plan
+if status['blockers']:
+    updated_plan = await coordinator.adapt_plan(plan.plan_id, status['blockers'])
+    
+    # Reassign new fix tasks
+    new_assignments = await coordinator.assign_tasks(updated_plan)
+```
+
+**Benefits**:
+- **Intelligence**: LLM-powered planning breaks down complex issues automatically
+- **Flexibility**: Comprehensive configuration for different workflows
+- **Scalability**: Handle large issues with 20+ sub-tasks
+- **Adaptability**: Dynamic plan changes based on real-world blockers
+- **Visibility**: Complete progress tracking with status updates
+- **Collaboration**: Multi-agent coordination with skill-based assignment
+- **Reliability**: Fallback to rule-based logic if LLM unavailable
+- **Persistence**: Plans saved to JSON for recovery after crashes
+
+**Multi-Agent System Architecture**:
+```
+┌─────────────────────────────────────────┐
+│         Coordinator Agent               │
+│  (Plans, Assigns, Monitors, Adapts)     │
+└────────────┬────────────────────────────┘
+             │
+    ┌────────┴────────┐
+    ├─ Developer Agents (Qwen, Claude)
+    ├─ Bot Agent (GitHub operations)
+    ├─ PR Reviewer (Code quality)
+    ├─ Tester Agent (Run tests)
+    └─ Documenter (Write docs)
+
+Flow:
+1. Coordinator analyzes issue → creates plan
+2. Coordinator assigns tasks → agents work
+3. Agents report progress → coordinator monitors
+4. Blocker detected → coordinator adapts plan
+5. All tasks complete → coordinator closes issue
+```
+
+---
+
 ## Architecture
 
 ### Agent Lifecycle
