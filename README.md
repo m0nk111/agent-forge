@@ -33,20 +33,23 @@ pip install -r requirements.txt
 ### Basic Usage
 
 ```bash
-# Check Ollama status and available models
-python3 agents/qwen_caramba_issue7.py --help
+# List available configs
+ls configs/
 
-# Execute a specific phase (dry run)
-python3 agents/qwen_caramba_issue7.py --phase 1 --dry-run
+# Check Ollama status
+python3 agents/qwen_agent.py --help
+
+# Execute with config file (dry run)
+python3 agents/qwen_agent.py --config configs/caramba_personality_ai.yaml --phase 1 --dry-run
 
 # Execute a specific phase (real)
-python3 agents/qwen_caramba_issue7.py --phase 1
+python3 agents/qwen_agent.py --config configs/caramba_personality_ai.yaml --phase 1
 
 # Execute all phases
-python3 agents/qwen_caramba_issue7.py --phase all
+python3 agents/qwen_agent.py --config configs/caramba_personality_ai.yaml --phase all
 
 # Execute a custom task
-python3 agents/qwen_caramba_issue7.py --task "Create authentication middleware"
+python3 agents/qwen_agent.py --task "Create authentication middleware" --project-root /path/to/project
 ```
 
 ## Project Structure
@@ -54,8 +57,9 @@ python3 agents/qwen_caramba_issue7.py --task "Create authentication middleware"
 ```
 agent-forge/
 ├── agents/              # Agent implementations
-│   ├── qwen_caramba_issue7.py    # Qwen agent for Caramba Issue #7
-│   └── ...              # More agents for different projects/models
+│   └── qwen_agent.py        # Generic Qwen agent (config-driven)
+├── configs/             # Project configurations
+│   └── caramba_personality_ai.yaml  # Example: Caramba Issue #7
 ├── templates/           # Agent templates for new projects
 ├── lib/                 # Shared libraries
 │   ├── ollama_client.py    # Ollama API client
@@ -69,25 +73,42 @@ agent-forge/
 
 ## Creating a New Agent
 
-Agents in Agent Forge follow a standard pattern. See `templates/agent_template.py` for a starting point.
+Agents in Agent Forge are driven by YAML configuration files. Create a new config file in `configs/` for your project.
 
-### Example: Creating an Agent for a New Project
+### Example: Creating an Agent Configuration
 
-```python
-from lib.ollama_client import OllamaClient
-from lib.code_parser import CodeParser
+```yaml
+# configs/my_project.yaml
+project:
+  name: "My Project"
+  root: "/path/to/project"
+  issue: "Feature XYZ"
 
-agent = OllamaClient(model="qwen2.5-coder:7b")
-parser = CodeParser(project_root="/path/to/project")
+model:
+  name: "qwen2.5-coder:7b"
+  ollama_url: "http://localhost:11434"
 
-# Define phases
-phases = {
-    1: {"name": "Setup", "tasks": ["Create structure", "Add config"]},
-    2: {"name": "Implementation", "tasks": ["Write core logic"]}
-}
+context:
+  description: "Brief project description"
+  structure: |
+    - src/ - Source code
+    - tests/ - Unit tests
+  tech_stack:
+    - "Python 3.12"
+    - "FastAPI"
+  
+phases:
+  1:
+    name: "Setup"
+    hours: 2
+    tasks:
+      - "Create project structure"
+      - "Add configuration files"
+```
 
-# Execute
-agent.execute_phases(phases)
+Then run:
+```bash
+python3 agents/qwen_agent.py --config configs/my_project.yaml --phase 1 --dry-run
 ```
 
 ## Supported Models

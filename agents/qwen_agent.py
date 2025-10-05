@@ -1,26 +1,31 @@
 #!/usr/bin/env python3
 """
-Qwen2.5-Coder Agent for Caramba Issue #7 (Personality AI Service)
+Qwen Agent - Generic autonomous coding agent using Qwen2.5-Coder via Ollama
 
-This agent autonomously implements the Personality AI service using
-Qwen2.5-Coder via Ollama, following a structured 7-phase approach.
+This agent can work on any project by loading configuration from a YAML file.
+It follows a structured phase-based approach for implementing features.
 
 Author: Agent Forge
-Target: Caramba AI Platform - Issue #7
-Model: qwen2.5-coder:7b
+Model: Configurable (default: qwen2.5-coder:7b)
 """
 
 import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, List, Any
 import time
 
 try:
     import requests
 except ImportError:
     print("ERROR: requests module not found. Install with: pip install -r requirements.txt")
+    sys.exit(1)
+
+try:
+    import yaml
+except ImportError:
+    print("ERROR: PyYAML module not found. Install with: pip install pyyaml")
     sys.exit(1)
 
 # Colors for terminal output
@@ -36,94 +41,67 @@ class Colors:
     UNDERLINE = '\033[4m'
 
 
-class QwenCarambaAgent:
-    """Agent for implementing Caramba Issue #7 using Qwen2.5-Coder"""
+class QwenAgent:
+    """Generic agent that uses Qwen2.5-Coder to implement projects from config"""
     
     def __init__(
         self,
-        model: str = "qwen2.5-coder:7b",
+        config_path: Optional[str] = None,
+        model: Optional[str] = None,
         ollama_url: str = "http://localhost:11434",
-        project_root: str = "/home/flip/caramba"
+        project_root: Optional[str] = None
     ):
-        self.model = model
-        self.ollama_url = ollama_url
-        self.project_root = Path(project_root)
-        self.service_root = self.project_root / "app" / "services" / "personality-ai"
+        # Load configuration
+        if config_path:
+            self.config = self.load_config(config_path)
+        else:
+            self.config = self.get_default_config()
         
-        # Issue #7 implementation phases
-        self.phases = {
-            1: {
-                "name": "Service Structure",
-                "hours": 4,
-                "tasks": [
-                    "Create app/services/personality-ai/ directory structure",
-                    "Create src/ subdirectory with modules",
-                    "Set up __init__.py, config.py, service.py",
-                    "Create requirements.txt with dependencies (langchain, sentence-transformers, faiss, etc.)"
-                ]
+        # Override with command-line arguments
+        self.model = model or self.config.get('model', {}).get('name', 'qwen2.5-coder:7b')
+        self.ollama_url = self.config.get('model', {}).get('ollama_url', ollama_url)
+        self.project_root = Path(project_root) if project_root else Path(self.config.get('project', {}).get('root', '.'))
+        
+        # Project metadata
+        self.project_name = self.config.get('project', {}).get('name', 'Unnamed Project')
+        self.project_issue = self.config.get('project', {}).get('issue', '')
+        
+        # Phases from config
+        self.phases = self.config.get('phases', {})
+    
+    def load_config(self, config_path: str) -> Dict[str, Any]:
+        """Load configuration from YAML file"""
+        try:
+            with open(config_path, 'r') as f:
+                return yaml.safe_load(f)
+        except Exception as e:
+            self.print_error(f"Failed to load config from {config_path}: {e}")
+            sys.exit(1)
+    
+    def get_default_config(self) -> Dict[str, Any]:
+        """Get default configuration when no config file provided"""
+        return {
+            'project': {
+                'name': 'Generic Project',
+                'root': '.',
+                'issue': ''
             },
-            2: {
-                "name": "LLM Integration",
-                "hours": 6,
-                "tasks": [
-                    "Integrate with Tars-AI backend (192.168.1.26:8001) as primary LLM",
-                    "Implement fallback to Ollama (localhost:11434) if Tars-AI unavailable",
-                    "Create LLM client with retry logic and timeout handling",
-                    "Add connection testing and health checks"
-                ]
+            'model': {
+                'name': 'qwen2.5-coder:7b',
+                'ollama_url': 'http://localhost:11434'
             },
-            3: {
-                "name": "RAG Pipeline",
-                "hours": 8,
-                "tasks": [
-                    "Build transcript ingestion from AudioTransfer voice training sessions",
-                    "Implement vector embeddings using sentence-transformers",
-                    "Set up vector database (FAISS or ChromaDB) for semantic search",
-                    "Create semantic search for relevant context retrieval",
-                    "Add document chunking and metadata management"
-                ]
+            'context': {
+                'description': 'Generic software project',
+                'structure': '- Standard project structure',
+                'tech_stack': ['Python 3.12+'],
+                'reference_services': []
             },
-            4: {
-                "name": "Conversation Analysis",
-                "hours": 4,
-                "tasks": [
-                    "Implement tone analyzer (sentiment, formality, emotion detection)",
-                    "Build style extractor (vocabulary patterns, sentence structure)",
-                    "Create conversation pattern recognition",
-                    "Build personality profile data structure with scoring"
-                ]
-            },
-            5: {
-                "name": "Response Generator",
-                "hours": 4,
-                "tasks": [
-                    "Implement prompt engineering for personality matching",
-                    "Build response generator with RAG context injection",
-                    "Add personality consistency scoring mechanism",
-                    "Implement conversation turn management (>10 turns support)"
-                ]
-            },
-            6: {
-                "name": "REST API",
-                "hours": 3,
-                "tasks": [
-                    "Create app/backend/api/personality_ai.py FastAPI router",
-                    "Implement /api/personality/analyze endpoint (conversation analysis)",
-                    "Implement /api/personality/generate endpoint (response generation)",
-                    "Implement /api/personality/profile endpoint (personality profile CRUD)",
-                    "Add streaming response support (Server-Sent Events or WebSocket)"
-                ]
-            },
-            7: {
-                "name": "Testing & Documentation",
-                "hours": 3,
-                "tasks": [
-                    "Write unit tests for RAG pipeline components",
-                    "Write integration tests for API endpoints",
-                    "Document API in OpenAPI/Swagger spec",
-                    "Create docs/services/personality-ai/README.md",
-                    "Update CHANGELOG.md with [PERS] prefix entries"
-                ]
+            'phases': {
+                1: {
+                    'name': 'Setup',
+                    'hours': 2,
+                    'tasks': ['Create project structure']
+                }
             }
         }
     
@@ -198,26 +176,23 @@ class QwenCarambaAgent:
         phase = self.phases[phase_num]
         self.print_header(f"PHASE {phase_num}: {phase['name']} ({phase['hours']}h)")
         
-        # System prompt with Caramba project context
-        system_prompt = f"""You are an expert Python developer working on Issue #7 (Personality AI Service) 
-of the Caramba AI platform. The project is located at {self.project_root}.
+        # System prompt with project context
+        context_config = self.config.get('context', {})
+        system_prompt = f"""You are an expert Python developer working on: {self.project_name}
+{f"({self.project_issue})" if self.project_issue else ""}
+
+Project located at: {self.project_root}
+
+{context_config.get('description', '')}
 
 Project structure:
-- app/services/ - Service modules (face_swap, voice-training, etc.)
-- app/backend/api/ - FastAPI REST endpoints
-- app/frontend/ - React/TypeScript frontend
-- docs/ - Documentation
+{context_config.get('structure', '')}
 
 Tech stack:
-- Backend: FastAPI, Python 3.12, async/await
-- LLM: Tars-AI (192.168.1.26:8001) with Ollama fallback (localhost:11434)
-- RAG: LangChain or LlamaIndex, sentence-transformers, FAISS or ChromaDB
-- Database: PostgreSQL with Alembic migrations
-- Testing: pytest with async support
+{chr(10).join('- ' + tech for tech in context_config.get('tech_stack', []))}
 
-Existing services for reference:
-- app/services/face_swap/ - SadTalker and Wav2Lip integration
-- app/services/voice-training/ - AudioTransfer with Opus compression
+{f"Reference services/modules:" if context_config.get('reference_services') else ""}
+{chr(10).join('- ' + ref for ref in context_config.get('reference_services', []))}
 
 You must generate COMPLETE, WORKING, PRODUCTION-READY code.
 Include:
@@ -226,7 +201,7 @@ Include:
 - Type hints and docstrings
 - Async/await patterns where appropriate
 - Configuration management
-Follow Python best practices and the existing codebase patterns.
+Follow best practices and existing codebase patterns.
 """
         
         success_count = 0
@@ -355,12 +330,15 @@ If multiple files are needed, provide each one separately with the same format.
     
     def execute_all_phases(self, dry_run: bool = False) -> Dict[int, bool]:
         """Execute all phases sequentially"""
-        self.print_header("QWEN AGENT - CARAMBA ISSUE #7 (PERSONALITY AI)")
+        self.print_header(f"QWEN AGENT - {self.project_name.upper()}")
         self.print_info(f"Model: {self.model}")
         self.print_info(f"Ollama URL: {self.ollama_url}")
         self.print_info(f"Project root: {self.project_root}")
         self.print_info(f"Total phases: {len(self.phases)}")
-        self.print_info(f"Total estimated time: {sum(p['hours'] for p in self.phases.values())} hours")
+        
+        total_hours = sum(p.get('hours', 0) for p in self.phases.values())
+        if total_hours > 0:
+            self.print_info(f"Total estimated time: {total_hours} hours")
         
         if dry_run:
             self.print_warning("DRY RUN MODE - No files will be created")
@@ -389,8 +367,10 @@ If multiple files are needed, provide each one separately with the same format.
         """Execute a custom task not in the predefined phases"""
         self.print_header(f"CUSTOM TASK: {task_description}")
         
-        system_prompt = f"""You are an expert Python developer working on the Caramba AI platform.
+        context_config = self.config.get('context', {})
+        system_prompt = f"""You are an expert developer working on: {self.project_name}
 Project located at: {self.project_root}
+{context_config.get('description', '')}
 Generate complete, production-ready code following best practices."""
         
         prompt = f"""Task: {task_description}
@@ -431,28 +411,34 @@ Format your response with file paths and complete code as shown in examples.
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Qwen2.5-Coder Agent for Caramba Issue #7 (Personality AI)",
+        description="Qwen Agent - Generic autonomous coding agent",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Dry run phase 1
-  python3 agents/qwen_caramba_issue7.py --phase 1 --dry-run
+  # Use config file
+  python3 agents/qwen_agent.py --config configs/caramba_personality_ai.yaml --phase 1 --dry-run
   
-  # Execute phase 1
-  python3 agents/qwen_caramba_issue7.py --phase 1
+  # Override project root
+  python3 agents/qwen_agent.py --config configs/my_project.yaml --project-root /path/to/project --phase 1
   
   # Execute all phases
-  python3 agents/qwen_caramba_issue7.py --phase all
+  python3 agents/qwen_agent.py --config configs/my_project.yaml --phase all
   
   # Custom task
-  python3 agents/qwen_caramba_issue7.py --task "Add caching to LLM client"
+  python3 agents/qwen_agent.py --task "Add authentication middleware"
         """
+    )
+    
+    parser.add_argument(
+        '--config',
+        type=str,
+        help='Path to YAML configuration file'
     )
     
     parser.add_argument(
         '--phase',
         type=str,
-        help='Phase number to execute (1-7) or "all" for all phases'
+        help='Phase number to execute (1-N) or "all" for all phases'
     )
     
     parser.add_argument(
@@ -470,21 +456,20 @@ Examples:
     parser.add_argument(
         '--model',
         type=str,
-        default='qwen2.5-coder:7b',
-        help='Ollama model to use (default: qwen2.5-coder:7b)'
+        help='Ollama model to use (overrides config)'
     )
     
     parser.add_argument(
         '--project-root',
         type=str,
-        default='/home/flip/caramba',
-        help='Project root directory (default: /home/flip/caramba)'
+        help='Project root directory (overrides config)'
     )
     
     args = parser.parse_args()
     
     # Create agent
-    agent = QwenCarambaAgent(
+    agent = QwenAgent(
+        config_path=args.config,
         model=args.model,
         project_root=args.project_root
     )
