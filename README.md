@@ -6,6 +6,7 @@ Agent Forge is a framework for creating autonomous coding agents using different
 
 ## Features
 
+### Core Capabilities
 - 🤖 **Multi-Model Support**: Use different LLMs for different tasks
 - 📋 **Phase-Based Execution**: Break down complex tasks into manageable phases
 - 🎨 **Code Generation**: Automatic file creation from LLM output
@@ -13,6 +14,17 @@ Agent Forge is a framework for creating autonomous coding agents using different
 - 🧪 **Dry Run Mode**: Test agent behavior without making changes
 - 🎯 **Custom Tasks**: Execute one-off tasks outside predefined phases
 - 📊 **Progress Tracking**: Detailed status and completion metrics
+
+### Advanced Capabilities (Recently Added)
+- ✏️ **File Editing**: Edit existing files with `replace_in_file()`, `insert_at_line()`, `append_to_file()`
+- 🖥️ **Terminal Execution**: Run commands securely with whitelist/blacklist controls
+- 🧪 **Test Execution**: Auto-detect and run pytest/jest tests with result parsing
+- 🔍 **Codebase Search**: grep-based search, find functions/classes/imports across projects
+- 🐛 **Error Checking**: Syntax validation, linting (pylint/flake8/eslint), type checking (mypy)
+- 🌐 **External Knowledge**: Fetch web documentation, MCP integration placeholders
+- 📚 **Documentation Loading**: Auto-load project docs (ARCHITECTURE.md, README.md, etc.)
+- 🗂️ **Workspace Awareness**: Explore project structure, validate paths, find files
+- 🧠 **Context Management**: Sliding window (6000 tokens) with smart truncation
 
 ## Quick Start
 
@@ -57,15 +69,23 @@ python3 agents/qwen_agent.py --task "Create authentication middleware" --project
 ```
 agent-forge/
 ├── agents/              # Agent implementations
-│   └── qwen_agent.py        # Generic Qwen agent (config-driven)
+│   ├── qwen_agent.py           # Generic Qwen agent (config-driven)
+│   ├── file_editor.py          # File editing operations
+│   ├── terminal_operations.py  # Terminal command execution
+│   ├── test_runner.py          # Test execution and parsing
+│   ├── codebase_search.py      # Code search (grep/semantic)
+│   ├── error_checker.py        # Syntax/lint/type checking
+│   ├── mcp_client.py           # MCP integration (placeholder)
+│   ├── workspace_tools.py      # Project structure exploration
+│   ├── context_manager.py      # Context window management
+│   ├── git_operations.py       # Git commit/push operations
+│   └── bot_operations.py       # GitHub issue/PR management
 ├── configs/             # Project configurations
 │   └── caramba_personality_ai.yaml  # Example: Caramba Issue #7
-├── templates/           # Agent templates for new projects
-├── lib/                 # Shared libraries
-│   ├── ollama_client.py    # Ollama API client
-│   ├── code_parser.py      # Parse LLM output into files
-│   └── logger.py           # Colored logging utilities
 ├── docs/                # Documentation
+│   ├── AGENT_CHANGELOG_POLICY.md
+│   ├── BOT_USAGE_GUIDE.md
+│   └── ...
 ├── tests/               # Unit tests
 ├── examples/            # Example configurations
 └── README.md
@@ -119,6 +139,114 @@ Agent Forge works with any Ollama-compatible model, but is optimized for:
 - **codellama:7b** - Strong general coding (3.8GB)
 - **deepseek-coder:6.7b** - Fast, efficient (3.8GB)
 - **starcoder2:7b** - Multi-language support (4.0GB)
+
+## Agent Capabilities Deep Dive
+
+### 1. File Operations
+```python
+# Edit existing files
+agent.file_editor.replace_in_file('src/main.py', 'old_code', 'new_code')
+agent.file_editor.insert_at_line('src/main.py', 42, 'new_code')
+agent.file_editor.append_to_file('README.md', '\n## New Section\n')
+
+# Create new files (via code generation)
+# Agent automatically parses "# File: path/to/file.py" markers
+```
+
+### 2. Terminal Execution
+```python
+# Run commands securely
+result = agent.terminal.run_command('pytest tests/', timeout=60)
+print(f"Exit code: {result['returncode']}")
+print(f"Output: {result['stdout']}")
+
+# Background processes
+pid = agent.terminal.run_background('npm run dev', log_file='dev.log')
+```
+
+**Security**: Whitelist (pytest, npm, git, docker, etc.) + Blacklist (rm -rf, sudo, etc.)
+
+### 3. Test Execution
+```python
+# Auto-detect framework (pytest, jest, npm test)
+results = agent.test_runner.run_tests()
+print(f"Passed: {results['passed']}/{results['tests_run']}")
+
+# Parse failures for self-correction
+for failure in results['failures']:
+    context = agent.test_runner.get_failure_context(failure)
+    # Use context to fix code
+```
+
+### 4. Codebase Search
+```python
+# Find function definitions
+results = agent.codebase_search.find_function('process_data', 'python')
+
+# Search with context
+results = agent.codebase_search.grep_search('API_KEY', context_lines=3)
+
+# Track dependencies
+results = agent.codebase_search.find_imports('fastapi', 'python')
+```
+
+### 5. Error Checking
+```python
+# Fast syntax check (no dependencies)
+result = agent.error_checker.check_syntax('src/main.py')
+if not result['valid']:
+    print(f"Syntax errors: {result['errors']}")
+
+# Run linter (pylint/flake8/eslint)
+result = agent.error_checker.run_linter('src/main.py')
+
+# Type checking (mypy)
+result = agent.error_checker.check_types('src/main.py')
+
+# All checks at once
+result = agent.error_checker.check_all('src/main.py')
+```
+
+### 6. Workspace Awareness
+```python
+# Explore project structure
+structure = agent.workspace.get_project_structure(max_depth=3)
+
+# Find files by pattern
+files = agent.workspace.find_files('*.py', max_depth=5)
+
+# Safe file reading
+content = agent.workspace.read_file('src/config.py', max_size=100_000)
+```
+
+### 7. Context Management
+```python
+# Automatic sliding window (6000 token limit)
+agent.context.add_task_result(
+    task_description="Implement user authentication",
+    code_generated=code[:1000],
+    success=True
+)
+
+# Get relevant context for new task
+context = agent.context.get_relevant_context("add password reset", max_tokens=1500)
+
+# View metrics
+metrics = agent.context.get_metrics()
+print(f"Tasks: {metrics['task_count']}, Tokens: {metrics['total_tokens']}")
+```
+
+### 8. GitHub Integration
+```python
+# Create issues
+from agents.bot_operations import BotOperations
+bot = BotOperations()
+bot.create_issue('agent-forge', 'Feature request', 'Description...', labels=['enhancement'])
+
+# Close with comment
+bot.add_comment('agent-forge', 5, 'Implementation complete!')
+bot.update_issue('agent-forge', 5, state='closed')
+```
 
 ## Architecture
 
@@ -186,15 +314,33 @@ Powered by [Ollama](https://ollama.com).
 
 ## Roadmap
 
+### ✅ Completed (v0.2.0)
+- [x] File editing capabilities (replace, insert, append, delete)
+- [x] Terminal command execution with security controls
+- [x] Test execution and result parsing (pytest/jest)
+- [x] Codebase search (grep, function/class finder)
+- [x] Error checking (syntax, linting, type checking)
+- [x] Documentation auto-loading (ARCHITECTURE.md, README.md, etc.)
+- [x] Workspace awareness and file exploration
+- [x] Context window management (6000 token sliding window)
+- [x] GitHub issue/PR management via bot account
+
+### 🚧 In Progress
+- [ ] MCP integration (Context7, Pylance, GitHub MCP)
+- [ ] Self-correction loops (test → fix → test)
+- [ ] Enhanced web documentation fetching
+
+### 📋 Planned (Low Priority)
+- [ ] Precise line-range file reading
+- [ ] Multi-file parallel editing
+- [ ] Interactive debugging (pdb/DAP integration)
 - [ ] Multi-agent orchestration (agents working together)
 - [ ] Web UI for monitoring agent progress
-- [ ] Integration with GitHub Issues API
-- [ ] Support for streaming to file (incremental saves)
-- [ ] Agent memory/context management
+- [ ] Agent memory/context persistence
 - [ ] Model performance benchmarking
 - [ ] Docker containerization
 - [ ] CI/CD pipeline integration
 
 ---
 
-**Status**: Active Development | **Version**: 0.1.0 | **Python**: 3.12+
+**Status**: Active Development | **Version**: 0.2.0 | **Python**: 3.12+
