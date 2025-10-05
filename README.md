@@ -22,6 +22,7 @@ Agent Forge is a framework for creating autonomous coding agents using different
 - 🔍 **Codebase Search**: grep-based search, find functions/classes/imports across projects
 - 🐛 **Error Checking**: Syntax validation, linting (pylint/flake8/eslint), type checking (mypy)
 - 🌐 **Web Documentation**: Fetch docs from trusted sources (Python docs, GitHub, Stack Overflow) with caching
+- 🤖 **Autonomous Polling**: Automatically check for assigned GitHub issues and start workflows (Issue #17)
 - 🌐 **External Knowledge**: MCP integration placeholders
 - 📚 **Documentation Loading**: Auto-load project docs (ARCHITECTURE.md, README.md, etc.)
 - 🗂️ **Workspace Awareness**: Explore project structure, validate paths, find files
@@ -274,6 +275,72 @@ readme = fetcher.get_github_readme('python', 'cpython')
 ```
 
 **Trusted Domains**: docs.python.org, github.com, stackoverflow.com, readthedocs.org, pytorch.org, tensorflow.org, fastapi.tiangolo.com, and [20+ more](agents/web_fetcher.py#L54)
+
+### 10. Autonomous Polling (Issue #17)
+```python
+from agents.polling_service import PollingService, PollingConfig
+
+# Configure polling
+config = PollingConfig(
+    interval_seconds=300,  # 5 minutes
+    repositories=["owner/repo1", "owner/repo2"],
+    watch_labels=["agent-ready", "auto-assign"],
+    max_concurrent_issues=3
+)
+
+# Start polling service
+service = PollingService(config)
+await service.run()  # Runs continuously
+
+# Or poll once
+await service.poll_once()
+```
+
+**CLI Usage**:
+```bash
+# Start autonomous polling (continuous)
+python3 agents/polling_service.py --repos owner/repo1 owner/repo2 --interval 300
+
+# Poll once and exit
+python3 agents/polling_service.py --repos owner/repo --once
+
+# Custom labels and concurrency
+python3 agents/polling_service.py --repos owner/repo --labels agent-ready bug --max-concurrent 5
+```
+
+**Features**:
+- 🔄 **Automatic Issue Detection**: Periodically checks for assigned issues with specific labels
+- 🔒 **Issue Locking**: Prevents duplicate work by multiple agents (comment-based claiming)
+- 💾 **State Persistence**: Tracks processing/completed issues across restarts (polling_state.json)
+- ⚡ **Concurrent Processing**: Configurable max concurrent issues per agent
+- 🧹 **Auto Cleanup**: Removes old completed issues from state (7 day retention)
+- 🤝 **Multi-Agent Coordination**: Claim timeout prevents permanent locks (default: 1 hour)
+- 📊 **Structured Logging**: All polling events logged for debugging
+
+**Configuration** (`polling_config.yaml`):
+```yaml
+interval_seconds: 300          # Poll every 5 minutes
+repositories:
+  - "owner/repo1"
+  - "owner/repo2"
+watch_labels:
+  - "agent-ready"              # Manually triggered
+  - "auto-assign"              # Automatically processed
+max_concurrent_issues: 3       # Work on 3 issues simultaneously
+claim_timeout_minutes: 60      # Claim expires after 1 hour
+```
+
+**Workflow**:
+1. Service polls GitHub API for assigned issues
+2. Filters issues by labels (`agent-ready`, `auto-assign`)
+3. Checks if already processing or completed
+4. Verifies no other agent claimed issue (comment check)
+5. Claims issue (adds 🤖 comment with timestamp)
+6. Launches IssueHandler workflow automatically
+7. Updates state on completion
+8. Repeat after interval
+
+This enables fully autonomous agents that continuously monitor and work on issues without manual intervention!
 
 ## Architecture
 

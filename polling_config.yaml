@@ -1,0 +1,61 @@
+# Polling Service Configuration
+# This file configures the autonomous GitHub issue polling service
+
+# Polling interval in seconds (default: 300 = 5 minutes)
+interval_seconds: 300
+
+# GitHub configuration
+github:
+  # Bot username (default: m0nk111-bot)
+  username: "m0nk111-bot"
+  
+  # GitHub token (uses BOT_GITHUB_TOKEN or GITHUB_TOKEN env var if not specified)
+  # token: "ghp_..."  # Uncomment and set if not using environment variable
+
+# Repositories to monitor
+repositories:
+  - "m0nk111/stepperheightcontrol"
+  - "m0nk111/agent-forge"
+  - "m0nk111/Mycodo"
+  - "m0nk111/caramba"
+
+# Labels to watch for (issues must have at least one of these labels)
+watch_labels:
+  - "agent-ready"      # Manual trigger: add this label when issue is ready for agent
+  - "auto-assign"      # Automatic: agent picks up immediately when assigned
+
+# Maximum concurrent issues the agent can work on
+max_concurrent_issues: 3
+
+# Claim timeout in minutes (how long before another agent can claim an issue)
+# Default: 60 minutes (1 hour)
+claim_timeout_minutes: 60
+
+# State file path (tracks processing issues)
+state_file: "polling_state.json"
+
+# Logging configuration
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  file: "polling_service.log"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# Advanced settings
+advanced:
+  # Retry configuration
+  max_retries: 3
+  retry_delay_seconds: 60
+  
+  # GitHub API rate limiting
+  respect_rate_limits: true
+  api_requests_per_minute: 60
+  
+  # Issue filters
+  ignore_labels:
+    - "wontfix"
+    - "duplicate"
+    - "invalid"
+  
+  # Minimum issue age before processing (seconds)
+  # Prevents picking up issues that are still being edited
+  min_issue_age_seconds: 60
