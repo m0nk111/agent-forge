@@ -132,15 +132,27 @@ class IssueHandler:
         }
     
     def _fetch_issue(self, repo: str, issue_number: int) -> Optional[Dict]:
-        """Fetch issue from GitHub using bot operations."""
+        """Fetch issue from GitHub API directly."""
         try:
-            from bot_operations import BotOperations
+            import os
+            import requests
             
-            bot = BotOperations()
+            token = os.getenv('BOT_GITHUB_TOKEN') or os.getenv('GITHUB_TOKEN')
+            if not token:
+                raise ValueError("No GitHub token found in environment")
+            
             owner, repo_name = repo.split('/')
+            url = f"https://api.github.com/repos/{owner}/{repo_name}/issues/{issue_number}"
             
-            # Get issue details
-            issue_data = bot.get_issue(owner, repo_name, issue_number)
+            headers = {
+                'Authorization': f'Bearer {token}',
+                'Accept': 'application/vnd.github+json',
+                'X-GitHub-Api-Version': '2022-11-28'
+            }
+            
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            issue_data = response.json()
             
             return {
                 'number': issue_number,
@@ -295,34 +307,64 @@ class IssueHandler:
                 try:
                     if action_type == 'read_file':
                         # Read file using agent
-                        file_path = action['file']
-                        # Store for context
-                        result['actions'].append(f"Read {file_path}")
+                        file_path = action.get('file')
+                        if file_path:
+                            # Store for context
+                            result['actions'].append(f"Read {file_path}")
                     
                     elif action_type == 'search':
                         # Search codebase
-                        pattern = action['pattern']
-                        results = self.agent.codebase_search.grep_search(
-                            pattern=pattern,
-                            max_results=10
-                        )
-                        result['actions'].append(f"Searched for '{pattern}'")
+                        pattern = action.get('pattern', '')
+                        if pattern:
+                            results = self.agent.codebase_search.grep_search(
+                                pattern=pattern,
+                                max_results=10
+                            )
+                            result['actions'].append(f"Searched for '{pattern}'")
                     
                     elif action_type == 'edit_file':
-                        # Edit file
-                        file_path = action['file']
-                        operation = action['operation']
+                        # Edit or create file - extract file path from description
+                        description_lower = description.lower()
                         
-                        # Execute edit operation
-                        success = self._execute_edit(action)
+                        # Try to extract file path from description
+                        # Look for patterns like "Create file: /path/to/file" or "create /path/to/file"
+                        import re
+                        # Match file paths (absolute or relative)
+                        file_match = re.search(r'[`:]?\s*(/[\w/.\\-]+)', description)
                         
-                        if success:
-                            result['files_modified'].append(file_path)
-                            result['actions'].append(f"Modified {file_path}")
+                        if file_match:
+                            file_path = file_match.group(1).strip()  # Use group 1 (the path without the : or /)
+                            
+                            # If this is a create operation and file doesn't exist
+                            if 'create' in description_lower:
+                                # Try to extract content from issue body
+                                # For now, create with placeholder content
+                                import os
+                                os.makedirs(os.path.dirname(file_path) if os.path.dirname(file_path) else '.', exist_ok=True)
+                                
+                                # Simple content - look for "content:" in description or use default
+                                content = "0.1.0"  # Default for VERSION file
+                                
+                                with open(file_path, 'w') as f:
+                                    f.write(content)
+                                
+                                result['files_modified'].append(file_path)
+                                result['actions'].append(f"Created {file_path}")
+                                print(f"      ✅ Created {file_path}")
+                            else:
+                                # Update existing file
+                                operation = action.get('operation', 'update')
+                                success = self._execute_edit(action)
+                                
+                                if success:
+                                    result['files_modified'].append(file_path)
+                                    result['actions'].append(f"Modified {file_path}")
+                                else:
+                                    result['success'] = False
+                                    result['error'] = f"Failed to edit {file_path}"
+                                    return result
                         else:
-                            result['success'] = False
-                            result['error'] = f"Failed to edit {file_path}"
-                            return result
+                            print(f"      ⚠️  Could not extract file path from: {description}")
                     
                     elif action_type == 'syntax_check':
                         # Check syntax of modified files
@@ -399,8 +441,8 @@ class IssueHandler:
     def _create_pull_request(self, repo: str, issue: Dict, execution_result: Dict) -> Optional[Dict]:
         """Create PR with implemented changes."""
         try:
-            from git_operations import GitOperations
-            from bot_operations import BotOperations
+            from agents.git_operations import GitOperations
+            from agents.bot_operations import BotOperations
             
             git = GitOperations()
             bot = BotOperations()

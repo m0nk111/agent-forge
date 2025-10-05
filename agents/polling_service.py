@@ -485,7 +485,8 @@ class PollingService:
             
             # Start issue handler with agent
             handler = IssueHandler(agent=qwen)
-            success = await handler.handle_issue(repo, issue_number)
+            result = handler.assign_to_issue(repo, issue_number)
+            success = result.get('success', False) if isinstance(result, dict) else False
             
             # Update state
             self.state[issue_key].completed = success
