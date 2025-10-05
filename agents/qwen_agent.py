@@ -29,6 +29,13 @@ except ImportError:
     print("ERROR: PyYAML module not found. Install with: pip install pyyaml")
     sys.exit(1)
 
+# Import workspace tools (relative import for agents submodule)
+try:
+    from .workspace_tools import WorkspaceTools
+except ImportError:
+    # Fallback for direct script execution
+    from workspace_tools import WorkspaceTools
+
 # Colors for terminal output
 class Colors:
     HEADER = '\033[95m'
@@ -62,6 +69,9 @@ class QwenAgent:
         self.model = model or self.config.get('model', {}).get('name', 'qwen2.5-coder:7b')
         self.ollama_url = self.config.get('model', {}).get('ollama_url', ollama_url)
         self.project_root = Path(project_root) if project_root else Path(self.config.get('project', {}).get('root', '.'))
+        
+        # Initialize workspace tools for file exploration
+        self.workspace = WorkspaceTools(str(self.project_root.resolve()))
         
         # Project metadata
         self.project_name = self.config.get('project', {}).get('name', 'Unnamed Project')
@@ -147,6 +157,83 @@ class QwenAgent:
             self.print_info("No documentation files found in project")
         
         return docs
+    
+    def prepare_task_context(self, task_description: str, phase_name: str) -> str:
+        """
+        Gather relevant workspace context before executing a task.
+        
+        This helps the agent understand existing code patterns and structure.
+        
+        Args:
+            task_description: Description of the task to be executed
+            phase_name: Name of the current phase
+        
+        Returns:
+            Context string to inject into task prompt
+        """
+        context_parts = []
+        
+        # Keywords to detect task type
+        task_lower = task_description.lower()
+        
+        # Service-related tasks
+        if 'service' in task_lower or 'app/services' in task_lower:
+            try:
+                services = self.workspace.list_dir('app/services')
+                if services:
+                    context_parts.append(f"📁 Existing services: {', '.join(services)}")
+                    
+                    # Read structure from one example service
+                    if services:
+                        example_svc = services[0]
+                        svc_files = self.workspace.find_files('*.py', f'app/services/{example_svc}')
+                        if svc_files:
+                            context_parts.append(f"   Example service structure ({example_svc}): {', '.join([Path(f).name for f in svc_files])}")
+            except Exception as e:
+                self.print_warning(f"Could not list services: {e}")
+        
+        # API/Backend tasks
+        if 'api' in task_lower or 'endpoint' in task_lower or 'backend' in task_lower:
+            try:
+                # Look for controller patterns
+                controllers = self.workspace.find_files('*controller*.py', 'app/backend')
+                if controllers:
+                    context_parts.append(f"🔌 Existing controllers: {', '.join([Path(f).name for f in controllers])}")
+                
+                # Check routes file
+                if self.workspace.file_exists('app/backend/routes.py'):
+                    context_parts.append("   Routes defined in: app/backend/routes.py")
+            except Exception as e:
+                self.print_warning(f"Could not analyze backend: {e}")
+        
+        # Database/Model tasks
+        if 'model' in task_lower or 'database' in task_lower or 'schema' in task_lower:
+            try:
+                models = self.workspace.find_files('*model*.py', 'app/backend')
+                if models:
+                    context_parts.append(f"💾 Existing models: {', '.join([Path(f).name for f in models])}")
+                
+                if self.workspace.file_exists('app/backend/database.py'):
+                    context_parts.append("   Database config: app/backend/database.py")
+            except Exception as e:
+                self.print_warning(f"Could not analyze models: {e}")
+        
+        # Docker/Container tasks
+        if 'docker' in task_lower or 'container' in task_lower:
+            try:
+                dockerfiles = self.workspace.find_files('Dockerfile*', '.')
+                if dockerfiles:
+                    context_parts.append(f"🐳 Dockerfiles: {', '.join([Path(f).name for f in dockerfiles])}")
+                
+                if self.workspace.file_exists('docker-compose.yml'):
+                    context_parts.append("   Compose file: docker-compose.yml")
+            except Exception as e:
+                self.print_warning(f"Could not analyze Docker files: {e}")
+        
+        if context_parts:
+            return "\n🔍 WORKSPACE CONTEXT:\n" + "\n".join(context_parts) + "\n"
+        else:
+            return ""
     
     def print_header(self, text: str):
         """Print colored header"""
@@ -286,11 +373,17 @@ Follow best practices and existing codebase patterns.
         for i, task in enumerate(phase['tasks'], 1):
             print(f"\n{Colors.BOLD}Task {i}/{len(phase['tasks'])}: {task}{Colors.ENDC}")
             
+            # Gather workspace context for this specific task
+            workspace_context = self.prepare_task_context(task, phase['name'])
+            if workspace_context:
+                self.print_info("Workspace context gathered for task")
+            
             # Generate code for this task
             prompt = f"""Task: {task}
 
 Phase: {phase['name']}
 Context: {context_config.get('description', '')}
+{workspace_context}
 
 Generate the complete code for this task. 
 
