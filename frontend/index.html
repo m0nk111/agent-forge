@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="refresh" content="0; url=dashboard.html">
+    <title>Agent-Forge - Redirecting...</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            text-align: center;
+        }
+        .spinner {
+            border: 3px solid rgba(96, 165, 250, 0.2);
+            border-top: 3px solid #60a5fa;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        h1 {
+            font-size: 24px;
+            color: #60a5fa;
+            margin-bottom: 10px;
+        }
+        p {
+            color: #94a3b8;
+        }
+        a {
+            color: #60a5fa;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="spinner"></div>
+        <h1>🤖 Agent-Forge</h1>
+        <p>Redirecting to dashboard...</p>
+        <p><small>If not redirected, <a href="dashboard.html">click here</a></small></p>
+    </div>
+    <script>
+        // Fallback redirect in case meta refresh fails
+        setTimeout(() => {
+            window.location.href = 'dashboard.html';
+        }, 100);
+    </script>
+</body>
+</html>
