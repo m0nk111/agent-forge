@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent-Forge Configuration</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(96, 165, 250, 0.2);
+        }
+
+        h1 {
+            font-size: 28px;
+            color: #60a5fa;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #94a3b8;
+            font-size: 14px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            background: rgba(30, 41, 59, 0.5);
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(96, 165, 250, 0.2);
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: rgba(51, 65, 85, 0.5);
+            border: 1px solid rgba(96, 165, 250, 0.3);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: #94a3b8;
+            font-weight: 500;
+        }
+
+        .tab:hover {
+            background: rgba(96, 165, 250, 0.1);
+            border-color: rgba(96, 165, 250, 0.5);
+        }
+
+        .tab.active {
+            background: #60a5fa;
+            color: #0f172a;
+            border-color: #60a5fa;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .card {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(96, 165, 250, 0.2);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 20px;
+            color: #60a5fa;
+            font-weight: 600;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .btn-primary {
+            background: #60a5fa;
+            color: #0f172a;
+        }
+
+        .btn-primary:hover {
+            background: #3b82f6;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(96, 165, 250, 0.4);
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(51, 65, 85, 0.5);
+            color: #94a3b8;
+            border: 1px solid rgba(96, 165, 250, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(96, 165, 250, 0.1);
+            border-color: rgba(96, 165, 250, 0.5);
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .grid {
+            display: grid;
+            gap: 20px;
+        }
+
+        .grid-2 {
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        }
+
+        .item {
+            background: rgba(51, 65, 85, 0.3);
+            border: 1px solid rgba(96, 165, 250, 0.2);
+            border-radius: 8px;
+            padding: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .item:hover {
+            border-color: rgba(96, 165, 250, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(96, 165, 250, 0.2);
+        }
+
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .item-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+
+        .item-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .badge-success {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .badge-danger {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .item-details {
+            display: grid;
+            gap: 8px;
+            color: #94a3b8;
+            font-size: 14px;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .detail-label {
+            color: #cbd5e1;
+            font-weight: 500;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 32px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 1px solid rgba(96, 165, 250, 0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .modal-title {
+            font-size: 22px;
+            color: #60a5fa;
+            font-weight: 600;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+        }
+
+        .close-btn:hover {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            color: #cbd5e1;
+            font-weight: 500;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .form-input,
+        .form-select,
+        .form-textarea {
+            width: 100%;
+            padding: 10px 14px;
+            background: rgba(51, 65, 85, 0.5);
+            border: 1px solid rgba(96, 165, 250, 0.3);
+            border-radius: 8px;
+            color: #e2e8f0;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus,
+        .form-select:focus,
+        .form-textarea:focus {
+            outline: none;
+            border-color: #60a5fa;
+            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-checkbox input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 24px;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(51, 65, 85, 0.5);
+            border-radius: 8px;
+            border: 1px solid rgba(96, 165, 250, 0.2);
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-connected {
+            background: #22c55e;
+        }
+
+        .status-disconnected {
+            background: #ef4444;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 48px 24px;
+            color: #94a3b8;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 48px;
+            color: #94a3b8;
+        }
+
+        .spinner {
+            border: 4px solid rgba(96, 165, 250, 0.1);
+            border-top: 4px solid #60a5fa;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 16px 24px;
+            background: #1e293b;
+            border-radius: 8px;
+            border: 1px solid rgba(96, 165, 250, 0.3);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            display: none;
+            z-index: 2000;
+        }
+
+        .toast.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .toast-success {
+            border-color: rgba(34, 197, 94, 0.5);
+        }
+
+        .toast-error {
+            border-color: rgba(239, 68, 68, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔧 Agent-Forge Configuration</h1>
+            <p class="subtitle">Manage agents, repositories, and system settings</p>
+        </header>
+
+        <div class="tabs">
+            <div class="tab active" data-tab="agents">Agents</div>
+            <div class="tab" data-tab="repositories">Repositories</div>
+            <div class="tab" data-tab="system">System</div>
+        </div>
+
+        <!-- Agents Tab -->
+        <div id="agents-tab" class="tab-content active">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Agent Configurations</h2>
+                    <button class="btn btn-primary" onclick="openAgentModal()">+ Add Agent</button>
+                </div>
+                <div id="agents-list" class="grid grid-2">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading agents...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Repositories Tab -->
+        <div id="repositories-tab" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Repository Configurations</h2>
+                    <button class="btn btn-primary" onclick="openRepositoryModal()">+ Add Repository</button>
+                </div>
+                <div id="repositories-list" class="grid grid-2">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading repositories...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Tab -->
+        <div id="system-tab" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">System Configuration</h2>
+                    <button class="btn btn-primary" onclick="saveSystemConfig()">Save Changes</button>
+                </div>
+                <div id="system-config">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading system configuration...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Agent Modal -->
+    <div id="agent-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="agent-modal-title">Add Agent</h3>
+                <button class="close-btn" onclick="closeAgentModal()">×</button>
+            </div>
+            <form id="agent-form">
+                <input type="hidden" id="agent-id" name="agent_id">
+                
+                <div class="form-group">
+                    <label class="form-label" for="agent-name">Agent Name *</label>
+                    <input type="text" id="agent-name" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="agent-model">Model *</label>
+                    <select id="agent-model" class="form-select" required>
+                        <option value="">Select model...</option>
+                        <option value="gpt-4">GPT-4</option>
+                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                        <option value="claude-3-opus">Claude 3 Opus</option>
+                        <option value="claude-3-sonnet">Claude 3 Sonnet</option>
+                        <option value="qwen-2.5-coder">Qwen 2.5 Coder</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-checkbox">
+                        <input type="checkbox" id="agent-enabled">
+                        <span>Enabled</span>
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="agent-max-tasks">Max Concurrent Tasks</label>
+                    <input type="number" id="agent-max-tasks" class="form-input" min="1" max="10" value="1">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="agent-polling">Polling Interval (seconds)</label>
+                    <input type="number" id="agent-polling" class="form-input" min="10" max="3600" value="60">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="agent-capabilities">Capabilities (comma-separated)</label>
+                    <input type="text" id="agent-capabilities" class="form-input" placeholder="code_review, issue_triage">
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeAgentModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Agent</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Repository Modal -->
+    <div id="repository-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="repository-modal-title">Add Repository</h3>
+                <button class="close-btn" onclick="closeRepositoryModal()">×</button>
+            </div>
+            <form id="repository-form">
+                <input type="hidden" id="repo-id" name="repo_id">
+                
+                <div class="form-group">
+                    <label class="form-label" for="repo-owner">Owner *</label>
+                    <input type="text" id="repo-owner" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="repo-name">Repository Name *</label>
+                    <input type="text" id="repo-name" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-checkbox">
+                        <input type="checkbox" id="repo-enabled">
+                        <span>Enabled</span>
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-checkbox">
+                        <input type="checkbox" id="repo-auto-assign">
+                        <span>Auto-assign Issues</span>
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="repo-labels">Issue Labels (comma-separated)</label>
+                    <input type="text" id="repo-labels" class="form-input" placeholder="bug, enhancement">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="repo-branch-prefix">Branch Prefix</label>
+                    <input type="text" id="repo-branch-prefix" class="form-input" value="feature">
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeRepositoryModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Repository</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <p id="toast-message"></p>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:7996/api/config';
+        const AUTH_TOKEN = 'dev-token-placeholder'; // TODO: Implement real auth
+
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabName = tab.dataset.tab;
+                
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                tab.classList.add('active');
+                document.getElementById(`${tabName}-tab`).classList.add('active');
+                
+                // Load data for active tab
+                if (tabName === 'agents') loadAgents();
+                else if (tabName === 'repositories') loadRepositories();
+                else if (tabName === 'system') loadSystemConfig();
+            });
+        });
+
+        // Load agents on page load
+        loadAgents();
+
+        // ==================== AGENTS ====================
+
+        async function loadAgents() {
+            try {
+                const response = await fetch(`${API_BASE}/agents`, {
+                    headers: { 'Authorization': `Bearer ${AUTH_TOKEN}` }
+                });
+                
+                if (!response.ok) throw new Error('Failed to load agents');
+                
+                const agents = await response.json();
+                renderAgents(agents);
+            } catch (error) {
+                console.error('Error loading agents:', error);
+                showToast('Failed to load agents', 'error');
+            }
+        }
+
+        function renderAgents(agents) {
+            const container = document.getElementById('agents-list');
+            
+            if (agents.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🤖</div>
+                        <p>No agents configured yet</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = agents.map(agent => `
+                <div class="item">
+                    <div class="item-header">
+                        <div>
+                            <div class="item-title">${agent.name}</div>
+                            <span class="badge ${agent.enabled ? 'badge-success' : 'badge-danger'}">
+                                ${agent.enabled ? 'Enabled' : 'Disabled'}
+                            </span>
+                        </div>
+                        <div class="item-actions">
+                            <button class="btn btn-secondary btn-sm" onclick="editAgent('${agent.agent_id}')">Edit</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteAgent('${agent.agent_id}')">Delete</button>
+                        </div>
+                    </div>
+                    <div class="item-details">
+                        <div class="detail-row">
+                            <span class="detail-label">Model:</span>
+                            <span>${agent.model}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Max Tasks:</span>
+                            <span>${agent.max_concurrent_tasks}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Polling:</span>
+                            <span>${agent.polling_interval}s</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Capabilities:</span>
+                            <span>${agent.capabilities.join(', ') || 'None'}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openAgentModal(agentId = null) {
+            document.getElementById('agent-modal').classList.add('active');
+            document.getElementById('agent-modal-title').textContent = agentId ? 'Edit Agent' : 'Add Agent';
+            
+            if (agentId) {
+                // Load agent data
+                fetch(`${API_BASE}/agents/${agentId}`, {
+                    headers: { 'Authorization': `Bearer ${AUTH_TOKEN}` }
+                })
+                .then(r => r.json())
+                .then(agent => {
+                    document.getElementById('agent-id').value = agent.agent_id;
+                    document.getElementById('agent-name').value = agent.name;
+                    document.getElementById('agent-model').value = agent.model;
+                    document.getElementById('agent-enabled').checked = agent.enabled;
+                    document.getElementById('agent-max-tasks').value = agent.max_concurrent_tasks;
+                    document.getElementById('agent-polling').value = agent.polling_interval;
+                    document.getElementById('agent-capabilities').value = agent.capabilities.join(', ');
+                });
+            } else {
+                document.getElementById('agent-form').reset();
+                document.getElementById('agent-enabled').checked = true;
+            }
+        }
+
+        function closeAgentModal() {
+            document.getElementById('agent-modal').classList.remove('active');
+        }
+
+        document.getElementById('agent-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const agentId = document.getElementById('agent-id').value;
+            const data = {
+                agent_id: agentId || `agent_${Date.now()}`,
+                name: document.getElementById('agent-name').value,
+                model: document.getElementById('agent-model').value,
+                enabled: document.getElementById('agent-enabled').checked,
+                max_concurrent_tasks: parseInt(document.getElementById('agent-max-tasks').value),
+                polling_interval: parseInt(document.getElementById('agent-polling').value),
+                capabilities: document.getElementById('agent-capabilities').value
+                    .split(',')
+                    .map(s => s.trim())
+                    .filter(s => s)
+            };
+            
+            try {
+                const url = agentId ? `${API_BASE}/agents/${agentId}` : `${API_BASE}/agents`;
+                const method = agentId ? 'PATCH' : 'POST';
+                
+                const response = await fetch(url, {
+                    method,
+                    headers: {
+                        'Authorization': `Bearer ${AUTH_TOKEN}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (!response.ok) throw new Error('Failed to save agent');
+                
+                showToast(agentId ? 'Agent updated successfully' : 'Agent created successfully', 'success');
+                closeAgentModal();
+                loadAgents();
+            } catch (error) {
+                console.error('Error saving agent:', error);
+                showToast('Failed to save agent', 'error');
+            }
+        });
+
+        function editAgent(agentId) {
+            openAgentModal(agentId);
+        }
+
+        async function deleteAgent(agentId) {
+            if (!confirm('Are you sure you want to delete this agent?')) return;
+            
+            try {
+                const response = await fetch(`${API_BASE}/agents/${agentId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${AUTH_TOKEN}` }
+                });
+                
+                if (!response.ok) throw new Error('Failed to delete agent');
+                
+                showToast('Agent deleted successfully', 'success');
+                loadAgents();
+            } catch (error) {
+                console.error('Error deleting agent:', error);
+                showToast('Failed to delete agent', 'error');
+            }
+        }
+
+        // ==================== REPOSITORIES ====================
+
+        async function loadRepositories() {
+            try {
+                const response = await fetch(`${API_BASE}/repositories`, {
+                    headers: { 'Authorization': `Bearer ${AUTH_TOKEN}` }
+                });
+                
+                if (!response.ok) throw new Error('Failed to load repositories');
+                
+                const repos = await response.json();
+                renderRepositories(repos);
+            } catch (error) {
+                console.error('Error loading repositories:', error);
+                showToast('Failed to load repositories', 'error');
+            }
+        }
+
+        function renderRepositories(repos) {
+            const container = document.getElementById('repositories-list');
+            
+            if (repos.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📦</div>
+                        <p>No repositories configured yet</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = repos.map(repo => `
+                <div class="item">
+                    <div class="item-header">
+                        <div>
+                            <div class="item-title">${repo.owner}/${repo.name}</div>
+                            <span class="badge ${repo.enabled ? 'badge-success' : 'badge-danger'}">
+                                ${repo.enabled ? 'Enabled' : 'Disabled'}
+                            </span>
+                        </div>
+                        <div class="item-actions">
+                            <button class="btn btn-secondary btn-sm" onclick="editRepository('${repo.repo_id}')">Edit</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteRepository('${repo.repo_id}')">Delete</button>
+                        </div>
+                    </div>
+                    <div class="item-details">
+                        <div class="detail-row">
+                            <span class="detail-label">Auto-assign:</span>
+                            <span>${repo.auto_assign_issues ? 'Yes' : 'No'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Branch Prefix:</span>
+                            <span>${repo.branch_prefix}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Labels:</span>
+                            <span>${repo.issue_labels.join(', ') || 'None'}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openRepositoryModal(repoId = null) {
+            document.getElementById('repository-modal').classList.add('active');
+            document.getElementById('repository-modal-title').textContent = repoId ? 'Edit Repository' : 'Add Repository';
+            
+            if (repoId) {
+                fetch(`${API_BASE}/repositories/${repoId}`, {
+                    headers: { 'Authorization': `Bearer ${AUTH_TOKEN}` }
+                })
+                .then(r => r.json())
+                .then(repo => {
+                    document.getElementById('repo-id').value = repo.repo_id;
+                    document.getElementById('repo-owner').value = repo.owner;
+                    document.getElementById('repo-name').value = repo.name;
+                    document.getElementById('repo-enabled').checked = repo.enabled;
+                    document.getElementById('repo-auto-assign').checked = repo.auto_assign_issues;
+                    document.getElementById('repo-labels').value = repo.issue_labels.join(', ');
+                    document.getElementById('repo-branch-prefix').value = repo.branch_prefix;
+                });
+            } else {
+                document.getElementById('repository-form').reset();
+                document.getElementById('repo-enabled').checked = true;
+                document.getElementById('repo-auto-assign').checked = true;
+            }
+        }
+
+        function closeRepositoryModal() {
+            document.getElementById('repository-modal').classList.remove('active');
+        }
+
+        document.getElementById('repository-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const repoId = document.getElementById('repo-id').value;
+            const data = {
+                repo_id: repoId || `repo_${Date.now()}`,
+                owner: document.getElementById('repo-owner').value,
+                name: document.getElementById('repo-name').value,
+                enabled: document.getElementById('repo-enabled').checked,
+                auto_assign_issues: document.getElementById('repo-auto-assign').checked,
+                issue_labels: document.getElementById('repo-labels').value
+                    .split(',')
+                    .map(s => s.trim())
+                    .filter(s => s),
+                branch_prefix: document.getElementById('repo-branch-prefix').value
+            };
+            
+            try {
+                const url = repoId ? `${API_BASE}/repositories/${repoId}` : `${API_BASE}/repositories`;
+                const method = repoId ? 'PATCH' : 'POST';
+                
+                const response = await fetch(url, {
+                    method,
+                    headers: {
+                        'Authorization': `Bearer ${AUTH_TOKEN}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (!response.ok) throw new Error('Failed to save repository');
+                
+                showToast(repoId ? 'Repository updated successfully' : 'Repository created successfully', 'success');
+                closeRepositoryModal();
+                loadRepositories();
+            } catch (error) {
+                console.error('Error saving repository:', error);
+                showToast('Failed to save repository', 'error');
+            }
+        });
+
+        function editRepository(repoId) {
+            openRepositoryModal(repoId);
+        }
+
+        async function deleteRepository(repoId) {
+            if (!confirm('Are you sure you want to delete this repository?')) return;
+            
+            try {
+                const response = await fetch(`${API_BASE}/repositories/${repoId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${AUTH_TOKEN}` }
+                });
+                
+                if (!response.ok) throw new Error('Failed to delete repository');
+                
+                showToast('Repository deleted successfully', 'success');
+                loadRepositories();
+            } catch (error) {
+                console.error('Error deleting repository:', error);
+                showToast('Failed to delete repository', 'error');
+            }
+        }
+
+        // ==================== SYSTEM CONFIG ====================
+
+        async function loadSystemConfig() {
+            try {
+                const response = await fetch(`${API_BASE}/system`, {
+                    headers: { 'Authorization': `Bearer ${AUTH_TOKEN}` }
+                });
+                
+                if (!response.ok) throw new Error('Failed to load system config');
+                
+                const config = await response.json();
+                renderSystemConfig(config);
+            } catch (error) {
+                console.error('Error loading system config:', error);
+                showToast('Failed to load system configuration', 'error');
+            }
+        }
+
+        function renderSystemConfig(config) {
+            const container = document.getElementById('system-config');
+            container.innerHTML = `
+                <div class="grid">
+                    <div class="form-group">
+                        <label class="form-checkbox">
+                            <input type="checkbox" id="sys-monitoring-enabled" ${config.monitoring_enabled ? 'checked' : ''}>
+                            <span>Monitoring Enabled</span>
+                        </label>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="sys-monitoring-port">Monitoring Port</label>
+                        <input type="number" id="sys-monitoring-port" class="form-input" value="${config.monitoring_port}" min="1024" max="65535">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="sys-log-level">Log Level</label>
+                        <select id="sys-log-level" class="form-select">
+                            <option value="DEBUG" ${config.log_level === 'DEBUG' ? 'selected' : ''}>DEBUG</option>
+                            <option value="INFO" ${config.log_level === 'INFO' ? 'selected' : ''}>INFO</option>
+                            <option value="WARNING" ${config.log_level === 'WARNING' ? 'selected' : ''}>WARNING</option>
+                            <option value="ERROR" ${config.log_level === 'ERROR' ? 'selected' : ''}>ERROR</option>
+                            <option value="CRITICAL" ${config.log_level === 'CRITICAL' ? 'selected' : ''}>CRITICAL</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="sys-max-log-size">Max Log Size</label>
+                        <input type="number" id="sys-max-log-size" class="form-input" value="${config.max_log_size}" min="100" max="100000">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-checkbox">
+                            <input type="checkbox" id="sys-backup-enabled" ${config.backup_enabled ? 'checked' : ''}>
+                            <span>Backup Enabled</span>
+                        </label>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="sys-backup-interval">Backup Interval (seconds)</label>
+                        <input type="number" id="sys-backup-interval" class="form-input" value="${config.backup_interval}" min="3600" max="604800">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="sys-notification-email">Notification Email</label>
+                        <input type="email" id="sys-notification-email" class="form-input" value="${config.notification_email || ''}" placeholder="admin@example.com">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="sys-slack-webhook">Slack Webhook URL</label>
+                        <input type="url" id="sys-slack-webhook" class="form-input" value="${config.slack_webhook || ''}" placeholder="https://hooks.slack.com/...">
+                    </div>
+                </div>
+            `;
+        }
+
+        async function saveSystemConfig() {
+            const data = {
+                monitoring_enabled: document.getElementById('sys-monitoring-enabled').checked,
+                monitoring_port: parseInt(document.getElementById('sys-monitoring-port').value),
+                log_level: document.getElementById('sys-log-level').value,
+                max_log_size: parseInt(document.getElementById('sys-max-log-size').value),
+                backup_enabled: document.getElementById('sys-backup-enabled').checked,
+                backup_interval: parseInt(document.getElementById('sys-backup-interval').value),
+                notification_email: document.getElementById('sys-notification-email').value || null,
+                slack_webhook: document.getElementById('sys-slack-webhook').value || null
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/system`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `Bearer ${AUTH_TOKEN}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (!response.ok) throw new Error('Failed to save system config');
+                
+                showToast('System configuration saved successfully', 'success');
+            } catch (error) {
+                console.error('Error saving system config:', error);
+                showToast('Failed to save system configuration', 'error');
+            }
+        }
+
+        // ==================== UTILITIES ====================
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toast-message');
+            
+            toastMessage.textContent = message;
+            toast.className = `toast toast-${type} show`;
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

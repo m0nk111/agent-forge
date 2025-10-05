@@ -1,0 +1,10 @@
+monitoring_enabled: true
+monitoring_port: 7997
+log_level: DEBUG
+max_log_size: 15000
+backup_enabled: true
+backup_interval: 86400
+notification_email: null
+slack_webhook: null
+custom_settings: {}
+updated_at: '2025-10-05T16:33:45.165686'
