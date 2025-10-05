@@ -212,23 +212,46 @@ Follow best practices and existing codebase patterns.
             prompt = f"""Task: {task}
 
 Phase: {phase['name']}
-Context: Implementing Personality AI service with LLM integration, RAG pipeline, and conversation analysis.
+Context: {context_config.get('description', '')}
 
-Generate the complete Python code for this task. Include:
-1. File path (relative to {self.project_root})
-2. Complete code with all imports and dependencies
-3. Error handling and logging
-4. Type hints and docstrings
-5. Any configuration or setup needed
+Generate the complete code for this task. 
 
-Format your response as:
+CRITICAL FORMAT REQUIREMENTS:
+1. Start EVERY file with exactly: # File: <relative_path>
+2. Use relative paths from project root: {self.project_root}
+3. Include complete code with all imports
+4. Add error handling and logging
+5. Include type hints and docstrings
+
+REQUIRED FORMAT (follow exactly):
 ```python
-# File: <file_path>
+# File: path/to/file.py
 
-<complete_code>
+<complete_code_here>
 ```
 
-If multiple files are needed, provide each one separately with the same format.
+For requirements.txt or other non-Python files:
+```
+# File: path/to/requirements.txt
+
+<content_here>
+```
+
+If multiple files needed, separate each with the # File: marker.
+
+Example:
+```python
+# File: app/services/my-service/__init__.py
+
+from .service import MyService
+```
+
+```python
+# File: app/services/my-service/config.py
+
+class Config:
+    pass
+```
 """
             
             if dry_run:
@@ -264,31 +287,40 @@ If multiple files are needed, provide each one separately with the same format.
         current_file = None
         current_code = []
         files_created = []
+        in_code_block = False
         
         for line in lines:
-            # Look for file path markers
-            if line.strip().startswith('# File:'):
+            # Look for file path markers (various formats)
+            if '# File:' in line or '#File:' in line or '# file:' in line:
                 # Save previous file if any
                 if current_file and current_code:
-                    self.create_file(current_file, '\n'.join(current_code))
-                    files_created.append(current_file)
+                    content = '\n'.join(current_code).strip()
+                    if content:  # Only save if there's actual content
+                        self.create_file(current_file, content)
+                        files_created.append(current_file)
                 
-                # Start new file
-                current_file = line.split('# File:')[1].strip()
+                # Start new file - extract path after "File:"
+                file_marker = line.split('File:', 1)[-1].strip()
+                current_file = file_marker
                 current_code = []
+                in_code_block = False
+                continue
             
-            # Look for code blocks
-            elif line.strip().startswith('```python'):
+            # Handle code block markers
+            if line.strip().startswith('```'):
+                in_code_block = not in_code_block
                 continue
-            elif line.strip() == '```':
-                continue
-            elif current_file:
+            
+            # Collect code lines if we're in a file
+            if current_file:
                 current_code.append(line)
         
         # Save last file
         if current_file and current_code:
-            self.create_file(current_file, '\n'.join(current_code))
-            files_created.append(current_file)
+            content = '\n'.join(current_code).strip()
+            if content:
+                self.create_file(current_file, content)
+                files_created.append(current_file)
         
         if files_created:
             self.print_success(f"Created {len(files_created)} file(s):")
@@ -303,6 +335,7 @@ If multiple files are needed, provide each one separately with the same format.
                 review_file.parent.mkdir(parents=True, exist_ok=True)
                 review_file.write_text(code)
                 self.print_info(f"Raw output saved to: {review_file}")
+                self.print_info("Check the output - LLM may not have used the correct # File: format")
             except Exception as e:
                 self.print_error(f"Could not save raw output: {e}")
             return False
