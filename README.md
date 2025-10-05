@@ -24,6 +24,7 @@ Agent Forge is a framework for creating autonomous coding agents using different
 - 🌐 **Web Documentation**: Fetch docs from trusted sources (Python docs, GitHub, Stack Overflow) with caching
 - 🤖 **Autonomous Polling**: Automatically check for assigned GitHub issues and start workflows (Issue #17)
 - 🔍 **Automated Code Review**: AI-powered PR reviews with quality checks and feedback (Issue #25)
+- 🤖 **Bot Account Agent**: Dedicated bot for GitHub operations without email spam (Issue #35)
 - 🌐 **External Knowledge**: MCP integration placeholders
 - 📚 **Documentation Loading**: Auto-load project docs (ARCHITECTURE.md, README.md, etc.)
 - 🗂️ **Workspace Awareness**: Explore project structure, validate paths, find files
@@ -591,6 +592,240 @@ claim_timeout_minutes: 60      # Claim expires after 1 hour
 8. Repeat after interval
 
 This enables fully autonomous agents that continuously monitor and work on issues without manual intervention!
+
+### 12. Bot Account Agent (Issue #35)
+
+Dedicated bot account for automated GitHub operations without email spam.
+
+```python
+from agents.bot_agent import BotAgent
+from pathlib import Path
+
+# Initialize bot
+bot = BotAgent(
+    agent_id="m0nk111-bot",
+    username="m0nk111-bot",
+    github_token=os.getenv("BOT_GITHUB_TOKEN"),
+    config_file=Path("config/bot_config.yaml")
+)
+
+# Create issue
+issue = await bot.create_issue(
+    repo="owner/repo",
+    title="New feature request",
+    body="Please implement feature X",
+    labels=["enhancement", "high-priority"],
+    assignees=["developer1"]
+)
+print(f"Created issue #{issue['number']}")
+
+# Add progress comment
+await bot.add_comment(
+    repo="owner/repo",
+    issue_number=issue['number'],
+    body="🤖 Implementation started. ETA: 2 hours"
+)
+
+# Update labels as work progresses
+await bot.update_labels(
+    repo="owner/repo",
+    issue_number=issue['number'],
+    add_labels=["in-progress"],
+    remove_labels=["pending"]
+)
+
+# Close when done
+await bot.close_issue(
+    repo="owner/repo",
+    issue_number=issue['number'],
+    state_reason="completed",
+    comment="✅ All tasks completed. Ready for review."
+)
+```
+
+**CLI Usage**:
+```bash
+# Create issue
+python -m agents.bot_agent create --repo owner/repo \
+  --title "New feature" --body "Description" \
+  --labels "enhancement,high-priority" --assignees "dev1,dev2"
+
+# Add comment
+python -m agents.bot_agent comment --repo owner/repo \
+  --issue 42 --body "✅ Task completed"
+
+# Assign issue
+python -m agents.bot_agent assign --repo owner/repo \
+  --issue 42 --assignees "developer1,reviewer1"
+
+# Update labels
+python -m agents.bot_agent labels --repo owner/repo \
+  --issue 42 --labels "in-progress,reviewed"
+
+# Close issue
+python -m agents.bot_agent close --repo owner/repo \
+  --issue 42 --body "✅ Closing after completion"
+
+# View bot status
+python -m agents.bot_agent status --repo owner/repo
+```
+
+**Core Operations**:
+- 📝 **Issue Management**: Create, close, reopen issues
+- 💬 **Commenting**: Add status updates and notifications
+- 👥 **Assignments**: Assign issues to team members
+- 🏷️ **Labels**: Add/remove labels for organization
+- 📊 **Project Updates**: Update GitHub Projects v2 fields (planned)
+- 🔄 **Workflow Triggers**: Trigger GitHub Actions (planned)
+
+**Features**:
+- 🚀 **Rate Limiting**: Automatic rate limit detection and pausing
+- 🔁 **Retry Logic**: Automatic retry on failures (configurable attempts)
+- 📈 **Metrics Tracking**: Operations count, success rate, response times
+- 🎯 **Error Handling**: Comprehensive error handling with logging
+- 📊 **Dashboard Integration**: Real-time status display
+- 🔒 **Security**: Token-based authentication, operation approval
+- ⏱️ **Response Times**: Track and optimize API performance
+- 📝 **Operation History**: Keep last 100 operations for debugging
+
+**Configuration** (`config/bot_config.yaml`):
+```yaml
+bot:
+  agent_id: m0nk111-bot
+  username: m0nk111-bot
+  
+  capabilities:
+    - create_issues
+    - add_comments
+    - assign_tasks
+    - update_labels
+    - close_issues
+  
+  rate_limiting:
+    max_operations_per_hour: 500
+    pause_threshold: 4800
+  
+  behavior:
+    retry_attempts: 3
+    retry_delay: 5  # seconds
+    command_timeout: 30
+  
+  monitoring:
+    enabled: true
+    report_interval: 60
+```
+
+**Metrics Dashboard**:
+```
+🤖 m0nk111-bot | BOT | ACTIVE
+├─ Operations: 1,247
+├─ Issues Created: 89
+├─ Comments: 342
+├─ Assignments: 156
+├─ Success Rate: 98.5%
+├─ Avg Response: 0.85s
+├─ Rate Limit: 4,823/5,000
+└─ Last Active: 2 minutes ago
+```
+
+**Integration with Coordinator**:
+```python
+# Coordinator creates execution plan
+plan = await coordinator.create_plan(issue)
+
+# Bot notifies assignees
+for task in plan.sub_tasks:
+    await bot.add_comment(
+        repo=plan.repository,
+        issue_number=plan.issue_number,
+        body=f"""🎯 **Sub-Task Assigned**
+        
+**Task**: {task.title}
+**Assignee**: @{task.assigned_to}
+**Priority**: {task.priority}
+**Estimated Effort**: {task.estimated_effort}m
+
+{task.description}
+"""
+    )
+    
+    # Assign the task
+    await bot.assign_issue(
+        repo=plan.repository,
+        issue_number=task.issue_number,
+        assignees=[task.assigned_to]
+    )
+```
+
+**Comment Templates**:
+```python
+# Task assignment template
+task_assigned = """
+🤖 **Task Assigned**
+
+@{assignee} has been assigned to this issue.
+
+**Priority**: {priority}
+**Estimated Effort**: {effort}
+
+Please update progress using the checklist above.
+"""
+
+# Blocker detected template
+blocker_detected = """
+🔴 **Blocker Detected**
+
+**Issue**: {blocker_description}
+**Impact**: Work on {task_id} is blocked
+
+@{coordinator} Please review and provide guidance.
+"""
+
+# Task completed template
+task_completed = """
+✅ **Task Completed**
+
+All checklist items have been completed.
+Implementation ready for review.
+
+**Time Taken**: {duration}
+**Changes**: {files_changed} files
+"""
+```
+
+**Security**:
+- 🔐 **Token Security**: Store BOT_GITHUB_TOKEN securely in environment
+- 🛡️ **Minimal Permissions**: Use only required GitHub token scopes
+- ✅ **Operation Approval**: Critical operations require human approval
+- 📝 **Audit Logging**: All operations logged for security review
+- 🚫 **Blacklist**: Dangerous operations permanently blocked
+
+**Environment Setup**:
+```bash
+# Set bot token
+export BOT_GITHUB_TOKEN="ghp_your_token_here"
+export BOT_GITHUB_USERNAME="m0nk111-bot"
+
+# Add bot as collaborator on repositories
+gh api repos/owner/repo/collaborators/m0nk111-bot -X PUT
+
+# Configure repository permissions (write access minimum)
+```
+
+**Required GitHub Token Scopes**:
+- `repo`: Full control of repositories
+- `workflow`: Update GitHub Actions workflows
+- `write:discussion`: Read and write discussions
+- `project`: Full control of projects (for future project updates)
+
+**Benefits**:
+- **No Email Spam**: Bot account isolates automation notifications
+- **Clean History**: Bot operations clearly identified
+- **Audit Trail**: Complete operation history for debugging
+- **Collaboration**: Multi-agent coordination without conflicts
+- **Reliability**: Automatic retries and error handling
+- **Performance**: Fast response times with metrics tracking
+- **Scalability**: Handle hundreds of operations per hour
 
 ## Architecture
 
