@@ -59,6 +59,11 @@ class ServiceConfig:
     enable_web_ui: bool = True
     web_ui_port: int = 8897  # Standard dashboard port
     
+    # Qwen Agent
+    enable_qwen_agent: bool = True
+    qwen_model: str = "qwen2.5-coder:32b"
+    qwen_base_url: str = "http://localhost:11434"
+    
     # Health check
     health_check_interval: int = 30  # seconds
     
@@ -127,6 +132,37 @@ class ServiceManager:
         except Exception as e:
             logger.error(f"Polling service error: {e}", exc_info=True)
             self.health_status['polling'] = False
+            raise
+    
+    async def _start_qwen_agent(self):
+        """Start Qwen agent."""
+        try:
+            from agents.qwen_agent import QwenAgent
+            
+            logger.info("Starting Qwen agent...")
+            
+            # Create agent instance
+            agent = QwenAgent(
+                model=self.config.qwen_model,
+                ollama_url=self.config.qwen_base_url,
+                project_root="/opt/agent-forge",
+                enable_monitoring=True,
+                agent_id="qwen-main-agent"
+            )
+            
+            self.services['qwen_agent'] = agent
+            self.health_status['qwen_agent'] = True
+            
+            logger.info("✅ Qwen agent initialized and registered with monitor")
+            
+            # Keep agent alive (it handles issues via polling service callbacks)
+            while self.running:
+                await asyncio.sleep(10)
+                # Agent stays registered and ready
+            
+        except Exception as e:
+            logger.error(f"Qwen agent error: {e}", exc_info=True)
+            self.health_status['qwen_agent'] = False
             raise
             
     async def _start_monitoring_service(self):
@@ -307,6 +343,13 @@ class ServiceManager:
                     self._start_web_ui()
                 )
                 await asyncio.sleep(1)
+            
+            # Start Qwen agent
+            if self.config.enable_qwen_agent:
+                self.tasks['qwen_agent'] = asyncio.create_task(
+                    self._start_qwen_agent()
+                )
+                await asyncio.sleep(1)
                 
             # Start watchdog
             self.tasks['watchdog'] = asyncio.create_task(
@@ -424,6 +467,7 @@ async def main():
     parser.add_argument("--no-polling", action="store_true", help="Disable polling service")
     parser.add_argument("--no-monitoring", action="store_true", help="Disable monitoring")
     parser.add_argument("--no-web-ui", action="store_true", help="Disable web UI")
+    parser.add_argument("--no-qwen", action="store_true", help="Disable Qwen agent")
     parser.add_argument("--polling-interval", type=int, default=300, help="Polling interval (seconds)")
     parser.add_argument("--web-port", type=int, default=8080, help="Web UI port")
     parser.add_argument("--monitor-port", type=int, default=8765, help="Monitoring WebSocket port")
@@ -442,6 +486,7 @@ async def main():
         enable_polling=not args.no_polling,
         enable_monitoring=not args.no_monitoring,
         enable_web_ui=not args.no_web_ui,
+        enable_qwen_agent=not args.no_qwen,
         polling_interval=args.polling_interval,
         web_ui_port=args.web_port,
         monitoring_port=args.monitor_port,
