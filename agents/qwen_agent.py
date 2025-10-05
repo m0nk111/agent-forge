@@ -60,6 +60,24 @@ try:
 except ImportError:
     from test_runner import TestRunner
 
+# Import codebase search (Issue #7)
+try:
+    from .codebase_search import CodebaseSearch
+except ImportError:
+    from codebase_search import CodebaseSearch
+
+# Import error checker (Issue #9)
+try:
+    from .error_checker import ErrorChecker
+except ImportError:
+    from error_checker import ErrorChecker
+
+# Import MCP client (Issue #12)
+try:
+    from .mcp_client import MCPClient
+except ImportError:
+    from mcp_client import MCPClient
+
 # Colors for terminal output
 class Colors:
     HEADER = '\033[95m'
@@ -108,6 +126,15 @@ class QwenAgent:
         
         # Initialize test runner (Issue #10)
         self.test_runner = TestRunner(self.terminal)
+        
+        # Initialize codebase search (Issue #7)
+        self.codebase_search = CodebaseSearch(str(self.project_root.resolve()))
+        
+        # Initialize error checker (Issue #9)
+        self.error_checker = ErrorChecker(self.terminal)
+        
+        # Initialize MCP client (Issue #12)
+        self.mcp_client = MCPClient(self.terminal)
         
         # Project metadata
         self.project_name = self.config.get('project', {}).get('name', 'Unnamed Project')
