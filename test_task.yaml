@@ -1,0 +1,111 @@
+task:
+  title: "Add health check endpoint for voice-training service"
+  description: |
+    Implement a comprehensive health check endpoint for the Caramba voice-training service.
+    This is a real production task to validate Agent-Forge's autonomous capabilities.
+  
+  project_root: "/home/flip/caramba"
+  
+  phases:
+    - phase: 1
+      name: "Analyze existing backend structure"
+      actions:
+        - type: "search"
+          description: "Find FastAPI app initialization in backend"
+          pattern: "FastAPI"
+          file_pattern: "*.py"
+        
+        - type: "search"
+          description: "Find existing health or status endpoints"
+          pattern: "health|status"
+          file_pattern: "app/backend/*.py"
+        
+        - type: "read"
+          description: "Read main backend file to understand structure"
+          file: "app/backend/app.py"
+          lines: "1-200"
+    
+    - phase: 2
+      name: "Design and implement health endpoint"
+      actions:
+        - type: "edit"
+          description: "Add GET /api/voice-training/health endpoint"
+          file: "app/backend/app.py"
+          operation: "insert_after"
+          pattern: "@app.get(\"/metrics\")"
+          content: |
+            
+            @app.get("/api/voice-training/health")
+            async def voice_training_health():
+                """Health check for voice-training service."""
+                import socket
+                from pathlib import Path
+                
+                health = {
+                    "service": "voice-training",
+                    "timestamp": datetime.now().isoformat(),
+                    "status": "healthy",
+                    "checks": {}
+                }
+                
+                # Check port 7100 (audio receiver)
+                try:
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    sock.settimeout(2)
+                    result = sock.connect_ex(('localhost', 7100))
+                    sock.close()
+                    
+                    health["checks"]["receiver"] = {
+                        "status": "up" if result == 0 else "down",
+                        "port": 7100
+                    }
+                    if result != 0:
+                        health["status"] = "degraded"
+                except Exception as e:
+                    health["checks"]["receiver"] = {"status": "error", "error": str(e)}
+                    health["status"] = "unhealthy"
+                
+                # Check storage directory
+                storage = Path("app/services/voice-training/data/sessions")
+                try:
+                    if storage.exists():
+                        test_file = storage / ".health"
+                        test_file.touch()
+                        test_file.unlink()
+                        health["checks"]["storage"] = {"status": "ok", "writable": True}
+                    else:
+                        health["checks"]["storage"] = {"status": "missing"}
+                        health["status"] = "degraded"
+                except Exception as e:
+                    health["checks"]["storage"] = {"status": "error", "error": str(e)}
+                    health["status"] = "unhealthy"
+                
+                return health
+    
+    - phase: 3
+      name: "Validate implementation"
+      actions:
+        - type: "syntax_check"
+          description: "Check Python syntax"
+          file: "app/backend/app.py"
+        
+        - type: "lint"
+          description: "Run pylint on modified file"
+          file: "app/backend/app.py"
+    
+    - phase: 4
+      name: "Test the endpoint"
+      actions:
+        - type: "command"
+          description: "Test health endpoint with curl"
+          command: "curl -s http://localhost:7999/api/voice-training/health | python3 -m json.tool"
+          expected_output: "healthy"
+
+  success_criteria:
+    - "Health endpoint returns 200 status"
+    - "JSON response contains service, timestamp, status fields"
+    - "All syntax checks pass"
+    - "Endpoint is accessible via curl"
+
+  acceptance_test: |
+    curl -f http://localhost:7999/api/voice-training/health && echo "✅ PASS" || echo "❌ FAIL"

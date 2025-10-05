@@ -105,7 +105,9 @@ class QwenAgent:
         config_path: Optional[str] = None,
         model: Optional[str] = None,
         ollama_url: str = "http://localhost:11434",
-        project_root: Optional[str] = None
+        project_root: Optional[str] = None,
+        enable_monitoring: bool = False,
+        agent_id: Optional[str] = None
     ):
         # Load configuration
         if config_path:
@@ -151,6 +153,20 @@ class QwenAgent:
         
         # Phases from config
         self.phases = self.config.get('phases', {})
+        
+        # Initialize monitoring (optional)
+        self.monitor = None
+        self.agent_id = agent_id or f"qwen-agent-{id(self)}"
+        if enable_monitoring:
+            try:
+                from .monitor_service import get_monitor
+                self.monitor = get_monitor()
+                # Register this agent
+                self.monitor.register_agent(self.agent_id, f"Qwen Agent - {self.project_name}")
+                self.print_success(f"Monitoring enabled for agent {self.agent_id}")
+            except Exception as e:
+                self.print_warning(f"Could not enable monitoring: {e}")
+                self.monitor = None
     
     def load_config(self, config_path: str) -> Dict[str, Any]:
         """Load configuration from YAML file"""
@@ -328,6 +344,49 @@ class QwenAgent:
     def print_error(self, text: str):
         """Print error message"""
         print(f"{Colors.FAIL}✗ {text}{Colors.ENDC}")
+    
+    # Monitoring helper methods
+    def _log(self, level: str, message: str):
+        """Add log entry to monitor if enabled"""
+        if self.monitor:
+            self.monitor.add_log(self.agent_id, level, message)
+    
+    def _update_status(self, status=None, task=None, issue=None, pr=None, progress=None, phase=None, error=None):
+        """Update agent status in monitor if enabled"""
+        if self.monitor:
+            from .monitor_service import AgentStatus
+            
+            # Convert string status to enum if needed
+            if isinstance(status, str):
+                status_map = {
+                    'idle': AgentStatus.IDLE,
+                    'working': AgentStatus.WORKING,
+                    'error': AgentStatus.ERROR,
+                    'offline': AgentStatus.OFFLINE
+                }
+                status = status_map.get(status.lower(), AgentStatus.IDLE)
+            
+            self.monitor.update_agent_status(
+                agent_id=self.agent_id,
+                status=status,
+                current_task=task,
+                current_issue=issue,
+                current_pr=pr,
+                progress=progress,
+                phase=phase,
+                error_message=error
+            )
+    
+    def _update_metrics(self, cpu=None, memory=None, api_calls=None, api_rate_limit=None):
+        """Update agent metrics in monitor if enabled"""
+        if self.monitor:
+            self.monitor.update_agent_metrics(
+                agent_id=self.agent_id,
+                cpu_usage=cpu,
+                memory_usage=memory,
+                api_calls=api_calls,
+                api_rate_limit_remaining=api_rate_limit
+            )
     
     def query_qwen(self, prompt: str, system_prompt: Optional[str] = None, stream: bool = False) -> str:
         """Query Qwen2.5-Coder via Ollama API"""
@@ -827,13 +886,27 @@ Examples:
         help='Project root directory (overrides config)'
     )
     
+    parser.add_argument(
+        '--enable-monitoring',
+        action='store_true',
+        help='Enable real-time monitoring dashboard integration'
+    )
+    
+    parser.add_argument(
+        '--agent-id',
+        type=str,
+        help='Agent ID for monitoring (auto-generated if not specified)'
+    )
+    
     args = parser.parse_args()
     
     # Create agent
     agent = QwenAgent(
         config_path=args.config,
         model=args.model,
-        project_root=args.project_root
+        project_root=args.project_root,
+        enable_monitoring=args.enable_monitoring,
+        agent_id=args.agent_id
     )
     
     # Check Ollama status
