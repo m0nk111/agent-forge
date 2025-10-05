@@ -10,20 +10,21 @@ User=agent-forge
 Group=agent-forge
 WorkingDirectory=/opt/agent-forge
 
+# Environment
+Environment="PYTHONUNBUFFERED=1"
+
 # Python environment and command
-ExecStart=/opt/agent-forge/venv/bin/python3 -m agents.service_manager
+ExecStart=/opt/agent-forge/scripts/start-service.sh
 ExecReload=/bin/kill -HUP $MAINPID
 
 # Restart policy
 Restart=on-failure
 RestartSec=10
 StartLimitBurst=5
-StartLimitIntervalSec=600
 
 # Resource limits
 CPUQuota=80%
-MemoryLimit=4G
-MemoryMax=5G
+MemoryMax=4G
 TasksMax=100
 
 # Watchdog
@@ -46,10 +47,6 @@ RestrictNamespaces=true
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=agent-forge
-
-# Environment
-Environment="PYTHONUNBUFFERED=1"
-Environment="LOG_LEVEL=INFO"
 
 # Graceful shutdown
 TimeoutStopSec=30
