@@ -58,6 +58,41 @@ import subprocess
 logger = logging.getLogger(__name__)
 
 
+class MonitorLogHandler(logging.Handler):
+    """Custom log handler that forwards logs to monitor service."""
+    
+    def __init__(self, monitor, agent_id: str):
+        super().__init__()
+        self.monitor = monitor
+        self.agent_id = agent_id
+    
+    def emit(self, record):
+        """Forward log record to monitor service."""
+        try:
+            # Format the message
+            message = self.format(record)
+            
+            # Map logging levels to monitor levels
+            level_map = {
+                logging.DEBUG: "DEBUG",
+                logging.INFO: "INFO",
+                logging.WARNING: "WARNING",
+                logging.ERROR: "ERROR",
+                logging.CRITICAL: "CRITICAL"
+            }
+            level = level_map.get(record.levelno, "INFO")
+            
+            # Send to monitor with current timestamp
+            self.monitor.add_log(
+                agent_id=self.agent_id,
+                level=level,
+                message=message
+            )
+        except Exception:
+            # Don't let logging errors crash the application
+            pass
+
+
 @dataclass
 class PollingConfig:
     """Configuration for the polling service."""
@@ -135,6 +170,13 @@ class PollingService:
                     status=AgentStatus.IDLE,
                     current_task="Initialized"
                 )
+                
+                # Add custom logging handler to forward all logs to monitor
+                monitor_handler = MonitorLogHandler(self.monitor, "polling-service")
+                monitor_handler.setFormatter(logging.Formatter('%(message)s'))
+                logger.addHandler(monitor_handler)
+                logger.setLevel(logging.INFO)  # Ensure INFO level is captured
+                
                 logger.info("✅ Registered with monitoring service")
             except Exception as e:
                 logger.warning(f"Could not register with monitor: {e}")
