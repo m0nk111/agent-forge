@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 from typing import List, Optional, Dict
 import fnmatch
+import ast
 
 
 class WorkspaceTools:
@@ -110,6 +111,121 @@ class WorkspaceTools:
             return full_path.read_text(encoding='utf-8')
         except UnicodeDecodeError:
             raise ValueError(f"File is not text (UTF-8): {path}")
+    
+    def read_file_lines(self, path: str, start_line: int, end_line: int) -> str:
+        """Read specific line range from file
+        
+        Addresses Issue #8: Precise line-range file reading
+        More efficient than reading entire file when you only need specific sections.
+        
+        Args:
+            path: Relative path from project root
+            start_line: First line to read (1-indexed, inclusive)
+            end_line: Last line to read (1-indexed, inclusive)
+            
+        Returns:
+            String containing lines [start_line, end_line]
+            
+        Raises:
+            ValueError: If path invalid, line numbers invalid, or not a file
+            FileNotFoundError: If file doesn't exist
+            
+        Example:
+            >>> tools.read_file_lines("main.py", 10, 20)
+            # Returns lines 10-20 (inclusive)
+        """
+        full_path = self._validate_path(path)
+        
+        if not full_path.exists():
+            raise FileNotFoundError(f"File not found: {path}")
+        if not full_path.is_file():
+            raise ValueError(f"Not a file: {path}")
+        
+        # Validate line numbers
+        if start_line < 1:
+            raise ValueError(f"start_line must be >= 1, got {start_line}")
+        if end_line < start_line:
+            raise ValueError(f"end_line ({end_line}) must be >= start_line ({start_line})")
+        
+        try:
+            with open(full_path, 'r', encoding='utf-8') as f:
+                # Read only the lines we need
+                lines = []
+                for line_num, line in enumerate(f, start=1):
+                    if line_num < start_line:
+                        continue
+                    if line_num > end_line:
+                        break
+                    lines.append(line.rstrip('\n'))
+                
+                if not lines:
+                    # File has fewer lines than start_line
+                    raise ValueError(f"File has fewer than {start_line} lines")
+                
+                return '\n'.join(lines)
+        except UnicodeDecodeError:
+            raise ValueError(f"File is not text (UTF-8): {path}")
+    
+    def read_function(self, path: str, function_name: str) -> str:
+        """Read specific function definition from Python file
+        
+        Addresses Issue #8: Precise line-range file reading
+        Uses AST parsing to find function boundaries automatically.
+        
+        Args:
+            path: Relative path to Python file
+            function_name: Name of function/method to extract
+            
+        Returns:
+            String containing complete function definition
+            
+        Raises:
+            ValueError: If not a Python file, function not found, or parse error
+            FileNotFoundError: If file doesn't exist
+            
+        Example:
+            >>> tools.read_function("agents/qwen_agent.py", "execute_phase")
+            # Returns complete execute_phase function with decorators
+        """
+        full_path = self._validate_path(path)
+        
+        if not full_path.exists():
+            raise FileNotFoundError(f"File not found: {path}")
+        if not full_path.is_file():
+            raise ValueError(f"Not a file: {path}")
+        if not path.endswith('.py'):
+            raise ValueError(f"Not a Python file: {path}")
+        
+        try:
+            source = full_path.read_text(encoding='utf-8')
+            tree = ast.parse(source, filename=str(full_path))
+        except UnicodeDecodeError:
+            raise ValueError(f"File is not text (UTF-8): {path}")
+        except SyntaxError as e:
+            raise ValueError(f"Python syntax error in {path}: {e}")
+        
+        # Find function in AST
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                if node.name == function_name:
+                    # Get line range (AST is 1-indexed)
+                    start_line = node.lineno
+                    
+                    # Include decorators if present
+                    if node.decorator_list:
+                        start_line = node.decorator_list[0].lineno
+                    
+                    # end_lineno available in Python 3.8+
+                    if hasattr(node, 'end_lineno'):
+                        end_line = node.end_lineno
+                    else:
+                        # Fallback: estimate end from body
+                        end_line = node.body[-1].lineno if node.body else start_line
+                    
+                    # Use read_file_lines to get the content
+                    return self.read_file_lines(path, start_line, end_line)
+        
+        raise ValueError(f"Function '{function_name}' not found in {path}")
     
     def file_exists(self, path: str) -> bool:
         """Check if file or directory exists
