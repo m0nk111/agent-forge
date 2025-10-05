@@ -48,7 +48,7 @@ class ServiceConfig:
     
     # Polling service
     enable_polling: bool = True
-    polling_interval: int = 300  # 5 minutes
+    polling_interval: int = 30  # 30 seconds (dev mode)
     polling_repos: list = None
     
     # Monitoring service  
