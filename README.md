@@ -23,6 +23,7 @@ Agent Forge is a framework for creating autonomous coding agents using different
 - 🐛 **Error Checking**: Syntax validation, linting (pylint/flake8/eslint), type checking (mypy)
 - 🌐 **Web Documentation**: Fetch docs from trusted sources (Python docs, GitHub, Stack Overflow) with caching
 - 🤖 **Autonomous Polling**: Automatically check for assigned GitHub issues and start workflows (Issue #17)
+- 🔍 **Automated Code Review**: AI-powered PR reviews with quality checks and feedback (Issue #25)
 - 🌐 **External Knowledge**: MCP integration placeholders
 - 📚 **Documentation Loading**: Auto-load project docs (ARCHITECTURE.md, README.md, etc.)
 - 🗂️ **Workspace Awareness**: Explore project structure, validate paths, find files
@@ -367,6 +368,215 @@ watch_labels:
   - "agent-ready"              # Manually triggered
   - "auto-assign"              # Automatically processed
 max_concurrent_issues: 3       # Work on 3 issues simultaneously
+claim_timeout_minutes: 60      # Claim expires after 1 hour
+```
+
+### 11. Automated Code Review (Issue #25)
+
+AI-powered automated code review for pull requests with comprehensive quality checks.
+
+```python
+from agents.pr_reviewer import PRReviewer, ReviewCriteria
+
+# Initialize reviewer
+reviewer = PRReviewer(
+    github_username="my-agent-bot",
+    criteria=ReviewCriteria(
+        check_code_quality=True,
+        check_testing=True,
+        check_documentation=True,
+        check_security=True,
+        require_changelog=True,
+        strictness_level="normal"  # relaxed, normal, strict
+    )
+)
+
+# Review a PR
+should_approve, summary, comments = await reviewer.review_pr(
+    repo="owner/repo",
+    pr_number=42,
+    pr_data={
+        'title': 'feat: Add awesome feature',
+        'body': 'PR description',
+        'user': {'login': 'contributor'}
+    },
+    files=[
+        {
+            'filename': 'agents/feature.py',
+            'patch': '@@ ... @@\n+def new_function():\n+    pass'
+        }
+    ]
+)
+
+print(summary)  # Comprehensive review with scores and feedback
+# Post to GitHub: submit_review(repo, pr_number, summary, 'APPROVE' if should_approve else 'REQUEST_CHANGES', comments)
+```
+
+**CLI Usage**:
+```bash
+# Review a PR (mock data for testing)
+python -m agents.pr_reviewer owner/repo 42 --username my-bot
+
+# With custom criteria
+python -m agents.pr_reviewer owner/repo 42 --config config/review_criteria.yaml
+```
+
+**Review Categories**:
+- 🎨 **Code Quality**: Readability, maintainability, best practices, line length, print statements
+- 🔒 **Security**: Hardcoded credentials, SQL injection, eval() usage, shell=True
+- 🧪 **Testing**: Test coverage, test-to-code ratio, tests for new features
+- 📝 **Documentation**: README updates, CHANGELOG entries, docstrings, PR description
+- ✅ **Standards**: Conventional commits, proper error handling, logging practices
+
+**Checks Performed**:
+```python
+# Code Quality
+✓ No hardcoded credentials
+✓ Using logging instead of print()
+✓ Line length < 120 characters
+✓ No bare except clauses
+✓ No TODO/FIXME without issues
+
+# Security
+✓ No SQL injection risks
+✓ No eval() usage
+✓ shell=True only with sanitized input
+✓ Input validation present
+
+# Testing
+✓ Tests included for new features
+✓ Test-to-code ratio >= 0.5
+✓ Edge cases covered
+
+# Documentation
+✓ README updated for significant changes
+✓ CHANGELOG entry present
+✓ PR description descriptive (>50 chars)
+✓ Docstrings for complex logic
+```
+
+**Configuration** (`config/review_criteria.yaml`):
+```yaml
+review:
+  check_code_quality: true
+  check_testing: true
+  check_documentation: true
+  check_security: true
+  require_changelog: true
+  min_test_coverage: 80
+  strictness_level: "normal"  # relaxed, normal, strict
+
+code_quality:
+  max_line_length: 120
+  warn_print_statements: true
+  warn_todo_comments: true
+  check_hardcoded_secrets: true
+
+security:
+  check_sql_injection: true
+  check_eval_usage: true
+  warn_shell_true: true
+
+testing:
+  require_tests_for_features: true
+  min_test_ratio: 0.5
+
+documentation:
+  require_readme_updates: true
+  require_changelog: true
+
+behavior:
+  skip_tag: "[skip-review]"
+  re_review_on_update: true
+  cache_duration: 24  # hours
+```
+
+**Review Output Example**:
+```markdown
+## 🤖 Automated Code Review
+
+**PR**: feat: Add awesome feature
+**Author**: @contributor
+**Files Changed**: 3
+
+---
+
+### 📊 Quality Scores
+
+**Code Quality**: ████████░░ 80%
+**Documentation**: ██████████ 100%
+**Testing**: ███████░░░ 70%
+**Overall**: ████████░░ 83%
+
+### 💪 Strengths
+
+✅ High code quality with minimal issues
+✅ Well-documented changes
+✅ CHANGELOG.md updated
+
+### 🔴 Critical Issues
+
+- `agents/feature.py:42`: ⚠️ Possible hardcoded credential detected
+
+### ⚠️ Warnings
+
+- `agents/utils.py:15`: 💡 Consider using logging instead of print()
+
+### ✅ Review Checklist
+
+- [x] Code quality acceptable
+- [x] Tests included
+- [x] Documentation updated
+- [x] CHANGELOG entry present
+- [ ] No critical issues
+
+### 🎯 Review Decision
+
+🔄 **CHANGES REQUESTED**
+
+Please address the issues mentioned above before merging.
+
+---
+*Automated review by my-agent-bot • Agent Forge PR Reviewer v1.0*
+```
+
+**Features**:
+- 🤖 **AI-Powered**: Optional LLM analysis for intelligent feedback
+- 📊 **Quality Scoring**: Comprehensive scoring across multiple dimensions
+- 💬 **Line-Specific Comments**: Comments attached to exact lines
+- ✅ **Approval Logic**: Configurable approval thresholds (relaxed/normal/strict)
+- 🎯 **Smart Filtering**: Skip own PRs, respect [skip-review] tag
+- 📈 **Metrics**: Track code quality, testing, documentation scores
+- ⚙️ **Configurable**: Customize checks, thresholds, and behavior
+- 🔄 **Re-Review**: Automatically re-review after updates
+
+**Strictness Levels**:
+- **Relaxed**: Allow up to 1 error, score ≥ 0.5
+- **Normal**: No errors, score ≥ 0.6 (default)
+- **Strict**: No errors/warnings, score ≥ 0.8
+
+**Integration with Polling** (future):
+```python
+# In polling_service.py
+async def check_pull_requests(self, repo: str):
+    prs = await self.github.list_pull_requests(repo, state='open')
+    
+    for pr in prs:
+        # Skip if already reviewed
+        reviews = await self.github.get_pr_reviews(repo, pr['number'])
+        if any(r['user']['login'] == self.username for r in reviews):
+            continue
+        
+        # Trigger review
+        await self.pr_reviewer.review_pr(repo, pr['number'])
+```
+
+**Benefits**:
+- **Consistency**: Uniform code quality across all PRs
+- **Efficiency**: Instant feedback for contributors
+- **Quality**: Catch issues before merge
+- **Learning**: Educational feedback explains best practices
+- **Automation**: Reduces manual review workload
 claim_timeout_minutes: 60      # Claim expires after 1 hour
 ```
 

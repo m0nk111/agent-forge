@@ -1,0 +1,223 @@
+# PR Review Criteria Configuration
+#
+# Configure automated code review behavior and strictness
+
+# Overall review settings
+review:
+  # Enable/disable review categories
+  check_code_quality: true
+  check_testing: true
+  check_documentation: true
+  check_security: true
+  
+  # Changelog requirement
+  require_changelog: true
+  
+  # Minimum test coverage percentage
+  min_test_coverage: 80
+  
+  # Strictness level: relaxed, normal, strict
+  # - relaxed: Allow up to 1 error, score >= 0.5
+  # - normal: No errors, score >= 0.6
+  # - strict: No errors/warnings, score >= 0.8
+  strictness_level: "normal"
+
+# Code quality checks
+code_quality:
+  # Maximum line length
+  max_line_length: 120
+  
+  # Check for print() statements (suggest logging)
+  warn_print_statements: true
+  
+  # Check for TODO/FIXME comments
+  warn_todo_comments: true
+  
+  # Check for hardcoded credentials
+  check_hardcoded_secrets: true
+  
+  # Check for bare except clauses
+  warn_bare_except: true
+  
+  # Check for long functions (lines)
+  max_function_length: 100
+
+# Security checks
+security:
+  # Check for SQL injection risks
+  check_sql_injection: true
+  
+  # Check for eval() usage
+  check_eval_usage: true
+  
+  # Check for shell=True in subprocess
+  warn_shell_true: true
+  
+  # Check for insecure random
+  check_insecure_random: false
+  
+  # Check for weak crypto
+  check_weak_crypto: false
+
+# Testing requirements
+testing:
+  # Require tests for new features
+  require_tests_for_features: true
+  
+  # Minimum test-to-code file ratio
+  min_test_ratio: 0.5
+  
+  # Warn if no tests for significant changes
+  warn_no_tests_threshold: 3  # files
+  
+  # Test file patterns
+  test_patterns:
+    - "test_*.py"
+    - "*_test.py"
+    - "tests/**/*.py"
+
+# Documentation requirements
+documentation:
+  # Require README updates for significant changes
+  require_readme_updates: true
+  readme_threshold: 3  # files changed
+  
+  # Require CHANGELOG entries
+  require_changelog: true
+  changelog_threshold: 1  # files changed
+  
+  # Check for docstrings (Python)
+  check_docstrings: true
+  
+  # Require PR description
+  require_pr_description: true
+  min_description_length: 50
+
+# File type specific rules
+file_types:
+  python:
+    extensions: [".py"]
+    checks:
+      - "code_quality"
+      - "security"
+      - "documentation"
+    
+  javascript:
+    extensions: [".js", ".ts", ".jsx", ".tsx"]
+    checks:
+      - "code_quality"
+      - "security"
+    
+  config:
+    extensions: [".yaml", ".yml", ".json", ".toml"]
+    checks:
+      - "security"
+  
+  markdown:
+    extensions: [".md", ".rst"]
+    checks:
+      - "documentation"
+
+# Review behavior
+behavior:
+  # Skip PRs with this tag in description
+  skip_tag: "[skip-review]"
+  
+  # Re-review after changes
+  re_review_on_update: true
+  
+  # Cache review results (hours)
+  cache_duration: 24
+  
+  # Max comments per file (avoid spam)
+  max_comments_per_file: 10
+  
+  # Max LLM comments per file
+  max_llm_comments: 3
+
+# LLM-powered review
+llm_review:
+  # Enable LLM for intelligent analysis
+  enabled: true
+  
+  # Max diff size for LLM review (chars)
+  max_diff_size: 2000
+  
+  # LLM focus areas
+  focus_areas:
+    - "Logic errors"
+    - "Edge cases"
+    - "Performance concerns"
+    - "Better patterns"
+  
+  # LLM temperature (0-1, lower = more focused)
+  temperature: 0.3
+
+# Approval thresholds
+approval:
+  # Score thresholds by strictness
+  thresholds:
+    relaxed:
+      min_score: 0.5
+      max_errors: 1
+      max_warnings: 999
+    normal:
+      min_score: 0.6
+      max_errors: 0
+      max_warnings: 999
+    strict:
+      min_score: 0.8
+      max_errors: 0
+      max_warnings: 0
+  
+  # Auto-approve conditions
+  auto_approve:
+    # Auto-approve if all conditions met
+    enabled: false
+    conditions:
+      - min_score: 0.9
+      - no_errors: true
+      - has_tests: true
+      - has_changelog: true
+
+# Comment templates
+templates:
+  approve: "Great work! Changes look good. ✅"
+  request_changes: "Please address the issues mentioned in the review comments. 🔄"
+  comment: "Some suggestions for improvement. 💡"
+  
+# Repository-specific overrides
+# Override settings for specific repos
+repo_overrides:
+  "owner/high-security-repo":
+    strictness_level: "strict"
+    security:
+      check_sql_injection: true
+      check_eval_usage: true
+      check_weak_crypto: true
+  
+  "owner/experimental-repo":
+    strictness_level: "relaxed"
+    require_changelog: false
+    require_tests_for_features: false
+
+# Exclusions
+exclude:
+  # Skip review for these file patterns
+  files:
+    - "*.md"
+    - "*.txt"
+    - ".github/**"
+    - "docs/**"
+    - "examples/**"
+  
+  # Skip review for PRs with these labels
+  labels:
+    - "wip"
+    - "draft"
+    - "experimental"
+  
+  # Skip review from these authors (trusted contributors)
+  authors:
+    - "dependabot[bot]"
+    - "github-actions[bot]"
