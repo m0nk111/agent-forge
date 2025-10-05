@@ -38,7 +38,7 @@ class PollingConfig:
     watch_labels: List[str] = None  # ["agent-ready", "auto-assign"]
     max_concurrent_issues: int = 3
     claim_timeout_minutes: int = 60
-    state_file: str = "polling_state.json"
+    state_file: str = "/opt/agent-forge/data/polling_state.json"
     
     def __post_init__(self):
         """Initialize default values."""
@@ -473,9 +473,18 @@ class PollingService:
         try:
             # Import here to avoid circular dependency
             from agents.issue_handler import IssueHandler
+            from agents.qwen_agent import QwenAgent
             
-            # Start issue handler (this would run in background/separate process in production)
-            handler = IssueHandler()
+            # Get or create QwenAgent instance
+            # In production, this would be the already-running agent
+            qwen = QwenAgent(
+                project_root="/opt/agent-forge",
+                model="qwen2.5-coder:32b",
+                base_url="http://localhost:11434"
+            )
+            
+            # Start issue handler with agent
+            handler = IssueHandler(agent=qwen)
             success = await handler.handle_issue(repo, issue_number)
             
             # Update state
