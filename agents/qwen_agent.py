@@ -42,6 +42,24 @@ try:
 except ImportError:
     from context_manager import ContextManager
 
+# Import file editor (Issue #5)
+try:
+    from .file_editor import FileEditor
+except ImportError:
+    from file_editor import FileEditor
+
+# Import terminal operations (Issue #6)
+try:
+    from .terminal_operations import TerminalOperations
+except ImportError:
+    from terminal_operations import TerminalOperations
+
+# Import test runner (Issue #10)
+try:
+    from .test_runner import TestRunner
+except ImportError:
+    from test_runner import TestRunner
+
 # Colors for terminal output
 class Colors:
     HEADER = '\033[95m'
@@ -81,6 +99,15 @@ class QwenAgent:
         
         # Initialize context manager for sliding window
         self.context = ContextManager(max_tokens=6000)
+        
+        # Initialize file editing capabilities (Issue #5)
+        self.file_editor = FileEditor(str(self.project_root.resolve()))
+        
+        # Initialize terminal operations (Issue #6)
+        self.terminal = TerminalOperations(str(self.project_root.resolve()))
+        
+        # Initialize test runner (Issue #10)
+        self.test_runner = TestRunner(self.terminal)
         
         # Project metadata
         self.project_name = self.config.get('project', {}).get('name', 'Unnamed Project')
@@ -577,6 +604,54 @@ class Config:
         
         except Exception as e:
             self.print_error(f"Failed to create {full_path}: {e}")
+            return False
+    
+    def run_tests_after_generation(self, test_paths: Optional[List[str]] = None) -> bool:
+        """
+        Run tests after code generation to validate implementation.
+        
+        Part of Issue #10 integration - automatic testing after code changes.
+        
+        Args:
+            test_paths: Specific test files to run (None = all tests)
+            
+        Returns:
+            True if tests pass, False if tests fail or testing disabled
+        """
+        # Check if testing is enabled in config
+        testing_config = self.config.get('testing', {})
+        if not testing_config.get('enabled', False):
+            self.print_info("Testing disabled in config, skipping validation")
+            return True
+        
+        self.print_info("Running tests to validate generated code...")
+        
+        try:
+            results = self.test_runner.run_tests(test_paths=test_paths)
+            
+            if results['success']:
+                self.print_success(f"✅ All tests passed ({results['passed']}/{results['tests_run']})")
+                return True
+            else:
+                self.print_warning(f"⚠️  Some tests failed ({results['failed']}/{results['tests_run']})")
+                
+                # Add test failures to context for self-correction
+                if results['failures']:
+                    failure_context = "Test failures detected:\n"
+                    for failure in results['failures']:
+                        failure_context += self.test_runner.get_failure_context(failure)
+                    
+                    self.context.add_task_result(
+                        task_description="Test execution after code generation",
+                        code_generated=failure_context,
+                        success=False,
+                        phase_name="testing"
+                    )
+                
+                return False
+        
+        except Exception as e:
+            self.print_error(f"Error running tests: {e}")
             return False
     
     def execute_all_phases(self, dry_run: bool = False) -> Dict[int, bool]:
