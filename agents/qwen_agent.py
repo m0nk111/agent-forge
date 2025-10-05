@@ -36,6 +36,12 @@ except ImportError:
     # Fallback for direct script execution
     from workspace_tools import WorkspaceTools
 
+# Import context manager
+try:
+    from .context_manager import ContextManager
+except ImportError:
+    from context_manager import ContextManager
+
 # Colors for terminal output
 class Colors:
     HEADER = '\033[95m'
@@ -72,6 +78,9 @@ class QwenAgent:
         
         # Initialize workspace tools for file exploration
         self.workspace = WorkspaceTools(str(self.project_root.resolve()))
+        
+        # Initialize context manager for sliding window
+        self.context = ContextManager(max_tokens=6000)
         
         # Project metadata
         self.project_name = self.config.get('project', {}).get('name', 'Unnamed Project')
@@ -378,12 +387,16 @@ Follow best practices and existing codebase patterns.
             if workspace_context:
                 self.print_info("Workspace context gathered for task")
             
+            # Get relevant historical context
+            historical_context = self.context.get_relevant_context(task, max_tokens=1500)
+            
             # Generate code for this task
             prompt = f"""Task: {task}
 
 Phase: {phase['name']}
 Context: {context_config.get('description', '')}
 {workspace_context}
+{historical_context}
 
 Generate the complete code for this task. 
 
@@ -428,6 +441,13 @@ class Config:
             if dry_run:
                 self.print_info(f"[DRY RUN] Would execute: {task}")
                 success_count += 1
+                # Track in context manager (no code in dry-run)
+                self.context.add_task_result(
+                    task_description=task,
+                    code_generated="[dry-run mode]",
+                    success=True,
+                    phase_name=phase['name']
+                )
             else:
                 # Query Qwen for implementation
                 code = self.query_qwen(prompt, system_prompt=system_prompt)
@@ -437,10 +457,31 @@ class Config:
                     if self.save_generated_code(code):
                         self.print_success(f"Completed: {task}")
                         success_count += 1
+                        # Track successful task
+                        self.context.add_task_result(
+                            task_description=task,
+                            code_generated=code[:1000],  # First 1000 chars
+                            success=True,
+                            phase_name=phase['name']
+                        )
                     else:
                         self.print_warning(f"Code generated but needs manual review: {task}")
+                        # Track partial success
+                        self.context.add_task_result(
+                            task_description=task,
+                            code_generated=code[:1000],
+                            success=False,
+                            phase_name=phase['name']
+                        )
                 else:
                     self.print_error(f"Failed to generate code for: {task}")
+                    # Track failure
+                    self.context.add_task_result(
+                        task_description=task,
+                        code_generated="",
+                        success=False,
+                        phase_name=phase['name']
+                    )
             
             time.sleep(1)  # Brief pause between tasks
         
@@ -448,6 +489,12 @@ class Config:
         print(f"\n{Colors.BOLD}Phase {phase_num} Summary:{Colors.ENDC}")
         print(f"  Completed: {success_count}/{len(phase['tasks'])} tasks")
         print(f"  Success rate: {(success_count/len(phase['tasks'])*100):.1f}%")
+        
+        # Log context metrics
+        metrics = self.context.get_metrics()
+        self.print_info(f"Context: {metrics['task_count']} tasks, {metrics['total_tokens']} tokens ({metrics['usage_percent']:.1f}%)")
+        if metrics['truncation_events'] > 0:
+            self.print_warning(f"Context truncation: {metrics['truncation_events']} events")
         
         return success_count == len(phase['tasks'])
     
