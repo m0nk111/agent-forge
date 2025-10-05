@@ -4,18 +4,36 @@
 
 ## 🐛 Active Bugs
 
-### Bug #1: GitHub CLI Not Installed [FIXED]
-- **Status**: ✅ FIXED
-- **Severity**: HIGH
-- **Impact**: Polling service could not query GitHub API
-- **Error**: `[Errno 2] No such file or directory: 'gh'`
-- **Location**: `agents/polling_service.py:240, 323, 373`
-- **Fix Applied**: 
-  - Installed `gh` CLI: `sudo apt install -y gh`
-  - Authenticated with bot token: `gh auth login --with-token`
-  - Service restarted
-- **Verification Pending**: Wait for next polling cycle (300s interval)
-- **Date Fixed**: 2025-10-05 19:00 UTC
+### Bug #1: GitHub CLI Incompatible with Systemd Services [CRITICAL]
+- **Status**: ⚠️ ACTIVE - Requires GitHub REST API migration
+- **Severity**: CRITICAL
+- **Impact**: Polling service completely broken - cannot query GitHub issues
+- **Error**: `failed to read configuration: open /home/agent-forge/.config/gh/config.yml: permission denied`
+- **Location**: All `gh` CLI subprocess calls in `agents/polling_service.py`
+- **Root Cause**: gh CLI has design flaw - ALWAYS requires config files even with GH_TOKEN
+- **Time Spent Debugging**: 2+ hours
+- **Attempts Made**:
+  - ❌ Fixed file permissions (755/644) - Failed
+  - ❌ Fixed ownership (agent-forge:agent-forge) - Failed
+  - ❌ Set HOME environment variable - Failed
+  - ❌ Set GH_CONFIG_DIR environment variable - Failed
+  - ❌ Set GH_TOKEN environment variable - Failed (gh CLI ignores it!)
+  - ❌ Disabled ALL systemd security hardening - Failed
+  - ❌ EnvironmentFile with tokens - Failed
+  - ✅ Works OUTSIDE systemd as agent-forge user - But fails INSIDE systemd
+- **Online Research**:
+  - GitHub Issue #7360: gh CLI requires writable config.yml
+  - GitHub Issue #4955: `gh auth login` needs write access
+  - Multiple reports of systemd + gh CLI issues with ProtectHome
+  - Recommendation: Use GitHub REST API directly with curl/requests
+- **Recommended Solution**: 
+  - Replace all `gh` CLI calls with direct GitHub REST API
+  - Use requests library with `Authorization: Bearer <token>` header
+  - API endpoints: `/repos/{owner}/{repo}/issues`, `/issues/{num}/comments`
+  - Estimated work: 2-3 hours for complete refactor
+- **Workaround**: None available - gh CLI fundamentally broken in systemd
+- **Date Discovered**: 2025-10-05 19:00 UTC
+- **Priority**: URGENT - Blocking all polling functionality
 
 ### Bug #2: Agent Metrics Show 0 Values
 - **Status**: ⏳ IN PROGRESS
