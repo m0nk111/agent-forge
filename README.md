@@ -21,7 +21,8 @@ Agent Forge is a framework for creating autonomous coding agents using different
 - 🧪 **Test Execution**: Auto-detect and run pytest/jest tests with result parsing
 - 🔍 **Codebase Search**: grep-based search, find functions/classes/imports across projects
 - 🐛 **Error Checking**: Syntax validation, linting (pylint/flake8/eslint), type checking (mypy)
-- 🌐 **External Knowledge**: Fetch web documentation, MCP integration placeholders
+- 🌐 **Web Documentation**: Fetch docs from trusted sources (Python docs, GitHub, Stack Overflow) with caching
+- 🌐 **External Knowledge**: MCP integration placeholders
 - 📚 **Documentation Loading**: Auto-load project docs (ARCHITECTURE.md, README.md, etc.)
 - 🗂️ **Workspace Awareness**: Explore project structure, validate paths, find files
 - 🧠 **Context Management**: Sliding window (6000 tokens) with smart truncation
@@ -247,6 +248,32 @@ bot.create_issue('agent-forge', 'Feature request', 'Description...', labels=['en
 bot.add_comment('agent-forge', 5, 'Implementation complete!')
 bot.update_issue('agent-forge', 5, state='closed')
 ```
+
+### 9. Web Documentation Fetching (Issue #11)
+```python
+from agents.web_fetcher import WebFetcher
+
+# Initialize with caching
+fetcher = WebFetcher(cache_dir='~/.agent-forge/docs-cache', max_size=2000000)
+
+# Fetch Python documentation
+docs = fetcher.fetch_docs('https://docs.python.org/3/library/asyncio.html')
+
+# Quick Python docs helper
+docs = fetcher.search_python_docs('os.path')  # Fetches os.path module docs
+
+# Get GitHub README
+readme = fetcher.get_github_readme('python', 'cpython')
+
+# Automatic features:
+# - Domain whitelisting (Python docs, GitHub, Stack Overflow, etc.)
+# - Rate limiting (1s between requests by default)
+# - Content size limits (prevents huge downloads)
+# - HTML text extraction (clean, readable text)
+# - 24-hour caching (faster repeat access)
+```
+
+**Trusted Domains**: docs.python.org, github.com, stackoverflow.com, readthedocs.org, pytorch.org, tensorflow.org, fastapi.tiangolo.com, and [20+ more](agents/web_fetcher.py#L54)
 
 ## Architecture
 
