@@ -111,6 +111,7 @@ class ServiceManager:
         """Start autonomous polling service."""
         try:
             from agents.polling_service import PollingService, PollingConfig
+            from agents.monitor_service import get_monitor
             
             logger.info("Starting polling service...")
             
@@ -121,8 +122,11 @@ class ServiceManager:
                 max_concurrent_issues=3
             )
             
+            # Get monitor instance (will be available if monitoring is enabled)
+            monitor = get_monitor() if self.config.enable_monitoring else None
+            
             # Create service
-            service = PollingService(config)
+            service = PollingService(config, monitor=monitor)
             self.services['polling'] = service
             self.health_status['polling'] = True
             

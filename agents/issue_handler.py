@@ -15,18 +15,19 @@ import re
 import os
 from typing import Dict, List, Optional
 from pathlib import Path
+from agents.monitor_service import AgentStatus
 
 
 class IssueHandler:
     """
-    Handle GitHub issues autonomously.
-    
-    Workflow:
-    1. Fetch issue details from GitHub
-    2. Parse issue body for requirements
-    3. Generate implementation plan
-    4. Execute plan using agent capabilities
-    5. Create PR with changes
+    GitHub Issue Handler - Autonomous issue resolution
+
+    Handles end-to-end autonomous resolution of GitHub issues:
+        1. Fetch issue details from GitHub
+        2. Parse issue body for requirements
+        3. Generate implementation plan
+        4. Execute plan using agent capabilities
+        5. Create PR with changes
     """
     
     def __init__(self, agent):
@@ -54,6 +55,11 @@ class IssueHandler:
         print(f"📦 Repository: {repo}")
         print("=" * 70)
         
+        # TODO: Fix monitoring integration
+        # Update monitor - starting work
+#         # if hasattr(self.agent, 'monitor') and self.agent.monitor:
+#         #     self.agent.monitor.update_agent_status(...)
+#         
         # Step 1: Fetch issue details
         print("\n📖 Step 1: Fetching issue details...")
         issue = self._fetch_issue(repo, issue_number)
@@ -75,6 +81,20 @@ class IssueHandler:
         for i, task in enumerate(requirements['tasks'], 1):
             print(f"   {i}. {task['description']}")
         
+        # Update monitor
+#         if hasattr(self.agent, 'monitor'):
+#             self.agent.monitor.update_agent_status(
+#                 self.agent.agent_id,
+#                 phase='generate_plan',
+#                 progress=0.4
+#             )
+#             self.agent.monitor.log_activity(
+#                 self.agent.agent_id,
+#                 'requirements_parsed',
+#                 f"{len(requirements['tasks'])} tasks identified",
+#                 {'task_count': len(requirements['tasks'])}
+#             )
+#         
         # Step 3: Generate implementation plan
         print("\n🗺️  Step 3: Generating implementation plan...")
         plan = self._generate_plan(requirements)
@@ -83,6 +103,20 @@ class IssueHandler:
         for phase in plan['phases']:
             print(f"   • {phase['name']}")
         
+        # Update monitor
+#         if hasattr(self.agent, 'monitor'):
+#             self.agent.monitor.update_agent_status(
+#                 self.agent.agent_id,
+#                 phase='execute_plan',
+#                 progress=0.6
+#             )
+#             self.agent.monitor.log_activity(
+#                 self.agent.agent_id,
+#                 'plan_generated',
+#                 f"Plan ready: {len(plan['phases'])} phases",
+#                 {'phase_count': len(plan['phases'])}
+#             )
+#         
         # Step 4: Execute plan
         print("\n⚙️  Step 4: Executing implementation...")
         execution_result = self._execute_plan(plan)
@@ -122,6 +156,27 @@ class IssueHandler:
         print("🎉 ISSUE RESOLUTION COMPLETE")
         print("=" * 70)
         
+        # Update monitor - work complete
+#         if hasattr(self.agent, 'monitor') and self.agent.monitor:
+#             self.agent.monitor.update_agent_status(
+#                 self.agent.agent_id,
+#                 status=AgentStatus.IDLE,
+#                 current_task=None,
+#                 current_issue=None,
+#                 phase=None,
+#                 progress=1.0
+#             )
+#             self.agent.monitor.log_activity(
+#                 self.agent.agent_id,
+#                 'issue_completed',
+#                 f"Issue #{issue_number} resolved successfully",
+#                 {
+#                     'issue': issue_number,
+#                     'files_modified': len(execution_result['files_modified']),
+#                     'pr_created': pr is not None
+#                 }
+#             )
+#         
         return {
             'success': True,
             'issue_number': issue_number,

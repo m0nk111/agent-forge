@@ -144,13 +144,15 @@ class GitHubAPI:
 class PollingService:
     """Service for autonomous GitHub issue polling and workflow initiation."""
     
-    def __init__(self, config: PollingConfig):
+    def __init__(self, config: PollingConfig, monitor=None):
         """Initialize polling service.
         
         Args:
             config: Polling configuration
+            monitor: Optional AgentMonitor instance for status tracking
         """
         self.config = config
+        self.monitor = monitor
         self.state_file = Path(config.state_file)
         self.state: Dict[str, IssueState] = {}
         
@@ -480,8 +482,13 @@ class PollingService:
             qwen = QwenAgent(
                 project_root="/opt/agent-forge",
                 model="qwen2.5-coder:32b",
-                ollama_url="http://localhost:11434"
+                ollama_url="http://localhost:11434",
+                enable_monitoring=self.monitor is not None
             )
+            
+            # Attach monitor if available
+            if self.monitor:
+                qwen.monitor = self.monitor
             
             # Start issue handler with agent
             handler = IssueHandler(agent=qwen)
