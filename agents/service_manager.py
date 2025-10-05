@@ -131,16 +131,31 @@ class ServiceManager:
     async def _start_monitoring_service(self):
         """Start real-time monitoring service with WebSocket."""
         try:
-            from agents.monitor_service import MonitoringService
+            from agents.monitor_service import get_monitor
+            from agents.websocket_handler import create_monitoring_app
+            import uvicorn
             
             logger.info("Starting monitoring service...")
             
-            service = MonitoringService(port=self.config.monitoring_port)
-            self.services['monitoring'] = service
+            # Get monitor instance
+            monitor = get_monitor()
+            await monitor.start()
+            self.services['monitoring'] = monitor
             self.health_status['monitoring'] = True
             
-            # Run monitoring service
-            await service.start()
+            # Start WebSocket server in background
+            config = uvicorn.Config(
+                create_monitoring_app(),
+                host="0.0.0.0",
+                port=self.config.monitoring_port,
+                log_level="info"
+            )
+            server = uvicorn.Server(config)
+            
+            logger.info(f"Monitoring service started on port {self.config.monitoring_port}")
+            
+            # Run server
+            await server.serve()
             
         except Exception as e:
             logger.error(f"Monitoring service error: {e}", exc_info=True)
