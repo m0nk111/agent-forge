@@ -713,7 +713,14 @@
     </div>
 
     <script>
-        const WS_URL = 'ws://localhost:7997/ws/monitor';
+        // Auto-detect WebSocket URL based on current host
+        // This allows the dashboard to work on localhost and LAN
+        function getDefaultWsUrl() {
+            const hostname = window.location.hostname || 'localhost';
+            return `ws://${hostname}:7997/ws/monitor`;
+        }
+        
+        const WS_URL = getDefaultWsUrl();
         let ws = null;
         let reconnectTimeout = null;
         let agents = new Map();
@@ -722,8 +729,12 @@
 
         // Initialize WebSocket connection
         function connect() {
+            // Use configured URL from settings, or default
+            const config = JSON.parse(localStorage.getItem('agentForgeConfig') || '{}');
+            const wsUrl = config.wsUrl || getDefaultWsUrl();
+            
             try {
-                ws = new WebSocket(WS_URL);
+                ws = new WebSocket(wsUrl);
                 
                 ws.onopen = () => {
                     console.log('✅ Connected to monitoring server');
@@ -1101,7 +1112,7 @@
             document.getElementById('refreshInterval').value = config.refreshInterval || 5;
             document.getElementById('maxLogs').value = config.maxLogs || 1000;
             document.getElementById('themeMode').value = config.themeMode || 'dark';
-            document.getElementById('wsUrl').value = config.wsUrl || 'ws://localhost:7997/ws/monitor';
+            document.getElementById('wsUrl').value = config.wsUrl || getDefaultWsUrl();
             document.getElementById('reconnectDelay').value = config.reconnectDelay || 3;
             
             setToggleState('autoReconnect', config.autoReconnect !== false);

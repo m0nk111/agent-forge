@@ -26,10 +26,16 @@ async def test_qwen_with_monitoring():
     monitor = get_monitor()
     await monitor.start()
     
+    # Get machine's IP address
+    import socket
+    hostname = socket.gethostname()
+    ip_addr = socket.gethostbyname(hostname)
+    
     print("🧪 Testing Qwen Agent with Monitoring Dashboard")
     print("=" * 70)
-    print("📊 Dashboard: http://localhost:8897/dashboard.html")
-    print("🔌 WebSocket: ws://localhost:7997/ws/monitor")
+    print(f"📊 Dashboard (local): http://localhost:8897/dashboard.html")
+    print(f"� Dashboard (LAN):   http://{ip_addr}:8897/dashboard.html")
+    print(f"�🔌 WebSocket: ws://{ip_addr}:7997/ws/monitor")
     print("=" * 70)
     
     # Create Qwen agent with monitoring enabled

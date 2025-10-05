@@ -66,6 +66,46 @@ python3 agents/qwen_agent.py --config configs/caramba_personality_ai.yaml --phas
 python3 agents/qwen_agent.py --task "Create authentication middleware" --project-root /path/to/project
 ```
 
+## Monitoring & Dashboard
+
+Agent Forge includes a real-time monitoring dashboard for tracking agent activity, logs, and progress.
+
+### Starting the Dashboard
+
+```bash
+# Start dashboard server (accessible on LAN)
+./launch_dashboard.sh
+
+# Or manually:
+python3 -m http.server 8897 --directory frontend --bind 0.0.0.0
+```
+
+### Accessing the Dashboard
+
+- **Local**: http://localhost:8897/dashboard.html
+- **LAN**: http://192.168.1.26:8897/dashboard.html (replace with your machine's IP)
+- **Auto-detection**: The dashboard automatically detects your network and connects to the WebSocket server
+
+### WebSocket Server
+
+The monitoring service runs on port 7997 and is accessible from:
+- Local: ws://localhost:7997/ws/monitor
+- LAN: ws://192.168.1.26:7997/ws/monitor
+
+### Using Monitoring with Agents
+
+Enable monitoring when running agents:
+
+```bash
+# Run agent with monitoring enabled
+python3 agents/qwen_agent.py --config configs/my_project.yaml --phase 1 --enable-monitoring --agent-id "my-agent"
+
+# Test monitoring integration
+python3 test_qwen_monitoring.py
+```
+
+See [docs/QWEN_MONITORING.md](docs/QWEN_MONITORING.md) for detailed documentation.
+
 ## Project Structure
 
 ```

@@ -153,10 +153,12 @@ class ServiceManager:
             logger.info("Starting web UI...")
             
             # Use simple HTTP server for static files
+            # Bind to 0.0.0.0 to allow network access
             cmd = [
                 "python3", "-m", "http.server",
                 str(self.config.web_ui_port),
-                "--directory", "frontend"
+                "--directory", "frontend",
+                "--bind", "0.0.0.0"
             ]
             
             process = subprocess.Popen(
@@ -169,7 +171,7 @@ class ServiceManager:
             self.services['web_ui'] = process
             self.health_status['web_ui'] = True
             
-            logger.info(f"Web UI started on port {self.config.web_ui_port}")
+            logger.info(f"Web UI started on port {self.config.web_ui_port} (accessible on all interfaces)")
             
             # Monitor process
             while self.running:

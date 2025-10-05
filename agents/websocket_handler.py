@@ -270,11 +270,22 @@ def create_monitoring_app() -> FastAPI:
 
 if __name__ == "__main__":
     import uvicorn
+    import socket
     
     app = create_monitoring_app()
     
-    print("🔄 Starting monitoring server on http://localhost:7997")
-    print("📊 WebSocket endpoint: ws://localhost:7997/ws/monitor")
-    print("📡 REST API: http://localhost:7997/api/agents")
+    # Get machine's IP address
+    hostname = socket.gethostname()
+    ip_addr = socket.gethostbyname(hostname)
+    
+    print("🔄 Starting monitoring server")
+    print("=" * 70)
+    print(f"📡 Local:  http://localhost:7997")
+    print(f"📡 LAN:    http://{ip_addr}:7997")
+    print(f"📊 WebSocket (local): ws://localhost:7997/ws/monitor")
+    print(f"� WebSocket (LAN):   ws://{ip_addr}:7997/ws/monitor")
+    print(f"🌐 REST API: http://{ip_addr}:7997/api/agents")
+    print("=" * 70)
     
     uvicorn.run(app, host="0.0.0.0", port=7997, log_level="info")
+
