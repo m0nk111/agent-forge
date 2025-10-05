@@ -23,6 +23,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            font-size: 115%; /* 15% larger base font */
         }
 
         .container {
@@ -113,9 +114,9 @@
         }
 
         .agents-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
             overflow-y: auto;
             flex: 1;
         }
@@ -776,9 +777,10 @@
                 addLogEntry(data.agent_id, data.log);
             } else if (data.type === 'initial_state') {
                 // Load initial agents
-                if (data.agents) {
-                    data.agents.forEach(agent => updateAgent(agent));
-                }
+                console.log('📦 Initial state received:', data);
+                const agentList = data.data?.agents || data.agents || [];
+                console.log(`📊 Loading ${agentList.length} agents`);
+                agentList.forEach(agent => updateAgent(agent));
             }
         }
 
