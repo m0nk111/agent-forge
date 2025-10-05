@@ -112,9 +112,17 @@ class PollingService:
         self.running = False
         self.enable_monitoring = enable_monitoring
         self.monitor = None
+        self.api_calls = 0  # Track API calls
         
         # Register with monitor if enabled
         if enable_monitoring:
+            try:
+                import psutil
+                self.process = psutil.Process()
+            except ImportError:
+                self.process = None
+                logger.warning("psutil not installed, metrics will not be available")
+            
             try:
                 from agents.monitor_service import get_monitor, AgentStatus
                 self.monitor = get_monitor()
@@ -182,6 +190,27 @@ class PollingService:
         if to_remove:
             self.save_state()
     
+    def update_metrics(self):
+        """Update agent metrics in monitor."""
+        if not self.monitor or not self.process:
+            return
+        
+        try:
+            # Get CPU and memory usage
+            cpu_percent = self.process.cpu_percent(interval=0.1)
+            memory_info = self.process.memory_info()
+            memory_percent = (memory_info.rss / psutil.virtual_memory().total) * 100
+            
+            # Update monitor
+            self.monitor.update_agent_metrics(
+                agent_id="polling-service",
+                cpu_usage=cpu_percent,
+                memory_usage=memory_percent,
+                api_calls=self.api_calls
+            )
+        except Exception as e:
+            logger.debug(f"Error updating metrics: {e}")
+    
     def get_issue_key(self, repo: str, issue_number: int) -> str:
         """Generate unique key for issue.
         
@@ -222,6 +251,9 @@ class PollingService:
                     text=True,
                     check=True
                 )
+                
+                # Increment API call counter
+                self.api_calls += 1
                 
                 issues = json.loads(result.stdout)
                 for issue in issues:
@@ -482,8 +514,21 @@ class PollingService:
         except Exception as e:
             logger.error(f"Error in polling cycle: {e}")
         finally:
+            # Update metrics
+            self.update_metrics()
+            
             # Cleanup old state
             self.cleanup_old_state()
+            
+            # Set back to IDLE
+            if self.monitor:
+                from agents.monitor_service import AgentStatus
+                self.monitor.update_agent_status(
+                    agent_id="polling-service",
+                    status=AgentStatus.IDLE,
+                    current_task=None
+                )
+            
             logger.info("=== Polling cycle complete ===")
     
     async def run(self):

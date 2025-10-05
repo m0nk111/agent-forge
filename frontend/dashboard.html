@@ -113,12 +113,49 @@
             color: #60a5fa;
         }
 
+        .agents-container {
+            overflow-y: auto;
+            flex: 1;
+        }
+
         .agents-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 10px;
+        }
+
+        .agents-list {
             display: flex;
             flex-direction: column;
             gap: 10px;
-            overflow-y: auto;
-            flex: 1;
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 4px;
+            background: rgba(51, 65, 85, 0.5);
+            border-radius: 6px;
+            padding: 2px;
+        }
+
+        .view-toggle button {
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .view-toggle button:hover {
+            color: #e2e8f0;
+        }
+
+        .view-toggle button.active {
+            background: rgba(96, 165, 250, 0.3);
+            color: #60a5fa;
         }
 
         .agent-card {
@@ -661,6 +698,47 @@
             border: 1px solid rgba(96, 165, 250, 0.2);
         }
 
+        /* View Toggle Buttons */
+        .view-toggle {
+            display: flex;
+            gap: 4px;
+            background: rgba(51, 65, 85, 0.5);
+            border-radius: 6px;
+            padding: 2px;
+        }
+
+        .view-toggle button {
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s;
+        }
+
+        .view-toggle button:hover {
+            color: #e2e8f0;
+        }
+
+        .view-toggle button.active {
+            background: rgba(96, 165, 250, 0.3);
+            color: #60a5fa;
+        }
+
+        /* Grid and List views */
+        .agents-container {
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .agents-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 10px;
+        }
+
         .btn-secondary:hover {
             background: rgba(51, 65, 85, 0.7);
         }
@@ -684,14 +762,21 @@
         <div class="agents-section">
             <div class="section-header">
                 <h2 class="section-title">Active Agents</h2>
-                <div id="agent-count" style="color: #94a3b8; font-size: 14px;">
-                    <span class="loading">
-                        <div class="spinner"></div>
-                        Loading agents...
-                    </span>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div class="view-toggle">
+                        <button onclick="setViewMode('list')" id="list-view-btn" class="active">📋 List</button>
+                        <button onclick="setViewMode('grid')" id="grid-view-btn">⊞ Grid</button>
+                    </div>
+                    <div id="agent-count" style="color: #94a3b8; font-size: 14px;">
+                        <span class="loading">
+                            <div class="spinner"></div>
+                            Loading agents...
+                        </span>
+                    </div>
                 </div>
             </div>
-            <div class="agents-grid" id="agents-grid">
+                                <div class="agents-container">
+                        <div class="agents-list" id="agents-grid">
                 <!-- Agent cards will be inserted here -->
             </div>
         </div>
@@ -727,6 +812,32 @@
         let agents = new Map();
         let selectedAgentId = null;
         let agentLogs = new Map(); // Store logs per agent
+        let viewMode = localStorage.getItem('agentViewMode') || 'list'; // 'list' or 'grid'
+
+        // View mode toggle
+        function setViewMode(mode) {
+            viewMode = mode;
+            localStorage.setItem('agentViewMode', mode);
+            
+            const container = document.getElementById('agents-grid');
+            const listBtn = document.getElementById('list-view-btn');
+            const gridBtn = document.getElementById('grid-view-btn');
+            
+            if (mode === 'grid') {
+                container.className = 'agents-grid';
+                gridBtn.classList.add('active');
+                listBtn.classList.remove('active');
+            } else {
+                container.className = 'agents-list';
+                listBtn.classList.add('active');
+                gridBtn.classList.remove('active');
+            }
+        }
+
+        // Initialize view mode on load
+        window.addEventListener('DOMContentLoaded', () => {
+            setViewMode(viewMode);
+        });
 
         // Initialize WebSocket connection
         function connect() {
