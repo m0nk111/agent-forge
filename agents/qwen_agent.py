@@ -178,6 +178,17 @@ class QwenAgent:
         
         # System prompt with project context
         context_config = self.config.get('context', {})
+        conventions = context_config.get('conventions', {})
+        
+        # Build conventions section
+        conventions_text = ""
+        if conventions:
+            conventions_text = "\n=== PROJECT CONVENTIONS (MUST FOLLOW) ===\n"
+            for category, rules in conventions.items():
+                conventions_text += f"\n{category.replace('_', ' ').title()}:\n"
+                for rule in rules:
+                    conventions_text += f"  • {rule}\n"
+        
         system_prompt = f"""You are an expert Python developer working on: {self.project_name}
 {f"({self.project_issue})" if self.project_issue else ""}
 
@@ -193,6 +204,7 @@ Tech stack:
 
 {f"Reference services/modules:" if context_config.get('reference_services') else ""}
 {chr(10).join('- ' + ref for ref in context_config.get('reference_services', []))}
+{conventions_text}
 
 You must generate COMPLETE, WORKING, PRODUCTION-READY code.
 Include:

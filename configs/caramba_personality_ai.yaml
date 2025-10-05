@@ -12,11 +12,46 @@ model:
 
 context:
   description: "Caramba AI platform - Personality AI Service with LLM integration and RAG pipeline"
+  
   structure: |
     - app/services/ - Service modules (face_swap, voice-training, etc.)
     - app/backend/api/ - FastAPI REST endpoints
     - app/frontend/ - React/TypeScript frontend
     - docs/ - Documentation
+  
+  conventions:
+    code_style:
+      - "All documentation, code comments, and commit messages in ENGLISH"
+      - "Use async/await for I/O operations (async def, await)"
+      - "Pydantic models for configuration and validation"
+      - "Type hints for all function parameters and return values"
+      - "Docstrings for public classes and methods"
+    
+    architecture:
+      - "Services are isolated modules under app/services/<name>/"
+      - "Each service has: __init__.py, src/, requirements.txt, README.md"
+      - "Service exports main class via __init__.py"
+      - "Configuration via src/config.py with Pydantic models"
+      - "Main service logic in src/service.py"
+    
+    api_design:
+      - "FastAPI routers with async endpoints"
+      - "REST conventions: /api/<service>/<resource>"
+      - "Health check endpoint: /health"
+      - "Error responses with detail messages"
+      - "Pydantic models for request/response validation"
+    
+    ports:
+      - "Backend REST API: 7999"
+      - "Frontend dev server: 7998"
+      - "Service-specific ports: 7000-7999 range"
+      - "External tools may use their default ports"
+    
+    testing:
+      - "Unit tests with pytest and pytest-asyncio"
+      - "Test files: tests/test_<module>.py"
+      - "Use pytest fixtures for setup/teardown"
+      - "Mock external dependencies (LLM, database)"
   
   tech_stack:
     - "Backend: FastAPI, Python 3.12, async/await"
