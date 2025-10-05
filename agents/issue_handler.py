@@ -156,6 +156,19 @@ class IssueHandler:
         print("🎉 ISSUE RESOLUTION COMPLETE")
         print("=" * 70)
         
+        # Step 7: Close issue with summary
+        print("\n📝 Step 7: Closing issue...")
+        summary = self._generate_summary(issue, execution_result, pr)
+        completion_comment = f"""🤖 **Autonomous Resolution Complete**
+
+{summary}
+
+---
+*Resolved automatically by Agent Forge*
+*Completed at: {__import__('datetime').datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}*
+"""
+        self._close_issue(repo, issue_number, completion_comment)
+        
         # Update monitor - work complete
 #         if hasattr(self.agent, 'monitor') and self.agent.monitor:
 #             self.agent.monitor.update_agent_status(
@@ -220,6 +233,51 @@ class IssueHandler:
         except Exception as e:
             print(f"   ❌ Error fetching issue: {e}")
             return None
+    
+    def _close_issue(self, repo: str, issue_number: int, comment: str) -> bool:
+        """Close issue with completion comment."""
+        try:
+            import os
+            import requests
+            
+            token = os.getenv('BOT_GITHUB_TOKEN') or os.getenv('GITHUB_TOKEN')
+            if not token:
+                print("   ⚠️  No GitHub token, skipping issue close")
+                return False
+            
+            owner, repo_name = repo.split('/')
+            headers = {
+                'Authorization': f'Bearer {token}',
+                'Accept': 'application/vnd.github+json',
+                'X-GitHub-Api-Version': '2022-11-28'
+            }
+            
+            # Post completion comment
+            comment_url = f"https://api.github.com/repos/{owner}/{repo_name}/issues/{issue_number}/comments"
+            comment_response = requests.post(
+                comment_url, 
+                json={'body': comment},
+                headers=headers,
+                timeout=10
+            )
+            comment_response.raise_for_status()
+            
+            # Close the issue
+            issue_url = f"https://api.github.com/repos/{owner}/{repo_name}/issues/{issue_number}"
+            close_response = requests.patch(
+                issue_url,
+                json={'state': 'closed', 'state_reason': 'completed'},
+                headers=headers,
+                timeout=10
+            )
+            close_response.raise_for_status()
+            
+            print(f"   ✅ Issue #{issue_number} closed successfully")
+            return True
+            
+        except Exception as e:
+            print(f"   ⚠️  Failed to close issue: {e}")
+            return False
     
     def _parse_issue_requirements(self, issue: Dict) -> Dict:
         """
