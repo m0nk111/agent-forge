@@ -1059,7 +1059,9 @@
         }
 
         function formatTimestamp(timestamp) {
-            const date = new Date(timestamp);
+            // Python time.time() returns seconds, JavaScript Date needs milliseconds
+            const ts = timestamp > 9999999999 ? timestamp : timestamp * 1000;
+            const date = new Date(ts);
             return date.toLocaleTimeString('en-US', { hour12: false });
         }
 
