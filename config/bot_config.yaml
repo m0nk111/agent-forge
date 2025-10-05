@@ -1,0 +1,244 @@
+# Bot Agent Configuration
+# Configuration for automated GitHub bot operations
+
+bot:
+  # Bot identification
+  agent_id: m0nk111-bot
+  username: m0nk111-bot
+  role: bot
+  
+  # Capabilities - operations the bot is allowed to perform
+  capabilities:
+    - create_issues          # Create new issues
+    - add_comments          # Comment on issues/PRs
+    - assign_tasks          # Assign issues to users
+    - update_labels         # Add/remove issue labels
+    - close_issues          # Close completed issues
+    - reopen_issues         # Reopen closed issues
+    - update_projects       # Update project board fields
+    - trigger_workflows     # Trigger GitHub Actions (future)
+  
+  # Rate limiting configuration
+  rate_limiting:
+    # Maximum operations per hour (GitHub allows 5000/hour)
+    max_operations_per_hour: 500
+    
+    # Pause when rate limit drops below this threshold
+    pause_threshold: 4800
+    
+    # Check rate limit before operations
+    check_before_operation: true
+  
+  # Behavior configuration
+  behavior:
+    # Number of retry attempts for failed operations
+    retry_attempts: 3
+    
+    # Delay between retries (seconds)
+    retry_delay: 5
+    
+    # Command timeout (seconds)
+    command_timeout: 30
+    
+    # Maximum operation history to keep
+    max_history_size: 100
+  
+  # Monitoring configuration
+  monitoring:
+    # Enable metrics tracking
+    enabled: true
+    
+    # Report interval for status updates (seconds)
+    report_interval: 60
+    
+    # Metrics to track
+    track_metrics:
+      - operations_total
+      - operations_by_type
+      - issues_created
+      - comments_added
+      - assignments_made
+      - labels_updated
+      - issues_closed
+      - success_rate
+      - response_time
+      - rate_limit_remaining
+  
+  # Repository configuration
+  repositories:
+    # Repositories the bot is allowed to operate on
+    - m0nk111/agent-forge
+    - m0nk111/stepperheightcontrol
+    - m0nk111/caramba
+    - m0nk111/Mycodo
+  
+  # Operation templates
+  templates:
+    # Standard comment templates
+    comments:
+      task_assigned: |
+        🤖 **Task Assigned**
+        
+        @{assignee} has been assigned to this issue.
+        
+        **Priority**: {priority}
+        **Estimated Effort**: {effort}
+        
+        Please update progress using the checklist above.
+      
+      task_completed: |
+        ✅ **Task Completed**
+        
+        All checklist items have been completed.
+        Implementation ready for review.
+        
+        **Time Taken**: {duration}
+        **Changes**: {files_changed} files
+      
+      blocker_detected: |
+        🔴 **Blocker Detected**
+        
+        **Issue**: {blocker_description}
+        **Impact**: Work on {task_id} is blocked
+        
+        @{coordinator} Please review and provide guidance.
+      
+      plan_created: |
+        🎯 **Execution Plan Created**
+        
+        **Feature**: {feature_name}
+        **Estimated Effort**: {total_effort}
+        **Sub-tasks**: {task_count}
+        
+        **Task Breakdown**:
+        {task_list}
+        
+        **Timeline**: Estimated completion in {timeline}
+    
+    # Issue creation templates
+    issues:
+      sub_task: |
+        ## Sub-Task: {task_title}
+        
+        **Parent Issue**: #{parent_issue}
+        **Assigned To**: @{assignee}
+        **Priority**: {priority}
+        **Estimated Effort**: {effort}
+        
+        ### Description
+        {description}
+        
+        ### Acceptance Criteria
+        {acceptance_criteria}
+        
+        ### Dependencies
+        {dependencies}
+  
+  # Security configuration
+  security:
+    # Require approval for critical operations
+    require_approval:
+      - close_issue          # Require human approval to close
+      - delete_comment       # Require approval to delete
+      - force_push          # Require approval for force push
+    
+    # Operations that can run without approval
+    auto_approve:
+      - add_comment
+      - update_labels
+      - assign_issue
+      - create_issue
+    
+    # Blacklisted operations (never allowed)
+    blacklist:
+      - delete_repository
+      - transfer_repository
+      - delete_branch
+  
+  # Notification settings
+  notifications:
+    # Send notifications for these events
+    on_events:
+      - operation_failed
+      - rate_limit_warning
+      - approval_required
+    
+    # Notification channels
+    channels:
+      - github_comments      # Comment on issue/PR
+      - monitor_dashboard    # Update dashboard
+      # - email              # Email notifications (future)
+      # - slack              # Slack integration (future)
+  
+  # Dashboard display
+  dashboard:
+    # Bot icon/emoji
+    icon: "🤖"
+    
+    # Status display format
+    status_format: "{icon} {username} | {role} | {state}"
+    
+    # Metrics to display on dashboard
+    display_metrics:
+      - operations_total
+      - success_rate
+      - issues_created
+      - comments_added
+      - rate_limit_remaining
+      - last_operation_time
+    
+    # Update interval (seconds)
+    update_interval: 30
+  
+  # Integration settings
+  integrations:
+    # Coordinator agent integration
+    coordinator:
+      enabled: true
+      report_blockers: true
+      request_assignments: true
+    
+    # Monitor service integration
+    monitor:
+      enabled: true
+      send_metrics: true
+      metric_prefix: "bot_"
+    
+    # GitHub Actions integration
+    actions:
+      enabled: false
+      trigger_on_events: []
+  
+  # Logging configuration
+  logging:
+    # Log level (DEBUG, INFO, WARNING, ERROR)
+    level: INFO
+    
+    # Log operations to file
+    log_to_file: true
+    log_file: logs/bot_operations.log
+    
+    # Log format
+    format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    
+    # Rotate logs
+    rotate: true
+    max_bytes: 10485760  # 10MB
+    backup_count: 5
+
+# Environment variables required:
+# - BOT_GITHUB_TOKEN: Personal access token for bot account
+# - BOT_GITHUB_USERNAME: GitHub username (optional, defaults to m0nk111-bot)
+
+# GitHub token scopes required:
+# - repo: Full control of repositories
+# - workflow: Update GitHub Actions workflows
+# - write:discussion: Read and write discussions
+# - project: Full control of projects
+
+# Setup instructions:
+# 1. Create GitHub bot account (m0nk111-bot)
+# 2. Generate personal access token with required scopes
+# 3. Set BOT_GITHUB_TOKEN environment variable
+# 4. Add bot account as collaborator on repositories
+# 5. Configure repository permissions (write access minimum)

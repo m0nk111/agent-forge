@@ -1,0 +1,388 @@
+# Coordinator Agent Configuration
+# Configuration for multi-agent task planning and orchestration
+
+coordinator:
+  # Agent identification
+  agent_id: coordinator
+  role: coordinator
+  
+  # LLM configuration for planning
+  llm:
+    # Primary LLM (for intelligent planning)
+    model: qwen2.5:72b
+    endpoint: http://localhost:11434
+    temperature: 0.3
+    max_tokens: 4096
+    
+    # Alternative: Use Claude for superior planning
+    # model: claude-sonnet-4
+    # endpoint: ${CLAUDE_API_ENDPOINT}
+    # api_key: ${CLAUDE_API_KEY}
+  
+  # Fallback LLM (if primary fails)
+  fallback_llm:
+    model: qwen2.5:7b
+    endpoint: http://localhost:11434
+    temperature: 0.3
+  
+  # Planning configuration
+  planning:
+    # Maximum sub-tasks per plan
+    max_sub_tasks: 20
+    
+    # Default task effort estimate (minutes)
+    default_task_effort: 30
+    
+    # Maximum concurrent tasks per agent
+    max_concurrent_tasks: 5
+    
+    # Task priority levels
+    priority_levels:
+      critical: 5
+      high: 4
+      normal: 3
+      low: 2
+      optional: 1
+    
+    # Complexity thresholds
+    complexity:
+      lines_changed:
+        low: 50
+        medium: 200
+        high: 500
+        very_high: 1000
+      files_changed:
+        low: 3
+        medium: 10
+        high: 25
+        very_high: 50
+  
+  # Monitoring configuration
+  monitoring:
+    # Interval for progress checks (seconds)
+    check_interval: 300  # 5 minutes
+    
+    # Blocker detection threshold (seconds)
+    # If no progress for this duration, consider task blocked
+    blocker_threshold: 1800  # 30 minutes
+    
+    # Enable automatic blocker detection
+    auto_detect_blockers: true
+    
+    # Enable progress notifications
+    notify_progress: true
+    
+    # Notification intervals
+    progress_update_interval: 3600  # 1 hour
+  
+  # Agent registry
+  agents:
+    # Example agent registrations
+    # These would be populated dynamically in production
+    qwen-dev:
+      role: developer
+      skills:
+        - python
+        - javascript
+        - api-development
+        - testing
+      max_concurrent_tasks: 3
+      availability: true
+    
+    bot-agent:
+      role: bot
+      skills:
+        - github-operations
+        - notifications
+        - issue-management
+      max_concurrent_tasks: 10
+      availability: true
+    
+    pr-reviewer:
+      role: reviewer
+      skills:
+        - code-review
+        - security-analysis
+        - quality-checks
+      max_concurrent_tasks: 5
+      availability: true
+    
+    documenter:
+      role: documenter
+      skills:
+        - documentation
+        - markdown
+        - api-docs
+      max_concurrent_tasks: 2
+      availability: true
+  
+  # Task assignment rules
+  assignment:
+    # Assignment strategy
+    strategy: "skill_match"  # skill_match, round_robin, least_loaded
+    
+    # Skill matching weights
+    skill_weights:
+      exact_match: 10
+      related_match: 5
+      general_match: 2
+    
+    # Load balancing
+    prefer_less_loaded: true
+    load_weight: 5
+    
+    # Auto-assignment for known patterns
+    auto_assign:
+      - pattern: "implement|create|add"
+        role: developer
+      - pattern: "test|verify"
+        role: tester
+      - pattern: "review|check"
+        role: reviewer
+      - pattern: "document|write.*doc"
+        role: documenter
+  
+  # Dependency resolution
+  dependencies:
+    # Enable automatic dependency detection
+    auto_detect: true
+    
+    # Common dependency patterns
+    patterns:
+      - before: "design|architecture"
+        after: "implement|create"
+      - before: "implement|create"
+        after: "test|verify"
+      - before: "test|verify"
+        after: "document"
+      - before: ".*"
+        after: "deploy|release"
+  
+  # Blocker handling
+  blockers:
+    # Automatic blocker resolution
+    auto_resolve: true
+    
+    # Blocker categories and handlers
+    categories:
+      missing_dependency:
+        handler: "create_install_task"
+        priority: 5
+      missing_permission:
+        handler: "notify_admin"
+        priority: 4
+      technical_issue:
+        handler: "create_fix_task"
+        priority: 4
+      waiting_for_review:
+        handler: "notify_reviewer"
+        priority: 3
+  
+  # Notification templates
+  notifications:
+    plan_created: |
+      🎯 **Execution Plan Created**
+      
+      **Feature**: {title}
+      **Estimated Effort**: {effort_hours} hours
+      **Sub-tasks**: {task_count}
+      
+      **Task Breakdown**:
+      {task_list}
+      
+      **Timeline**: Estimated completion in {timeline}
+    
+    task_assigned: |
+      🤖 **Task Assigned**
+      
+      @{assignee} has been assigned to work on:
+      
+      **Task**: {task_title}
+      **Description**: {task_description}
+      **Priority**: {priority}/5
+      **Estimated Effort**: {effort} minutes
+      
+      Please update progress in the issue comments.
+    
+    blocker_detected: |
+      🔴 **Blocker Detected**
+      
+      **Task**: {task_title}
+      **Issue**: {blocker_description}
+      **Impact**: Work is currently blocked
+      
+      @coordinator please review and provide guidance.
+    
+    plan_adapted: |
+      🔄 **Plan Adapted**
+      
+      Plan has been updated due to blockers:
+      
+      {blocker_list}
+      
+      New tasks have been created to resolve these issues.
+    
+    progress_update: |
+      📊 **Progress Update**
+      
+      **Completion**: {completion_percentage}%
+      **Completed**: {completed_count}/{total_count} tasks
+      **In Progress**: {in_progress_count}
+      **Blocked**: {blocked_count}
+      
+      {status_details}
+  
+  # Integration settings
+  integrations:
+    # Bot agent integration
+    bot:
+      enabled: true
+      agent_id: m0nk111-bot
+      use_for_notifications: true
+    
+    # Monitor service integration
+    monitor:
+      enabled: true
+      send_metrics: true
+      metric_prefix: "coordinator_"
+    
+    # GitHub integration
+    github:
+      enabled: true
+      auto_create_issues: true
+      auto_assign: true
+      auto_label: true
+  
+  # Metrics tracking
+  metrics:
+    enabled: true
+    track:
+      - plans_created
+      - plans_completed
+      - tasks_assigned
+      - tasks_completed
+      - blockers_detected
+      - blockers_resolved
+      - average_plan_duration
+      - average_task_duration
+      - agent_utilization
+  
+  # Dashboard display
+  dashboard:
+    icon: "🎯"
+    status_format: "{icon} {agent_id} | {role} | {state}"
+    display_metrics:
+      - active_plans
+      - total_tasks
+      - completion_rate
+      - blocker_count
+  
+  # Repositories to coordinate
+  repositories:
+    - m0nk111/agent-forge
+    - m0nk111/stepperheightcontrol
+    - m0nk111/caramba
+    - m0nk111/Mycodo
+  
+  # Workflow automation
+  workflows:
+    # Auto-start workflows for certain labels
+    auto_start_labels:
+      - agent-ready
+      - auto-implement
+      - high-priority
+    
+    # Skip labels
+    skip_labels:
+      - wip
+      - draft
+      - blocked
+    
+    # Require approval for
+    require_approval:
+      - very_high_complexity
+      - breaking_change
+      - security_critical
+  
+  # Logging configuration
+  logging:
+    level: INFO
+    log_plans: true
+    log_assignments: true
+    log_progress: true
+    log_file: logs/coordinator.log
+    rotate: true
+    max_bytes: 10485760  # 10MB
+    backup_count: 5
+
+# LLM Prompts (can be customized)
+prompts:
+  analyze_complexity: |
+    Analyze this GitHub issue and provide a JSON response:
+    
+    Title: {title}
+    Description: {body}
+    Labels: {labels}
+    
+    Provide analysis in JSON format:
+    {{
+        "complexity": "low|medium|high|very_high",
+        "scope": "bugfix|feature|refactoring|documentation",
+        "estimated_hours": <number>,
+        "risks": ["risk1", "risk2"],
+        "key_components": ["component1", "component2"]
+    }}
+  
+  create_subtasks: |
+    Break down this GitHub issue into sub-tasks:
+    
+    Title: {title}
+    Description: {body}
+    Complexity: {complexity}
+    Scope: {scope}
+    
+    Create up to {max_tasks} sub-tasks in JSON array format:
+    [
+        {{
+            "title": "Task title",
+            "description": "Detailed description",
+            "priority": 1-5,
+            "estimated_effort": <minutes>,
+            "depends_on": ["task-X-Y"],
+            "required_skills": ["python", "testing"]
+        }}
+    ]
+    
+    Guidelines:
+    - Priority: 5 (critical) to 1 (nice-to-have)
+    - Include dependencies using task IDs
+    - Estimated effort in minutes
+    - Consider: design, implementation, testing, documentation
+    - Order tasks logically
+  
+  identify_blocker: |
+    Analyze this task and identify potential blockers:
+    
+    Task: {task_title}
+    Description: {task_description}
+    Current Status: {status}
+    Last Update: {last_update}
+    
+    Is this task blocked? Provide JSON:
+    {{
+        "is_blocked": true|false,
+        "blocker_type": "missing_dependency|permission|technical|waiting",
+        "description": "What is blocking progress",
+        "suggested_solution": "How to resolve the blocker"
+    }}
+
+# Environment variables:
+# - CLAUDE_API_KEY: Claude API key (if using Claude)
+# - COORDINATOR_LOG_LEVEL: Override log level
+
+# Setup instructions:
+# 1. Configure LLM endpoint (Ollama or Claude)
+# 2. Register available agents in agent registry
+# 3. Set up bot agent for notifications
+# 4. Configure repositories to coordinate
+# 5. Start coordinator service

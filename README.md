@@ -23,6 +23,8 @@ Agent Forge is a framework for creating autonomous coding agents using different
 - 🐛 **Error Checking**: Syntax validation, linting (pylint/flake8/eslint), type checking (mypy)
 - 🌐 **Web Documentation**: Fetch docs from trusted sources (Python docs, GitHub, Stack Overflow) with caching
 - 🤖 **Autonomous Polling**: Automatically check for assigned GitHub issues and start workflows (Issue #17)
+- 🔍 **Automated Code Review**: AI-powered PR reviews with quality checks and feedback (Issue #25)
+- 🤖 **Bot Account Agent**: Dedicated bot for GitHub operations without email spam (Issue #35)
 - 🌐 **External Knowledge**: MCP integration placeholders
 - 📚 **Documentation Loading**: Auto-load project docs (ARCHITECTURE.md, README.md, etc.)
 - 🗂️ **Workspace Awareness**: Explore project structure, validate paths, find files
@@ -370,6 +372,215 @@ max_concurrent_issues: 3       # Work on 3 issues simultaneously
 claim_timeout_minutes: 60      # Claim expires after 1 hour
 ```
 
+### 11. Automated Code Review (Issue #25)
+
+AI-powered automated code review for pull requests with comprehensive quality checks.
+
+```python
+from agents.pr_reviewer import PRReviewer, ReviewCriteria
+
+# Initialize reviewer
+reviewer = PRReviewer(
+    github_username="my-agent-bot",
+    criteria=ReviewCriteria(
+        check_code_quality=True,
+        check_testing=True,
+        check_documentation=True,
+        check_security=True,
+        require_changelog=True,
+        strictness_level="normal"  # relaxed, normal, strict
+    )
+)
+
+# Review a PR
+should_approve, summary, comments = await reviewer.review_pr(
+    repo="owner/repo",
+    pr_number=42,
+    pr_data={
+        'title': 'feat: Add awesome feature',
+        'body': 'PR description',
+        'user': {'login': 'contributor'}
+    },
+    files=[
+        {
+            'filename': 'agents/feature.py',
+            'patch': '@@ ... @@\n+def new_function():\n+    pass'
+        }
+    ]
+)
+
+print(summary)  # Comprehensive review with scores and feedback
+# Post to GitHub: submit_review(repo, pr_number, summary, 'APPROVE' if should_approve else 'REQUEST_CHANGES', comments)
+```
+
+**CLI Usage**:
+```bash
+# Review a PR (mock data for testing)
+python -m agents.pr_reviewer owner/repo 42 --username my-bot
+
+# With custom criteria
+python -m agents.pr_reviewer owner/repo 42 --config config/review_criteria.yaml
+```
+
+**Review Categories**:
+- 🎨 **Code Quality**: Readability, maintainability, best practices, line length, print statements
+- 🔒 **Security**: Hardcoded credentials, SQL injection, eval() usage, shell=True
+- 🧪 **Testing**: Test coverage, test-to-code ratio, tests for new features
+- 📝 **Documentation**: README updates, CHANGELOG entries, docstrings, PR description
+- ✅ **Standards**: Conventional commits, proper error handling, logging practices
+
+**Checks Performed**:
+```python
+# Code Quality
+✓ No hardcoded credentials
+✓ Using logging instead of print()
+✓ Line length < 120 characters
+✓ No bare except clauses
+✓ No TODO/FIXME without issues
+
+# Security
+✓ No SQL injection risks
+✓ No eval() usage
+✓ shell=True only with sanitized input
+✓ Input validation present
+
+# Testing
+✓ Tests included for new features
+✓ Test-to-code ratio >= 0.5
+✓ Edge cases covered
+
+# Documentation
+✓ README updated for significant changes
+✓ CHANGELOG entry present
+✓ PR description descriptive (>50 chars)
+✓ Docstrings for complex logic
+```
+
+**Configuration** (`config/review_criteria.yaml`):
+```yaml
+review:
+  check_code_quality: true
+  check_testing: true
+  check_documentation: true
+  check_security: true
+  require_changelog: true
+  min_test_coverage: 80
+  strictness_level: "normal"  # relaxed, normal, strict
+
+code_quality:
+  max_line_length: 120
+  warn_print_statements: true
+  warn_todo_comments: true
+  check_hardcoded_secrets: true
+
+security:
+  check_sql_injection: true
+  check_eval_usage: true
+  warn_shell_true: true
+
+testing:
+  require_tests_for_features: true
+  min_test_ratio: 0.5
+
+documentation:
+  require_readme_updates: true
+  require_changelog: true
+
+behavior:
+  skip_tag: "[skip-review]"
+  re_review_on_update: true
+  cache_duration: 24  # hours
+```
+
+**Review Output Example**:
+```markdown
+## 🤖 Automated Code Review
+
+**PR**: feat: Add awesome feature
+**Author**: @contributor
+**Files Changed**: 3
+
+---
+
+### 📊 Quality Scores
+
+**Code Quality**: ████████░░ 80%
+**Documentation**: ██████████ 100%
+**Testing**: ███████░░░ 70%
+**Overall**: ████████░░ 83%
+
+### 💪 Strengths
+
+✅ High code quality with minimal issues
+✅ Well-documented changes
+✅ CHANGELOG.md updated
+
+### 🔴 Critical Issues
+
+- `agents/feature.py:42`: ⚠️ Possible hardcoded credential detected
+
+### ⚠️ Warnings
+
+- `agents/utils.py:15`: 💡 Consider using logging instead of print()
+
+### ✅ Review Checklist
+
+- [x] Code quality acceptable
+- [x] Tests included
+- [x] Documentation updated
+- [x] CHANGELOG entry present
+- [ ] No critical issues
+
+### 🎯 Review Decision
+
+🔄 **CHANGES REQUESTED**
+
+Please address the issues mentioned above before merging.
+
+---
+*Automated review by my-agent-bot • Agent Forge PR Reviewer v1.0*
+```
+
+**Features**:
+- 🤖 **AI-Powered**: Optional LLM analysis for intelligent feedback
+- 📊 **Quality Scoring**: Comprehensive scoring across multiple dimensions
+- 💬 **Line-Specific Comments**: Comments attached to exact lines
+- ✅ **Approval Logic**: Configurable approval thresholds (relaxed/normal/strict)
+- 🎯 **Smart Filtering**: Skip own PRs, respect [skip-review] tag
+- 📈 **Metrics**: Track code quality, testing, documentation scores
+- ⚙️ **Configurable**: Customize checks, thresholds, and behavior
+- 🔄 **Re-Review**: Automatically re-review after updates
+
+**Strictness Levels**:
+- **Relaxed**: Allow up to 1 error, score ≥ 0.5
+- **Normal**: No errors, score ≥ 0.6 (default)
+- **Strict**: No errors/warnings, score ≥ 0.8
+
+**Integration with Polling** (future):
+```python
+# In polling_service.py
+async def check_pull_requests(self, repo: str):
+    prs = await self.github.list_pull_requests(repo, state='open')
+    
+    for pr in prs:
+        # Skip if already reviewed
+        reviews = await self.github.get_pr_reviews(repo, pr['number'])
+        if any(r['user']['login'] == self.username for r in reviews):
+            continue
+        
+        # Trigger review
+        await self.pr_reviewer.review_pr(repo, pr['number'])
+```
+
+**Benefits**:
+- **Consistency**: Uniform code quality across all PRs
+- **Efficiency**: Instant feedback for contributors
+- **Quality**: Catch issues before merge
+- **Learning**: Educational feedback explains best practices
+- **Automation**: Reduces manual review workload
+claim_timeout_minutes: 60      # Claim expires after 1 hour
+```
+
 **Workflow**:
 1. Service polls GitHub API for assigned issues
 2. Filters issues by labels (`agent-ready`, `auto-assign`)
@@ -381,6 +592,629 @@ claim_timeout_minutes: 60      # Claim expires after 1 hour
 8. Repeat after interval
 
 This enables fully autonomous agents that continuously monitor and work on issues without manual intervention!
+
+### 12. Bot Account Agent (Issue #35)
+
+Dedicated bot account for automated GitHub operations without email spam.
+
+```python
+from agents.bot_agent import BotAgent
+from pathlib import Path
+
+# Initialize bot
+bot = BotAgent(
+    agent_id="m0nk111-bot",
+    username="m0nk111-bot",
+    github_token=os.getenv("BOT_GITHUB_TOKEN"),
+    config_file=Path("config/bot_config.yaml")
+)
+
+# Create issue
+issue = await bot.create_issue(
+    repo="owner/repo",
+    title="New feature request",
+    body="Please implement feature X",
+    labels=["enhancement", "high-priority"],
+    assignees=["developer1"]
+)
+print(f"Created issue #{issue['number']}")
+
+# Add progress comment
+await bot.add_comment(
+    repo="owner/repo",
+    issue_number=issue['number'],
+    body="🤖 Implementation started. ETA: 2 hours"
+)
+
+# Update labels as work progresses
+await bot.update_labels(
+    repo="owner/repo",
+    issue_number=issue['number'],
+    add_labels=["in-progress"],
+    remove_labels=["pending"]
+)
+
+# Close when done
+await bot.close_issue(
+    repo="owner/repo",
+    issue_number=issue['number'],
+    state_reason="completed",
+    comment="✅ All tasks completed. Ready for review."
+)
+```
+
+**CLI Usage**:
+```bash
+# Create issue
+python -m agents.bot_agent create --repo owner/repo \
+  --title "New feature" --body "Description" \
+  --labels "enhancement,high-priority" --assignees "dev1,dev2"
+
+# Add comment
+python -m agents.bot_agent comment --repo owner/repo \
+  --issue 42 --body "✅ Task completed"
+
+# Assign issue
+python -m agents.bot_agent assign --repo owner/repo \
+  --issue 42 --assignees "developer1,reviewer1"
+
+# Update labels
+python -m agents.bot_agent labels --repo owner/repo \
+  --issue 42 --labels "in-progress,reviewed"
+
+# Close issue
+python -m agents.bot_agent close --repo owner/repo \
+  --issue 42 --body "✅ Closing after completion"
+
+# View bot status
+python -m agents.bot_agent status --repo owner/repo
+```
+
+**Core Operations**:
+- 📝 **Issue Management**: Create, close, reopen issues
+- 💬 **Commenting**: Add status updates and notifications
+- 👥 **Assignments**: Assign issues to team members
+- 🏷️ **Labels**: Add/remove labels for organization
+- 📊 **Project Updates**: Update GitHub Projects v2 fields (planned)
+- 🔄 **Workflow Triggers**: Trigger GitHub Actions (planned)
+
+**Features**:
+- 🚀 **Rate Limiting**: Automatic rate limit detection and pausing
+- 🔁 **Retry Logic**: Automatic retry on failures (configurable attempts)
+- 📈 **Metrics Tracking**: Operations count, success rate, response times
+- 🎯 **Error Handling**: Comprehensive error handling with logging
+- 📊 **Dashboard Integration**: Real-time status display
+- 🔒 **Security**: Token-based authentication, operation approval
+- ⏱️ **Response Times**: Track and optimize API performance
+- 📝 **Operation History**: Keep last 100 operations for debugging
+
+**Configuration** (`config/bot_config.yaml`):
+```yaml
+bot:
+  agent_id: m0nk111-bot
+  username: m0nk111-bot
+  
+  capabilities:
+    - create_issues
+    - add_comments
+    - assign_tasks
+    - update_labels
+    - close_issues
+  
+  rate_limiting:
+    max_operations_per_hour: 500
+    pause_threshold: 4800
+  
+  behavior:
+    retry_attempts: 3
+    retry_delay: 5  # seconds
+    command_timeout: 30
+  
+  monitoring:
+    enabled: true
+    report_interval: 60
+```
+
+**Metrics Dashboard**:
+```
+🤖 m0nk111-bot | BOT | ACTIVE
+├─ Operations: 1,247
+├─ Issues Created: 89
+├─ Comments: 342
+├─ Assignments: 156
+├─ Success Rate: 98.5%
+├─ Avg Response: 0.85s
+├─ Rate Limit: 4,823/5,000
+└─ Last Active: 2 minutes ago
+```
+
+**Integration with Coordinator**:
+```python
+# Coordinator creates execution plan
+plan = await coordinator.create_plan(issue)
+
+# Bot notifies assignees
+for task in plan.sub_tasks:
+    await bot.add_comment(
+        repo=plan.repository,
+        issue_number=plan.issue_number,
+        body=f"""🎯 **Sub-Task Assigned**
+        
+**Task**: {task.title}
+**Assignee**: @{task.assigned_to}
+**Priority**: {task.priority}
+**Estimated Effort**: {task.estimated_effort}m
+
+{task.description}
+"""
+    )
+    
+    # Assign the task
+    await bot.assign_issue(
+        repo=plan.repository,
+        issue_number=task.issue_number,
+        assignees=[task.assigned_to]
+    )
+```
+
+**Comment Templates**:
+```python
+# Task assignment template
+task_assigned = """
+🤖 **Task Assigned**
+
+@{assignee} has been assigned to this issue.
+
+**Priority**: {priority}
+**Estimated Effort**: {effort}
+
+Please update progress using the checklist above.
+"""
+
+# Blocker detected template
+blocker_detected = """
+🔴 **Blocker Detected**
+
+**Issue**: {blocker_description}
+**Impact**: Work on {task_id} is blocked
+
+@{coordinator} Please review and provide guidance.
+"""
+
+# Task completed template
+task_completed = """
+✅ **Task Completed**
+
+All checklist items have been completed.
+Implementation ready for review.
+
+**Time Taken**: {duration}
+**Changes**: {files_changed} files
+"""
+```
+
+**Security**:
+- 🔐 **Token Security**: Store BOT_GITHUB_TOKEN securely in environment
+- 🛡️ **Minimal Permissions**: Use only required GitHub token scopes
+- ✅ **Operation Approval**: Critical operations require human approval
+- 📝 **Audit Logging**: All operations logged for security review
+- 🚫 **Blacklist**: Dangerous operations permanently blocked
+
+**Environment Setup**:
+```bash
+# Set bot token
+export BOT_GITHUB_TOKEN="ghp_your_token_here"
+export BOT_GITHUB_USERNAME="m0nk111-bot"
+
+# Add bot as collaborator on repositories
+gh api repos/owner/repo/collaborators/m0nk111-bot -X PUT
+
+# Configure repository permissions (write access minimum)
+```
+
+**Required GitHub Token Scopes**:
+- `repo`: Full control of repositories
+- `workflow`: Update GitHub Actions workflows
+- `write:discussion`: Read and write discussions
+- `project`: Full control of projects (for future project updates)
+
+**Benefits**:
+- **No Email Spam**: Bot account isolates automation notifications
+- **Clean History**: Bot operations clearly identified
+- **Audit Trail**: Complete operation history for debugging
+- **Collaboration**: Multi-agent coordination without conflicts
+- **Reliability**: Automatic retries and error handling
+- **Performance**: Fast response times with metrics tracking
+- **Scalability**: Handle hundreds of operations per hour
+
+---
+
+### 13. Coordinator Agent (Issue #36)
+
+The **Coordinator Agent** is the "brain" of the multi-agent system. It analyzes GitHub issues, breaks them down into sub-tasks, assigns work to appropriate agents based on skills and availability, monitors progress, and dynamically adapts execution plans when blockers are encountered.
+
+**Key Features**:
+- 🧠 **LLM-Powered Planning**: Use Qwen2.5:72b or Claude for intelligent task breakdown
+- 📊 **Complexity Analysis**: Automatic issue complexity assessment
+- 🎯 **Smart Assignment**: Match tasks to agents based on skills, role, and current load
+- 📈 **Progress Monitoring**: Real-time tracking of task completion and blockers
+- 🔄 **Dynamic Adaptation**: Automatically adjust plans when blockers are detected
+- 🤖 **Bot Integration**: All notifications routed through bot agent
+- 💾 **Plan Persistence**: Save/load execution plans as JSON
+- 🔗 **Dependency Resolution**: Topological sort ensures correct task ordering
+
+**Python API**:
+```python
+from agents.coordinator_agent import CoordinatorAgent
+from pathlib import Path
+
+# Initialize coordinator with LLM and bot
+coordinator = CoordinatorAgent(
+    agent_id="coordinator",
+    llm_agent=qwen_agent,  # LLM for planning
+    bot_agent=bot,         # Bot for notifications
+    config_file=Path("config/coordinator_config.yaml")
+)
+
+# Register available agents
+coordinator.register_agent(
+    agent_id="qwen-dev",
+    role="developer",
+    skills=["python", "javascript", "testing"],
+    max_concurrent_tasks=3
+)
+
+coordinator.register_agent(
+    agent_id="pr-reviewer",
+    role="reviewer",
+    skills=["code-review", "security", "best-practices"],
+    max_concurrent_tasks=5
+)
+
+# Analyze issue and create execution plan
+plan = await coordinator.analyze_issue(
+    repo="m0nk111/agent-forge",
+    issue_number=42
+)
+
+print(f"Created plan: {plan.plan_id}")
+print(f"Sub-tasks: {len(plan.sub_tasks)}")
+print(f"Required roles: {', '.join(plan.required_roles)}")
+print(f"Estimated effort: {plan.total_estimated_effort}m")
+
+# Assign tasks to agents
+assignments = await coordinator.assign_tasks(plan)
+
+for assignment in assignments:
+    task = next(t for t in plan.sub_tasks if t.id == assignment.task_id)
+    print(f"  {task.title} → {assignment.agent_id}")
+
+# Monitor progress
+status = await coordinator.monitor_progress(plan.plan_id)
+
+print(f"Completion: {status['completion_percentage']:.1f}%")
+print(f"Pending: {status['status_counts']['pending']}")
+print(f"In Progress: {status['status_counts']['in_progress']}")
+print(f"Completed: {status['status_counts']['completed']}")
+print(f"Blocked: {status['status_counts']['blocked']}")
+
+# Adapt plan if blockers encountered
+if status['blockers']:
+    updated_plan = await coordinator.adapt_plan(
+        plan_id=plan.plan_id,
+        blockers=status['blockers']
+    )
+    print(f"Plan adapted: {len(updated_plan.sub_tasks)} tasks (was {len(plan.sub_tasks)})")
+```
+
+**CLI Usage**:
+```bash
+# Analyze issue and create plan
+python -m agents.coordinator_agent analyze \
+  --repo m0nk111/agent-forge \
+  --issue 42
+
+# Assign tasks
+python -m agents.coordinator_agent assign \
+  --plan-id plan-42-20240104-120000
+
+# Monitor progress
+python -m agents.coordinator_agent monitor \
+  --plan-id plan-42-20240104-120000
+
+# View plan status
+python -m agents.coordinator_agent status \
+  --plan-id plan-42-20240104-120000
+```
+
+**Planning Workflow**:
+```
+1. Fetch Issue Data
+   ├─ Get issue from GitHub
+   └─ Extract title, body, labels
+
+2. Analyze Complexity (LLM)
+   ├─ Assess complexity (low/medium/high)
+   ├─ Estimate effort (hours)
+   ├─ Identify risks
+   └─ Determine scope (bugfix/feature/refactor)
+
+3. Create Sub-Tasks (LLM)
+   ├─ Break down into actionable tasks
+   ├─ Set dependencies between tasks
+   ├─ Estimate effort per task
+   ├─ Assign priorities (1-5)
+   └─ Identify required skills
+
+4. Build Dependency Graph
+   ├─ Extract task relationships
+   ├─ Create directed graph
+   └─ Validate no cycles
+
+5. Identify Required Roles
+   ├─ Map tasks to agent roles
+   └─ Determine coordinator/developer/reviewer/tester needs
+
+6. Create Execution Plan
+   ├─ Generate unique plan ID
+   ├─ Calculate total estimated effort
+   └─ Set status to PLANNING
+
+7. Notify via Bot
+   └─ Comment on issue with plan summary
+```
+
+**Configuration** (`config/coordinator_config.yaml`):
+```yaml
+coordinator:
+  agent_id: coordinator
+  role: coordinator
+  
+  llm:
+    model: qwen2.5:72b        # Primary LLM for planning
+    endpoint: http://localhost:11434
+    temperature: 0.3          # Lower = more deterministic
+    max_tokens: 4096
+  
+  fallback_llm:
+    model: qwen2.5:7b         # Fallback if primary unavailable
+  
+  planning:
+    max_sub_tasks: 20         # Maximum tasks per plan
+    default_task_effort: 30   # Default minutes per task
+    max_concurrent_tasks: 5   # Max parallel tasks per agent
+  
+  monitoring:
+    check_interval: 300       # Check progress every 5 minutes
+    blocker_threshold: 1800   # Flag blockers after 30 minutes
+    auto_detect_blockers: true
+    notify_progress: true
+  
+  agents:
+    qwen-dev:
+      role: developer
+      skills: [python, javascript, testing]
+      max_concurrent_tasks: 3
+    
+    bot-agent:
+      role: bot
+      skills: [github-operations, notifications]
+      max_concurrent_tasks: 10
+    
+    pr-reviewer:
+      role: reviewer
+      skills: [code-review, security, best-practices]
+      max_concurrent_tasks: 5
+  
+  assignment:
+    strategy: skill_match     # Match based on skills
+    skill_weights:
+      exact_match: 10         # Exact skill match bonus
+      related: 5              # Related skill bonus
+      general: 2              # General capability bonus
+    
+    auto_assign:
+      - pattern: "implement"
+        role: developer
+      - pattern: "test"
+        role: tester
+      - pattern: "review"
+        role: reviewer
+  
+  dependencies:
+    auto_detect: true
+    patterns:
+      - design → implement → test → document → deploy
+  
+  blockers:
+    auto_resolve: true
+    categories:
+      missing_dependency:
+        handler: create_installation_task
+      permission:
+        handler: escalate_to_human
+      technical:
+        handler: create_research_task
+      waiting:
+        handler: notify_and_wait
+  
+  notifications:
+    templates:
+      plan_created: "🎯 **Execution Plan Created**..."
+      task_assigned: "📋 **Task Assigned**..."
+      blocker_detected: "🔴 **Blocker Detected**..."
+      plan_adapted: "🔄 **Plan Adapted**..."
+      progress_update: "📊 **Progress Update**..."
+```
+
+**Agent Matching Algorithm**:
+```python
+def calculate_agent_score(task, agent):
+    score = 0
+    
+    # Role match (10 points for exact match)
+    if matches_role(task, agent.role):
+        score += 10
+    
+    # Load factor (prefer less loaded agents)
+    load_factor = agent.current_task_count / agent.max_concurrent_tasks
+    score += (1 - load_factor) * 5
+    
+    return score
+```
+
+**Dependency Resolution**:
+```
+Topological Sort Algorithm:
+
+1. Calculate in-degree for each task
+   (number of dependencies)
+
+2. Add tasks with in-degree 0 to queue
+   (no dependencies)
+
+3. Process queue:
+   - Remove task from queue
+   - Add to sorted list
+   - For each dependent task:
+     - Decrease its in-degree
+     - If in-degree becomes 0, add to queue
+
+4. Sort tasks at same level by priority
+
+Result: Tasks ordered by dependencies,
+        parallel tasks grouped by priority
+```
+
+**Progress Monitoring**:
+```python
+# Monitor checks every 5 minutes (configurable)
+status = {
+    'plan_id': 'plan-42-20240104-120000',
+    'status': 'EXECUTING',
+    'completion_percentage': 66.7,
+    'status_counts': {
+        'pending': 0,
+        'in_progress': 1,
+        'completed': 2,
+        'blocked': 0,
+        'failed': 0
+    },
+    'completed_tasks': [
+        'task-42-1: Design architecture',
+        'task-42-2: Implement core logic'
+    ],
+    'blockers': []  # Empty if no blockers
+}
+```
+
+**Plan Adaptation**:
+```python
+# When blocker detected
+blocker = {
+    'task_id': 'task-42-3',
+    'issue': 'Missing dependency: requests library',
+    'solution': 'Install requests library'
+}
+
+# Coordinator creates new task
+new_task = SubTask(
+    id='task-42-3-fix-1',
+    title='Install requests library',
+    description='Add requests to requirements.txt and install',
+    priority=5,  # High priority
+    estimated_effort=15,
+    depends_on=[]
+)
+
+# Insert before blocked task
+plan.sub_tasks.insert(2, new_task)
+
+# Update dependencies
+plan.dependencies_graph['task-42-3'] = ['task-42-3-fix-1']
+plan.dependencies_graph['task-42-3-fix-1'] = []
+
+# Notify via bot
+await bot.add_comment(
+    repo=plan.repository,
+    issue_number=plan.issue_number,
+    body=f"🔄 Plan adapted to resolve blocker on {blocker['task_id']}"
+)
+```
+
+**Integration Example**:
+```python
+# Complete workflow from issue to execution
+
+# 1. Coordinator analyzes issue
+plan = await coordinator.analyze_issue("m0nk111/agent-forge", 42)
+
+# 2. Assigns tasks to agents
+assignments = await coordinator.assign_tasks(plan)
+
+# 3. Developer agent works on assigned tasks
+for assignment in assignments:
+    if assignment.agent_id == "qwen-dev":
+        task = coordinator.get_plan(plan.plan_id).sub_tasks[assignment.task_id]
+        
+        # Agent implements the task
+        result = await qwen_agent.execute_task(task.description)
+        
+        # Update task status
+        task.status = TaskStatus.COMPLETED
+        task.completed_at = datetime.now()
+
+# 4. Coordinator monitors progress
+status = await coordinator.monitor_progress(plan.plan_id)
+
+# 5. Bot notifies team of progress
+await bot.add_comment(
+    repo=plan.repository,
+    issue_number=plan.issue_number,
+    body=f"📊 Progress: {status['completion_percentage']:.1f}% complete"
+)
+
+# 6. If blockers detected, adapt plan
+if status['blockers']:
+    updated_plan = await coordinator.adapt_plan(plan.plan_id, status['blockers'])
+    
+    # Reassign new fix tasks
+    new_assignments = await coordinator.assign_tasks(updated_plan)
+```
+
+**Benefits**:
+- **Intelligence**: LLM-powered planning breaks down complex issues automatically
+- **Flexibility**: Comprehensive configuration for different workflows
+- **Scalability**: Handle large issues with 20+ sub-tasks
+- **Adaptability**: Dynamic plan changes based on real-world blockers
+- **Visibility**: Complete progress tracking with status updates
+- **Collaboration**: Multi-agent coordination with skill-based assignment
+- **Reliability**: Fallback to rule-based logic if LLM unavailable
+- **Persistence**: Plans saved to JSON for recovery after crashes
+
+**Multi-Agent System Architecture**:
+```
+┌─────────────────────────────────────────┐
+│         Coordinator Agent               │
+│  (Plans, Assigns, Monitors, Adapts)     │
+└────────────┬────────────────────────────┘
+             │
+    ┌────────┴────────┐
+    ├─ Developer Agents (Qwen, Claude)
+    ├─ Bot Agent (GitHub operations)
+    ├─ PR Reviewer (Code quality)
+    ├─ Tester Agent (Run tests)
+    └─ Documenter (Write docs)
+
+Flow:
+1. Coordinator analyzes issue → creates plan
+2. Coordinator assigns tasks → agents work
+3. Agents report progress → coordinator monitors
+4. Blocker detected → coordinator adapts plan
+5. All tasks complete → coordinator closes issue
+```
+
+---
 
 ## Architecture
 
