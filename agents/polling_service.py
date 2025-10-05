@@ -7,7 +7,38 @@ Features:
 - Configurable polling intervals (default: 5 minutes)
 - Multi-repository support
 - Label-based filtering (agent-ready, auto-assign)
-- Issue locking to prevent duplicate work by multiple agents
+- Issue locking to prevent duplicate work by         except Exception as e:
+            logger.error(f"Error during polling cycle: {e}")
+            if self.monitor:
+                from agents.monitor_service import AgentStatus
+                self.monitor.update_agent_status(
+                    agent_id="polling-service",
+                    status=AgentStatus.ERROR,
+                    error_message=str(e)
+                )
+                self.monitor.add_log(
+                    agent_id="polling-service",
+                    level="ERROR",
+                    message=f"Polling error: {e}"
+                )
+        finally:
+            # Cleanup old state
+            self.cleanup_old_state()
+            logger.info("=== Polling cycle complete ===")
+            
+            # Return to idle
+            if self.monitor:
+                from agents.monitor_service import AgentStatus
+                self.monitor.update_agent_status(
+                    agent_id="polling-service",
+                    status=AgentStatus.IDLE,
+                    current_task=f"Waiting (next poll in {self.config.interval_seconds}s)"
+                )
+                self.monitor.add_log(
+                    agent_id="polling-service",
+                    level="INFO",
+                    message="Polling cycle complete"
+                )le agents
 - State persistence across restarts
 - Graceful error handling with retry logic
 - Structured logging for all events
@@ -67,17 +98,39 @@ class IssueState:
 class PollingService:
     """Service for autonomous GitHub issue polling and workflow initiation."""
     
-    def __init__(self, config: PollingConfig):
+    def __init__(self, config: PollingConfig, enable_monitoring: bool = True):
         """Initialize polling service.
         
         Args:
             config: Polling configuration
+            enable_monitoring: Whether to register with monitor service
         """
         self.config = config
         self.state_file = Path(config.state_file)
         self.state: Dict[str, IssueState] = {}
         self.load_state()
         self.running = False
+        self.enable_monitoring = enable_monitoring
+        self.monitor = None
+        
+        # Register with monitor if enabled
+        if enable_monitoring:
+            try:
+                from agents.monitor_service import get_monitor, AgentStatus
+                self.monitor = get_monitor()
+                self.monitor.register_agent(
+                    agent_id="polling-service",
+                    agent_name="GitHub Polling Service"
+                )
+                self.monitor.update_agent_status(
+                    agent_id="polling-service",
+                    status=AgentStatus.IDLE,
+                    current_task="Initialized"
+                )
+                logger.info("✅ Registered with monitoring service")
+            except Exception as e:
+                logger.warning(f"Could not register with monitor: {e}")
+                self.monitor = None
         
     def load_state(self):
         """Load polling state from disk."""
@@ -370,6 +423,20 @@ class PollingService:
         """Perform one polling cycle."""
         logger.info("=== Starting polling cycle ===")
         
+        # Update monitor status
+        if self.monitor:
+            from agents.monitor_service import AgentStatus
+            self.monitor.update_agent_status(
+                agent_id="polling-service",
+                status=AgentStatus.WORKING,
+                current_task="Polling repositories for issues"
+            )
+            self.monitor.add_log(
+                agent_id="polling-service",
+                level="INFO",
+                message="Starting polling cycle"
+            )
+        
         try:
             # Check assigned issues
             issues = await self.check_assigned_issues()
@@ -379,7 +446,19 @@ class PollingService:
             
             if not actionable:
                 logger.info("No actionable issues found")
-                return
+                if self.monitor:
+                    self.monitor.add_log(
+                        agent_id="polling-service",
+                        level="INFO",
+                        message="No actionable issues found"
+                    )
+            else:
+                if self.monitor:
+                    self.monitor.add_log(
+                        agent_id="polling-service",
+                        level="INFO",
+                        message=f"Found {len(actionable)} actionable issues"
+                    )
             
             # Check capacity
             processing_count = self.get_processing_count()
@@ -387,13 +466,18 @@ class PollingService:
             
             if available_slots <= 0:
                 logger.info(f"At max capacity ({self.config.max_concurrent_issues} concurrent issues)")
-                return
-            
-            # Start workflows for available slots
-            for issue in actionable[:available_slots]:
-                await self.start_issue_workflow(issue)
-                # Small delay between starts
-                await asyncio.sleep(2)
+                if self.monitor:
+                    self.monitor.add_log(
+                        agent_id="polling-service",
+                        level="WARNING",
+                        message=f"At max capacity ({self.config.max_concurrent_issues} concurrent)"
+                    )
+            elif actionable:
+                # Start workflows for available slots
+                for issue in actionable[:available_slots]:
+                    await self.start_issue_workflow(issue)
+                    # Small delay between starts
+                    await asyncio.sleep(2)
             
         except Exception as e:
             logger.error(f"Error in polling cycle: {e}")

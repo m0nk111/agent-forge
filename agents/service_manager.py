@@ -116,7 +116,8 @@ class ServiceManager:
                 max_concurrent_issues=3
             )
             
-            service = PollingService(config)
+            # Create service with monitoring enabled
+            service = PollingService(config, enable_monitoring=True)
             self.services['polling'] = service
             self.health_status['polling'] = True
             
