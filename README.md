@@ -278,6 +278,48 @@ Response: Structured code with file markers
 - 🔄 **Refactoring**: Large-scale code improvements
 - 🐛 **Bug Fixing**: Automated debugging workflows
 
+## Workspace Tools (Issue #8)
+
+Agents include powerful workspace exploration and file reading capabilities:
+
+### Precise Line-Range Reading
+
+Read specific sections of files instead of entire contents - saves tokens and improves efficiency:
+
+```python
+from agents.workspace_tools import WorkspaceTools
+
+tools = WorkspaceTools("/path/to/project")
+
+# Read lines 50-75 from a file
+code_section = tools.read_file_lines("src/main.py", 50, 75)
+
+# Read just the imports (lines 1-10)
+imports = tools.read_file_lines("src/utils.py", 1, 10)
+```
+
+### Function Extraction
+
+Extract specific function definitions using AST parsing:
+
+```python
+# Read specific function with all decorators
+function_code = tools.read_function("agents/qwen_agent.py", "execute_phase")
+
+# Read class method
+method_code = tools.read_function("lib/ollama_client.py", "generate")
+
+# Works with async functions too
+async_code = tools.read_function("api/routes.py", "handle_request")
+```
+
+**Benefits:**
+- 🎯 Target specific code sections
+- 💰 Efficient token usage (only read what you need)
+- 🔍 Automatic function boundary detection
+- 📚 Includes decorators and docstrings
+- ⚡ Fast for large files
+
 ## Configuration
 
 Agents can be configured via:
