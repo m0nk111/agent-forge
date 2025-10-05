@@ -480,7 +480,7 @@ class PollingService:
             qwen = QwenAgent(
                 project_root="/opt/agent-forge",
                 model="qwen2.5-coder:32b",
-                base_url="http://localhost:11434"
+                ollama_url="http://localhost:11434"
             )
             
             # Start issue handler with agent
