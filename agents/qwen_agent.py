@@ -78,6 +78,12 @@ try:
 except ImportError:
     from mcp_client import MCPClient
 
+# Import issue handler (autonomous GitHub issue resolution)
+try:
+    from .issue_handler import IssueHandler
+except ImportError:
+    from issue_handler import IssueHandler
+
 # Colors for terminal output
 class Colors:
     HEADER = '\033[95m'
@@ -135,6 +141,9 @@ class QwenAgent:
         
         # Initialize MCP client (Issue #12)
         self.mcp_client = MCPClient(self.terminal)
+        
+        # Initialize issue handler (autonomous GitHub issue resolution)
+        self.issue_handler = IssueHandler(self)
         
         # Project metadata
         self.project_name = self.config.get('project', {}).get('name', 'Unnamed Project')
