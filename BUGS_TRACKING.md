@@ -4,36 +4,69 @@
 
 ## 🐛 Active Bugs
 
-### Bug #1: GitHub CLI Incompatible with Systemd Services [CRITICAL]
-- **Status**: ⚠️ ACTIVE - Requires GitHub REST API migration
-- **Severity**: CRITICAL
-- **Impact**: Polling service completely broken - cannot query GitHub issues
+### Bug #1: GitHub CLI Incompatible with Systemd Services [CRITICAL] ✅ FIXED
+- **Status**: ✅ **FIXED** (October 5, 2025 19:43 UTC)
+- **Severity**: CRITICAL (Was a show stopper)
+- **Impact**: Entire autonomous development system was non-functional
 - **Error**: `failed to read configuration: open /home/agent-forge/.config/gh/config.yml: permission denied`
 - **Location**: All `gh` CLI subprocess calls in `agents/polling_service.py`
 - **Root Cause**: gh CLI has design flaw - ALWAYS requires config files even with GH_TOKEN
-- **Time Spent Debugging**: 2+ hours
-- **Attempts Made**:
-  - ❌ Fixed file permissions (755/644) - Failed
-  - ❌ Fixed ownership (agent-forge:agent-forge) - Failed
-  - ❌ Set HOME environment variable - Failed
-  - ❌ Set GH_CONFIG_DIR environment variable - Failed
-  - ❌ Set GH_TOKEN environment variable - Failed (gh CLI ignores it!)
-  - ❌ Disabled ALL systemd security hardening - Failed
-  - ❌ EnvironmentFile with tokens - Failed
-  - ✅ Works OUTSIDE systemd as agent-forge user - But fails INSIDE systemd
-- **Online Research**:
-  - GitHub Issue #7360: gh CLI requires writable config.yml
-  - GitHub Issue #4955: `gh auth login` needs write access
-  - Multiple reports of systemd + gh CLI issues with ProtectHome
-  - Recommendation: Use GitHub REST API directly with curl/requests
-- **Recommended Solution**: 
-  - Replace all `gh` CLI calls with direct GitHub REST API
-  - Use requests library with `Authorization: Bearer <token>` header
-  - API endpoints: `/repos/{owner}/{repo}/issues`, `/issues/{num}/comments`
-  - Estimated work: 2-3 hours for complete refactor
-- **Workaround**: None available - gh CLI fundamentally broken in systemd
-- **Date Discovered**: 2025-10-05 19:00 UTC
-- **Priority**: URGENT - Blocking all polling functionality
+- **Time Spent**: 2+ hours debugging + 45 minutes implementing fix
+- **Resolution Date**: 2025-10-05 19:43 UTC
+
+#### Fix Implementation
+**Solution**: Complete migration from gh CLI to GitHub REST API
+
+**Changes Made**:
+1. **Replaced subprocess with requests library**
+   - Removed all `subprocess.run(["gh", ...])` calls
+   - Direct HTTP requests to `api.github.com`
+
+2. **Added GitHubAPI Helper Class** (`agents/polling_service.py` lines 67-143)
+   - Session management with persistent headers
+   - Bearer token authentication: `Authorization: Bearer {token}`
+   - Timeout handling (30s per request)
+   - Comprehensive error handling (Timeout, HTTPError, generic Exception)
+
+3. **Implemented Retry Logic**
+   - 3 attempts per operation (configurable)
+   - 2-second delays between retries
+   - Specific handling for timeout, HTTP, and authentication errors
+   - Early exit on authentication failures (no retry)
+
+4. **Updated Three Core Methods**:
+   - `check_assigned_issues()`: GET `/repos/{owner}/{repo}/issues` with query params
+   - `is_issue_claimed()`: GET `/repos/{owner}/{repo}/issues/{num}/comments`
+   - `claim_issue()`: POST `/repos/{owner}/{repo}/issues/{num}/comments`
+
+5. **Service Manager Update** (`agents/service_manager.py` line 125)
+   - Removed `enable_monitoring` parameter from PollingService initialization
+   - Simplified configuration
+
+6. **Systemd Configuration Fix** (`/etc/systemd/system/agent-forge.service`)
+   - Added: `EnvironmentFile=/opt/agent-forge/config/github.env`
+   - Ensures `GITHUB_TOKEN` and `GH_TOKEN` are available to service
+
+#### Verification Results (October 5, 2025 19:43 UTC)
+```bash
+Oct 05 19:43:37: agents.polling_service: INFO - Found 8 assigned issues in m0nk111/agent-forge
+Oct 05 19:43:37: agents.polling_service: INFO - Found 0 assigned issues in m0nk111/stepperheightcontrol
+Oct 05 19:43:40: __main__: INFO - === All services started successfully ===
+Oct 05 19:43:40: __main__: INFO - Services: ['polling', 'monitoring', 'web_ui', 'qwen_agent']
+Oct 05 19:44:10: Health check: {'polling': True, 'monitoring': True, 'web_ui': True, 'qwen_agent': True}
+```
+
+**Success Metrics**:
+- ✅ **Zero** permission denied errors
+- ✅ Polling service successfully queries GitHub REST API
+- ✅ All 4 services healthy and operational
+- ✅ 8 assigned issues detected in first polling cycle
+- ✅ System fully operational and autonomous
+
+**Git Commit**: `7d638d7` - "Fix Bug #1: Replace gh CLI with GitHub REST API in polling service"  
+**Related GitHub Issue**: [#39 - URGENT: Replace gh CLI with GitHub REST API](https://github.com/m0nk111/agent-forge/issues/39)
+
+---
 
 ### Bug #2: Agent Metrics Show 0 Values
 - **Status**: ⏳ IN PROGRESS
