@@ -53,11 +53,11 @@ class ServiceConfig:
     
     # Monitoring service  
     enable_monitoring: bool = True
-    monitoring_port: int = 8765
+    monitoring_port: int = 7997  # Standard monitoring port (matches dashboard)
     
     # Web UI
     enable_web_ui: bool = True
-    web_ui_port: int = 8080
+    web_ui_port: int = 8897  # Standard dashboard port
     
     # Health check
     health_check_interval: int = 30  # seconds
