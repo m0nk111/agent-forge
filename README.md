@@ -23,6 +23,7 @@ Agent Forge is a framework for creating autonomous coding agents using different
 - 🐛 **Error Checking**: Syntax validation, linting (pylint/flake8/eslint), type checking (mypy)
 - 🌐 **Web Documentation**: Fetch docs from trusted sources (Python docs, GitHub, Stack Overflow) with caching
 - 🤖 **Autonomous Polling**: Automatically check for assigned GitHub issues and start workflows (Issue #17)
+- ✅ **Copilot Compliance**: Validate operations against project standards with auto-fix (Issue #18)
 - 🌐 **External Knowledge**: MCP integration placeholders
 - 📚 **Documentation Loading**: Auto-load project docs (ARCHITECTURE.md, README.md, etc.)
 - 🗂️ **Workspace Awareness**: Explore project structure, validate paths, find files
@@ -369,6 +370,123 @@ watch_labels:
 max_concurrent_issues: 3       # Work on 3 issues simultaneously
 claim_timeout_minutes: 60      # Claim expires after 1 hour
 ```
+
+### 11. Copilot Instructions Compliance (Issue #18)
+
+Automatically validate all agent operations against project standards defined in `.github/copilot-instructions.md`.
+
+```python
+from agents.instruction_validator import InstructionValidator
+from pathlib import Path
+
+# Initialize validator
+validator = InstructionValidator(
+    instructions_file=Path(".github/copilot-instructions.md"),
+    auto_fix=True  # Enable automatic fixes
+)
+
+# Validate file location
+is_valid, violation = validator.validate_file_location("agents/new_feature.py")
+if not is_valid:
+    print(f"❌ {violation.message}")
+    print(f"💡 {violation.suggestion}")
+
+# Validate commit message
+is_valid, violation = validator.validate_commit_message("feat: Add new feature")
+if not is_valid:
+    # Auto-fix available
+    fixed_message = validator.auto_fix_violation(violation, message="Added feature")
+    print(f"✅ Fixed: {fixed_message}")
+
+# Validate complete operation
+report = validator.validate_operation(
+    operation="commit",
+    message="feat: Implement awesome feature",
+    changed_files=["agents/feature.py", "CHANGELOG.md"]
+)
+print(report)  # Detailed compliance report
+
+# Generate PR compliance report
+pr_report = validator.generate_compliance_report(
+    changed_files=["agents/feature.py", "tests/test_feature.py", "CHANGELOG.md"],
+    commit_message="feat: Add feature with tests"
+)
+```
+
+**CLI Usage**:
+```bash
+# Validate file location
+python -m agents.instruction_validator .github/copilot-instructions.md \
+    --file "agents/new_service.py"
+
+# Validate commit message
+python -m agents.instruction_validator .github/copilot-instructions.md \
+    --commit "feat: Add awesome feature"
+
+# Validate port usage
+python -m agents.instruction_validator .github/copilot-instructions.md \
+    --port 7500
+
+# Parse and export rules
+python -m agents.instruction_parser .github/copilot-instructions.md \
+    --export config/parsed_rules.yaml --verbose
+```
+
+**Validation Categories**:
+- 🏗️ **Project Structure**: File placement, root directory rules, external-code protection
+- 🔀 **Git Standards**: Conventional commits, changelog requirements, file-specific messages
+- 📝 **Documentation**: English-only policy, DOCS_CHANGELOG updates, markdown formatting
+- ✨ **Code Quality**: Debug logging requirements, global DEBUG flag, error handling
+- 🌐 **Infrastructure**: Port range conventions (7000-7999), IP address policies, Docker configs
+
+**Auto-Fix Capabilities**:
+- ✅ **Commit Messages**: Automatically format to conventional commit standard
+- ✅ **Changelog Entries**: Generate CHANGELOG.md entries from commit messages
+- ✅ **Documentation**: Suggest fixes for formatting issues
+
+**Configuration** (`config/instruction_rules.yaml`):
+```yaml
+validation:
+  enforce_root_files: true
+  require_changelog: true
+  block_external_commits: true
+  enforce_port_ranges: true
+  require_conventional_commits: true
+
+exemptions:
+  files:
+    - ".github/**"
+    - "README.md"
+    - "CHANGELOG.md"
+    - "requirements.txt"
+  directories:
+    - "tests/**"
+    - "examples/**"
+
+auto_fix:
+  enabled: true
+  categories:
+    - "commit_messages"
+    - "changelog"
+  require_confirmation: false
+```
+
+**Features**:
+- ✅ **Pre-Commit Validation**: Check all changes before committing
+- ✅ **Pre-Edit Validation**: Validate file locations before creation
+- ✅ **Pre-PR Validation**: Generate compliance report for pull requests
+- 🔧 **Auto-Fix**: Automatic fixes for common violations
+- 📊 **Compliance Reports**: Detailed reports with suggestions
+- 🎓 **Educational**: Explains why rules exist and how to fix violations
+- ⚙️ **Configurable**: Customize enforcement, exemptions, and auto-fixes
+- 📈 **Metrics Tracking**: Track compliance over time
+
+**Benefits**:
+- **Consistency**: All agents follow the same project standards
+- **Quality**: Automated enforcement of best practices
+- **Productivity**: Auto-fix reduces manual corrections
+- **Collaboration**: Clear standards for multi-agent coordination
+- **Documentation**: Self-documenting rules from copilot-instructions.md
 
 **Workflow**:
 1. Service polls GitHub API for assigned issues

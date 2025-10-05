@@ -1,0 +1,269 @@
+# Copilot Instructions Validation Rules Configuration
+#
+# This file configures how the instruction validator enforces project standards.
+# Rules are parsed from .github/copilot-instructions.md and applied according to these settings.
+
+validation:
+  # Enforce root directory rule (files should be in subdirectories)
+  enforce_root_files: true
+  
+  # Require CHANGELOG.md updates for all non-trivial changes
+  require_changelog: true
+  
+  # Block commits/pushes inside external-code directories
+  block_external_commits: true
+  
+  # Enforce port range conventions (7000-7999 for Caramba, etc.)
+  enforce_port_ranges: true
+  
+  # Require debug logging with emoji prefixes
+  require_debug_logging: true
+  
+  # Require conventional commit format
+  require_conventional_commits: true
+  
+  # Require English for all documentation
+  require_english_docs: true
+  
+  # Validate file placement before creation
+  validate_file_location: true
+  
+  # Check changelog updated before commit
+  validate_changelog: true
+
+# Files/directories exempt from validation rules
+exemptions:
+  files:
+    # Git/GitHub configuration
+    - ".gitignore"
+    - ".gitattributes"
+    - ".github/**"
+    
+    # Editor configuration
+    - ".vscode/**"
+    - ".idea/**"
+    - "*.code-workspace"
+    
+    # Build/dependency files
+    - "requirements.txt"
+    - "package.json"
+    - "package-lock.json"
+    - "poetry.lock"
+    - "Pipfile"
+    - "Pipfile.lock"
+    
+    # Configuration files (allowed in root)
+    - "pyproject.toml"
+    - "setup.py"
+    - "setup.cfg"
+    - "pytest.ini"
+    - "mypy.ini"
+    - "tox.ini"
+    - ".pylintrc"
+    - ".flake8"
+    
+    # Documentation (allowed in root)
+    - "README.md"
+    - "CHANGELOG.md"
+    - "CHANGELOG_*.md"
+    - "LICENSE"
+    - "LICENSE.txt"
+    - "CONTRIBUTING.md"
+    - "CODE_OF_CONDUCT.md"
+    
+    # CI/CD
+    - ".travis.yml"
+    - ".gitlab-ci.yml"
+    - "Jenkinsfile"
+    - ".circleci/**"
+    
+  directories:
+    # Test directories have relaxed rules
+    - "tests/**"
+    - "test/**"
+    - "**/tests/**"
+    - "**/test/**"
+    
+    # Examples/demos
+    - "examples/**"
+    - "demo/**"
+    - "demos/**"
+    
+    # Temporary/build directories
+    - ".pytest_cache/**"
+    - "__pycache__/**"
+    - "*.egg-info/**"
+    - "build/**"
+    - "dist/**"
+    - ".tox/**"
+    
+    # External code (read-only, validation disabled)
+    - "external-code/**"
+    - "external_code/**"
+    - "vendor/**"
+    - "third_party/**"
+
+# Auto-fix configuration
+auto_fix:
+  # Enable automatic fixes for fixable violations
+  enabled: true
+  
+  # Categories that can be auto-fixed
+  categories:
+    - "formatting"          # Code formatting fixes
+    - "documentation"       # Documentation formatting
+    - "commit_messages"     # Commit message format
+    - "changelog"           # Changelog entry generation
+  
+  # Specific auto-fixes to enable
+  fixes:
+    # Automatically format commit messages to conventional format
+    conventional_commits: true
+    
+    # Auto-generate CHANGELOG.md entries
+    changelog_entries: true
+    
+    # Fix markdown formatting issues
+    markdown_formatting: false  # Manual review preferred
+    
+    # Add debug logging templates
+    debug_logging: false  # Manual implementation preferred
+  
+  # Backup original before applying fixes
+  create_backup: true
+  
+  # Ask for confirmation before applying fixes
+  require_confirmation: false  # Auto-apply in CI/autonomous mode
+
+# Rule severity levels
+severity:
+  # How to handle violations by severity
+  error:
+    # Block operation on error-level violations
+    block_operation: true
+    # Exit code for errors
+    exit_code: 1
+    # Notify in logs
+    log_level: "ERROR"
+    
+  warning:
+    # Don't block, but warn
+    block_operation: false
+    # Exit code for warnings (0 = don't fail)
+    exit_code: 0
+    # Notify in logs
+    log_level: "WARNING"
+    
+  info:
+    # Informational only
+    block_operation: false
+    exit_code: 0
+    log_level: "INFO"
+
+# Integration points
+integration:
+  # Pre-commit validation
+  pre_commit:
+    enabled: true
+    # Rules to check before commit
+    checks:
+      - "file_location"
+      - "commit_message"
+      - "changelog_updated"
+      - "external_code_protection"
+    # Block commit if validation fails
+    block_on_failure: true
+    
+  # Pre-file-edit validation
+  pre_edit:
+    enabled: true
+    checks:
+      - "file_location"
+      - "external_code_protection"
+    block_on_failure: true
+    
+  # Pre-PR validation
+  pre_pr:
+    enabled: true
+    # Generate compliance report
+    generate_report: true
+    # Add report to PR description
+    add_to_description: true
+    # Label PRs based on compliance
+    apply_labels: true
+    labels:
+      compliant: "✅ compliant"
+      violations: "⚠️ compliance-issues"
+    block_on_failure: false  # Allow PR creation but flag issues
+
+# Reporting
+reporting:
+  # Generate detailed compliance reports
+  enabled: true
+  
+  # Report format
+  format: "markdown"  # markdown, json, yaml, text
+  
+  # Include in reports
+  include:
+    - "violations"
+    - "warnings"
+    - "suggestions"
+    - "auto_fixes_applied"
+    - "exempted_files"
+  
+  # Where to save reports
+  output_dir: ".agent-forge/compliance-reports"
+  
+  # Track compliance metrics over time
+  track_metrics: true
+  metrics_file: ".agent-forge/compliance-metrics.json"
+  
+  # Educational feedback
+  educational_mode: true
+  # Explain why rules exist when violations found
+  explain_violations: true
+
+# Project-specific overrides
+# These override parsed rules from copilot-instructions.md
+project_overrides:
+  # Custom port ranges for specific projects
+  port_ranges:
+    caramba: [7000, 7999]
+    stepper: [7996, 7996]
+    frigate: [8971, 8971]
+  
+  # Custom root file exceptions
+  allowed_root_files:
+    - "TODO_LIST.md"
+    - "TODO_LIST_*.md"
+    - "PHASE*.md"
+    - "*_REPORT.md"
+    - "*_SUMMARY.md"
+  
+  # Custom external code directories
+  external_code_dirs:
+    - "app/external-code"
+    - "external-code"
+    - "Mycodo"  # Fork, don't modify structure
+
+# Advanced options
+advanced:
+  # Use LLM for complex rule interpretation
+  llm_validation: false
+  llm_model: "gpt-4"
+  
+  # Gradual enforcement (warn first, then block)
+  gradual_enforcement:
+    enabled: false
+    training_period_days: 7
+    # Only warn during training period
+    warn_only: true
+  
+  # Cache parsed rules for performance
+  cache_rules: true
+  cache_ttl_seconds: 3600
+  
+  # Parallel validation for large changesets
+  parallel_validation: true
+  max_workers: 4
