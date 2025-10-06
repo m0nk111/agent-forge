@@ -12,10 +12,12 @@ Agent-Forge is an intelligent multi-agent system that automates GitHub workflows
 - 🔄 **Autonomous Operation**: Automatic issue detection and task distribution
 - 🧪 **Agent Modes**: Switch between idle, test, and production modes per agent
 - 🔍 **Code Review Automation**: AI-powered PR reviews with quality scoring
-- ✅ **Instruction Validation**: Automatic enforcement of Copilot instructions and project standards
+- ✅ **Instruction Validation**: Automatic enforcement of Copilot instructions and project standards (#63)
 - 📝 **Comprehensive Logging**: Structured logging with real-time updates
 - 🌐 **LAN Access**: Dashboard accessible from any device on your network
 - 🔒 **Bot Account Support**: Dedicated bot account for GitHub operations (no email spam)
+- 🎨 **Visual Documentation**: Complete Mermaid diagrams for architecture, data flow, and component interactions (#67)
+- 🧭 **Agent Awareness**: Clear workspace identification prevents agents from confusing projects
 
 ## 🚀 Quick Start
 
@@ -97,6 +99,31 @@ See [docs/QWEN_MONITORING.md](docs/QWEN_MONITORING.md) for detailed documentatio
 > **📊 Visual Documentation**: See [Architecture Diagrams](docs/diagrams/architecture-overview.md) for visual system overview, data flow, and component interactions.
 
 For complete architecture details, see [ARCHITECTURE.md](ARCHITECTURE.md).
+
+## 📰 Recent Developments
+
+### October 2025 Updates
+
+**✅ Completed:**
+- **PR #63**: Comprehensive instruction validation system with 30+ tests and 78% coverage
+  - Auto-fix commit messages and changelog entries
+  - Validation of file locations, port usage, documentation language
+  - Educational feedback explains why rules exist
+- **PR #68 / Issue #67**: Complete architecture documentation suite
+  - AGENT_ONBOARDING.md: Quick start checklist for AI agents
+  - ARCHITECTURE.md: Deep technical architecture (645 lines)
+  - PORT_REFERENCE.md: Port allocation guide (574 lines)
+  - Visual Mermaid diagrams (1389 lines total)
+  - Frontend structure clarification (dashboard.html is DEFAULT)
+- **Agent Awareness Fix**: Prominent workspace identification in copilot-instructions.md
+  - Prevents agents from confusing agent-forge with other projects (Caramba, AudioTransfer)
+  - Clear "THIS IS AGENT-FORGE" header prevents historical confusion
+- **Project Refactoring**: `qwen_agent.py` → `code_agent.py` for generic LLM support
+- **Unified Dashboard**: New modern dashboard combining monitoring + configuration (#27, #28, #65)
+
+**🐛 Known Issues:**
+- GitHub CLI incompatible with systemd services (Bug #1) - FIXED via REST API migration
+- See [docs/BUGS_TRACKING.md](docs/BUGS_TRACKING.md) for active bug tracking
 
 ### Agent Roles
 

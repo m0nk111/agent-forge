@@ -24,10 +24,33 @@
 Agent-Forge is a multi-agent orchestration platform for GitHub automation. It consists of:
 
 - **Service Manager**: Central orchestrator running all services
-- **Specialized Agents**: Bot, Coordinator, Qwen (code generation)
+- **Specialized Agents**: Bot, Coordinator, Code Agent (generic LLM, formerly Qwen)
 - **Monitoring Infrastructure**: WebSocket server + real-time dashboards
 - **Polling Service**: Autonomous GitHub issue detection
 - **Configuration Management**: YAML-based agent and system configuration
+- **Instruction Validation System**: Automatic enforcement of Copilot instructions (PR #63)
+- **Visual Documentation**: Comprehensive Mermaid diagrams for architecture understanding (PR #68)
+
+### Recent Updates (October 2025)
+
+**Agent Refactoring**:
+- `qwen_agent.py` renamed to `code_agent.py` for generic LLM support
+- `QwenAgent` class renamed to `CodeAgent`
+- Service manager updated: `enable_qwen_agent` → `enable_code_agent`
+- Backward compatibility maintained via CLI flags
+
+**Instruction Validation** (PR #63):
+- Validates file locations, commit messages, changelog updates, port usage, language
+- Auto-fix capabilities for common issues
+- Integrated into IssueHandler, FileEditor, GitOperations
+- 30 unit tests + 4 integration tests (78% code coverage)
+
+**Documentation Enhancement** (PR #68):
+- Complete architecture documentation suite
+- Visual Mermaid diagrams (1389 lines total)
+- Agent onboarding checklist
+- Port reference guide with troubleshooting
+- Prevents agent confusion between projects
 
 ### High-Level Architecture
 

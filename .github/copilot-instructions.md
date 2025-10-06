@@ -10,13 +10,29 @@
 
 # GitHub Copilot Instructions
 
+## Recent Changes & Context
+
+### October 2025 Updates
+- **PR #63**: Instruction validation system implemented with auto-fix capabilities
+- **PR #68**: Comprehensive documentation suite with visual Mermaid diagrams
+- **Agent Refactoring**: `qwen_agent.py` → `code_agent.py` (generic LLM support)
+- **Workspace Identification**: This header added to prevent agent confusion between projects
+- **Bug Fixes**: GitHub CLI replaced with REST API (systemd compatibility)
+
+### Agent Naming Convention
+- **Code Agent**: `agents/code_agent.py` (generic LLM, not Qwen-specific)
+- **Bot Agent**: `agents/bot_agent.py` (GitHub operations, no email spam)
+- **Coordinator Agent**: `agents/coordinator_agent.py` (task orchestration)
+- **Polling Service**: `agents/polling_service.py` (GitHub issue monitoring)
+
 ## Project Structure Conventions
 
 ### Root Directory Rule
-- **Rule**: Only README.md, CHANGELOG.md, LICENSE, and configuration files allowed in root
-- **Rationale**: Keep root clean for better navigation
+- **Rule**: Only README.md, CHANGELOG.md, LICENSE, ARCHITECTURE.md, and configuration files allowed in root
+- **Rationale**: Keep root clean for better navigation (cleanup completed October 2025)
 - **Enforcement**: Block creation of other files in root directory
 - **Exceptions**: .gitignore, .github/*, .vscode/*, package.json, requirements.txt
+- **Recent Cleanup**: All test/demo scripts moved to tests/ and scripts/ directories
 
 ### Directory Organization
 - **Rule**: Use narrow and deep directory structure

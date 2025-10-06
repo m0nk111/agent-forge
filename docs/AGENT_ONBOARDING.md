@@ -2,6 +2,18 @@
 
 > **Purpose**: This document provides a structured checklist for AI agents to quickly understand the Agent-Forge project architecture, conventions, and workflows.
 
+## ⚠️ CRITICAL: Workspace Awareness
+
+**YOU ARE WORKING ON AGENT-FORGE**, not Caramba, not AudioTransfer, not any other project!
+
+**Historical Context**: Previous agents confused this project with other workspaces, working on agent-forge issues in the Caramba project and vice versa. The `.github/copilot-instructions.md` file now has a prominent header to prevent this confusion.
+
+**Before starting ANY work:**
+1. ✅ Verify you're in `/home/flip/agent-forge/` directory
+2. ✅ Check `.github/copilot-instructions.md` confirms "AGENT-FORGE PROJECT ONLY"
+3. ✅ Confirm repository is `m0nk111/agent-forge` (not `m0nk111/caramba`)
+4. ✅ Read issue carefully - does it belong to THIS project?
+
 ## 📋 Quick Start Checklist
 
 ### 1. Essential Reading (Read in this order!)
@@ -77,7 +89,32 @@ websocket_handler.py
 - [ ] `DOCS_CHANGELOG.md` - Documentation changes tracked separately
 - [ ] `BUGS_TRACKING.md` - Known issues and tracking
 
-### 4. Development Workflows
+### 4. Recent Changes & Context (October 2025)
+
+#### **🔄 Major Refactorings**
+- **`qwen_agent.py` → `code_agent.py`**: Generic LLM support, not Qwen-specific anymore
+- **Project structure cleanup**: All test/demo scripts moved to `tests/` and `scripts/` directories
+- **File renames**: Check import paths if working with older code references
+
+#### **✅ New Features**
+- **Instruction Validation System (PR #63)**:
+  - `agents/instruction_parser.py`: Parses `.github/copilot-instructions.md`
+  - `agents/instruction_validator.py`: Validates file locations, commits, changelog, ports, language
+  - `config/instruction_rules.yaml`: Validation rules configuration
+  - Auto-fix capabilities for commit messages
+  - 30 unit tests + 4 integration tests (78% coverage)
+- **Visual Documentation (PR #68 / Issue #67)**:
+  - Complete Mermaid diagrams in `docs/diagrams/`
+  - Architecture, data flow, component interaction diagrams
+  - Port reference guide with troubleshooting
+- **Unified Dashboard**: New modern dashboard at `frontend/unified_dashboard.html`
+
+#### **🐛 Known Bugs Fixed**
+- **GitHub CLI systemd incompatibility**: Replaced `gh` CLI with REST API (Bug #1, commit `7d638d7`)
+- **Commit validator too strict**: Relaxed regex from `.{10,}` to `.{3,}` to allow valid short commits
+- **Integration tests lacked assertions**: Added proper assertions to all test functions
+
+### 5. Development Workflows
 
 #### **Deployment Commands**
 ```bash
