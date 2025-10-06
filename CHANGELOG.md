@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2025-01-06
 
+### Added
+- **Unified Dashboard** - New modern dashboard combining monitoring and configuration (Issues #27, #28)
+  - **Fixed Layout**: 1280x1024 viewport with agent list (40%) + live logs (60%)
+  - **Agent Cards**: Click-to-select agents with real-time status, model info, task progress
+  - **Live Log Filtering**: View all logs or filter by selected agent
+  - **Sliding Sidebar**: 400px configuration panel with smooth animations
+  - **Agent Configuration**: Add/edit agents with model selection, permissions, capabilities
+  - **Permission System**: Granular permissions (read files, write files, execute commands, GitHub ops, APIs)
+  - **Model Selection**: Dropdown with GPT-4, Claude 3, Qwen 2.5 Coder, Gemini Pro options
+  - **WebSocket Integration**: Real-time updates via existing monitoring infrastructure
+  - **Dark Theme**: Consistent with existing Agent-Forge UI
+  - **Footer Links**: Added navigation to unified dashboard from classic monitoring and config UI
+  - **Backward Compatible**: Old dashboards remain default, new UI accessible via footer links
+
 ### Changed
 - **BREAKING: Agent Refactoring** - Renamed `qwen_agent.py` to `code_agent.py` for generic LLM support (Issue #66)
   - **Class Rename**: `QwenAgent` → `CodeAgent` 
