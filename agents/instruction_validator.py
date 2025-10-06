@@ -204,7 +204,8 @@ class InstructionValidator:
             )
         
         # Conventional commit pattern: type(scope): description
-        pattern = r'^(feat|fix|docs|style|refactor|test|chore)(\([a-zA-Z0-9_-]+\))?: .{10,}$'
+        # Relaxed to .{3,} to allow short but valid commits like "fix: tests"
+        pattern = r'^(feat|fix|docs|style|refactor|test|chore)(\([a-zA-Z0-9_-]+\))?: .{3,}$'
         
         # Extract first line
         first_line = message.split('\n')[0].strip()
