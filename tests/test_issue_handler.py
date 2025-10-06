@@ -12,9 +12,10 @@ This is the REAL autonomous development workflow!
 """
 
 import sys
-sys.path.insert(0, '/home/flip/agent-forge')
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from agents.qwen_agent import QwenAgent
+from agents.code_agent import CodeAgent
 
 print("╔══════════════════════════════════════════════════════════════════════╗")
 print("║     🤖 AGENT-FORGE: AUTONOMOUS GITHUB ISSUE RESOLUTION TEST 🤖      ║")
@@ -23,7 +24,7 @@ print()
 
 # Initialize agent for Caramba project
 print("📦 Initializing agent for Caramba project...")
-agent = QwenAgent(project_root='/home/flip/caramba')
+agent = CodeAgent(project_root='/home/flip/caramba')
 print("   ✅ Agent initialized with all capabilities")
 print()
 
@@ -148,7 +149,7 @@ print()
 print("🚀 NEXT STEP: Connect to real GitHub issues!")
 print()
 print("Usage:")
-print("   python3 test_issue_handler.py --repo owner/repo --issue 123")
+print("   python3 tests/test_issue_handler.py --repo owner/repo --issue 123")
 print()
 print("The agent will:")
 print("   1. Fetch issue #123 from GitHub")

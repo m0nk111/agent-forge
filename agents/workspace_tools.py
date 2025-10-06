@@ -184,7 +184,7 @@ class WorkspaceTools:
             FileNotFoundError: If file doesn't exist
             
         Example:
-            >>> tools.read_function("agents/qwen_agent.py", "execute_phase")
+            >>> tools.read_function("agents/code_agent.py", "execute_phase")
             # Returns complete execute_phase function with decorators
         """
         full_path = self._validate_path(path)

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2025-01-06
 
+### Changed
+- **BREAKING: Agent Refactoring** - Renamed `qwen_agent.py` to `code_agent.py` for generic LLM support (Issue #66)
+  - **Class Rename**: `QwenAgent` → `CodeAgent` 
+  - **File Rename**: `agents/qwen_agent.py` → `agents/code_agent.py`
+  - **Service Manager**: Updated all service keys and methods (`enable_qwen_agent` → `enable_code_agent`)
+  - **Configuration**: CLI flag `--no-qwen` kept for backward compatibility
+  - **Documentation**: Updated all references in README, QWEN_MONITORING.md, MULTI_AGENT_GITHUB_STRATEGY.md, SETUP_QWEN_GITHUB_ACCOUNT.md
+  - **Tests**: Updated imports in `test_issue_handler.py` and `test_qwen_monitoring.py`
+  - **Migration Required**: Update any external code importing `QwenAgent` to use `CodeAgent`
+
 ### Added
 - **API Test Endpoint** - Added `/api/hello` endpoint for API health verification (Issue #54)
   - Returns JSON with status, message, and UTC timestamp

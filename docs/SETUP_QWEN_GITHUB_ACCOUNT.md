@@ -293,14 +293,14 @@ class GitOperations:
             return False
 ```
 
-### 5.2 Integrate with QwenAgent
+### 5.2 Integrate with CodeAgent
 
-Update `agents/qwen_agent.py`:
+Update `agents/code_agent.py`:
 
 ```python
 from git_operations import GitOperations
 
-class QwenAgent:
+class CodeAgent:
     def __init__(self, config_path: str):
         # ... existing code ...
         self.git = GitOperations()  # Add git operations
@@ -333,7 +333,7 @@ source ~/.agent-forge.env
 
 # Test with dry run (no commits)
 cd /home/flip/agent-forge
-python3 agents/qwen_agent.py \
+python3 agents/code_agent.py \
   --config configs/caramba_personality_ai.yaml \
   --phase 2 \
   --dry-run
@@ -343,7 +343,7 @@ python3 agents/qwen_agent.py \
 
 ```bash
 # Execute Phase 2 with agent identity
-python3 agents/qwen_agent.py \
+python3 agents/code_agent.py \
   --config configs/caramba_personality_ai.yaml \
   --phase 2
 

@@ -19,7 +19,7 @@ The Qwen Agent now supports real-time monitoring dashboard integration, allowing
 Add the `--enable-monitoring` flag when running the Qwen agent:
 
 ```bash
-python3 agents/qwen_agent.py --config configs/my_project.yaml --phase 1 --enable-monitoring
+python3 agents/code_agent.py --config configs/my_project.yaml --phase 1 --enable-monitoring
 ```
 
 ### Optional: Custom Agent ID
@@ -27,7 +27,7 @@ python3 agents/qwen_agent.py --config configs/my_project.yaml --phase 1 --enable
 Specify a custom agent ID for better identification:
 
 ```bash
-python3 agents/qwen_agent.py --config configs/my_project.yaml --phase 1 --enable-monitoring --agent-id "my-qwen-agent"
+python3 agents/code_agent.py --config configs/my_project.yaml --phase 1 --enable-monitoring --agent-id "my-qwen-agent"
 ```
 
 If not specified, an auto-generated ID will be used.
@@ -47,10 +47,10 @@ The dashboard will automatically connect via WebSocket to `ws://localhost:7997/w
 ### In Your Code
 
 ```python
-from agents.qwen_agent import QwenAgent
+from agents.qwen_agent import CodeAgent
 
 # Create agent with monitoring enabled
-agent = QwenAgent(
+agent = CodeAgent(
     config_path="configs/my_project.yaml",
     enable_monitoring=True,
     agent_id="my-custom-agent-id"
@@ -75,7 +75,7 @@ agent._update_metrics(
 
 ### Monitoring Helper Methods
 
-The QwenAgent class provides three helper methods for monitoring:
+The CodeAgent class provides three helper methods for monitoring:
 
 #### `_log(level, message)`
 
@@ -141,7 +141,7 @@ agent._update_metrics(
 Run the test script to verify monitoring integration:
 
 ```bash
-python3 test_qwen_monitoring.py
+python3 tests/test_qwen_monitoring.py
 ```
 
 This will:
@@ -162,7 +162,7 @@ The test script demonstrates all monitoring features and serves as a reference i
    - Manages WebSocket connections
    - Broadcasts updates to dashboard
 
-2. **QwenAgent** (`agents/qwen_agent.py`)
+2. **CodeAgent** (`agents/code_agent.py`)
    - Autonomous coding agent
    - Optional monitoring integration
    - Helper methods for status/log updates
@@ -184,7 +184,7 @@ The test script demonstrates all monitoring features and serves as a reference i
 ### Data Flow
 
 ```
-QwenAgent → AgentMonitor → WebSocket Server → Dashboard (Browser)
+CodeAgent → AgentMonitor → WebSocket Server → Dashboard (Browser)
 ```
 
 1. Agent calls `_log()`, `_update_status()`, or `_update_metrics()`
@@ -341,12 +341,12 @@ Potential improvements for monitoring integration:
 
 ## Related Files
 
-- `agents/qwen_agent.py` - Main agent with monitoring integration
+- `agents/code_agent.py` - Main agent with monitoring integration
 - `agents/monitor_service.py` - Monitoring service and state management
 - `agents/websocket_handler.py` - WebSocket server for real-time updates
 - `frontend/dashboard.html` - Web dashboard UI
-- `test_qwen_monitoring.py` - Test script demonstrating monitoring
-- `demo_qwen_working.py` - Simulation of agent working on issues
+- `tests/test_qwen_monitoring.py` - Test script demonstrating monitoring
+- `scripts/demo_qwen_working.py` - Simulation of agent working on issues
 
 ## See Also
 

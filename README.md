@@ -43,13 +43,13 @@ python3 -m agents.service_manager --web-port 8897 --monitor-port 7997
 # Or use individual components:
 
 # Start monitoring dashboard
-./launch_dashboard.sh
+./scripts/launch_dashboard.sh
 
 # Run autonomous polling agent
 python3 agents/polling_service.py --repos owner/repo --interval 300
 
 # Execute agent with config file
-python3 agents/qwen_agent.py --config configs/caramba_personality_ai.yaml --phase 1
+python3 agents/code_agent.py --config configs/caramba_personality_ai.yaml --phase 1
 ```
 
 ## 📊 Monitoring & Dashboard
@@ -60,7 +60,7 @@ Agent-Forge includes a real-time monitoring dashboard for tracking agent activit
 
 ```bash
 # Start dashboard server (accessible on LAN)
-./launch_dashboard.sh
+./scripts/launch_dashboard.sh
 
 # Or manually:
 python3 -m http.server 8897 --directory frontend --bind 0.0.0.0
@@ -84,10 +84,10 @@ Enable monitoring when running agents:
 
 ```bash
 # Run agent with monitoring enabled
-python3 agents/qwen_agent.py --config configs/my_project.yaml --phase 1 --enable-monitoring --agent-id "my-agent"
+python3 agents/code_agent.py --config configs/my_project.yaml --phase 1 --enable-monitoring --agent-id "my-agent"
 
 # Test monitoring integration
-python3 test_qwen_monitoring.py
+python3 tests/test_qwen_monitoring.py
 ```
 
 See [docs/QWEN_MONITORING.md](docs/QWEN_MONITORING.md) for detailed documentation.
@@ -116,7 +116,7 @@ Agent-Forge supports multiple specialized agent roles:
 agent-forge/
 ├── agents/              # Agent implementations
 │   ├── service_manager.py      # Central service orchestrator
-│   ├── qwen_agent.py           # Generic Qwen agent (config-driven)
+│   ├── code_agent.py           # Generic code agent (config-driven, any LLM)
 │   ├── polling_service.py      # Autonomous GitHub polling
 │   ├── pr_reviewer.py          # Automated code review
 │   ├── bot_agent.py            # Bot account operations
@@ -145,7 +145,7 @@ agent-forge/
 - [Instruction Validation Guide](docs/INSTRUCTION_VALIDATION_GUIDE.md) - Enforce project standards
 - [Security Guide](docs/SECURITY.md) - Security best practices
 - [Licensing Guide](docs/LICENSING.md) - Dual-license overview and decision matrix
-- [Commercial License Terms](COMMERCIAL-LICENSE.md) - Proprietary usage agreement
+- [Commercial License Terms](docs/COMMERCIAL-LICENSE.md) - Proprietary usage agreement
 
 ## 🎯 Use Cases
 
@@ -333,7 +333,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 Agent-Forge is **dual licensed**:
 
 - **GNU Affero General Public License v3.0 (AGPLv3)** — see [LICENSE](LICENSE)
-- **Agent Forge Commercial License** — see [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md)
+- **Agent Forge Commercial License** — see [docs/COMMERCIAL-LICENSE.md](docs/COMMERCIAL-LICENSE.md)
 
 Choose the license that matches your use case. See [docs/LICENSING.md](docs/LICENSING.md) for guidance and FAQs.
 

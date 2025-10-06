@@ -55,7 +55,7 @@ echo ""
 echo "🤖 Starting Qwen agent simulation..."
 echo "============================================"
 echo ""
-python3 demo_qwen_working.py
+python3 scripts/demo_qwen_working.py
 
 # Cleanup
 echo ""

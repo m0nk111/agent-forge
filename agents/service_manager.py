@@ -59,10 +59,10 @@ class ServiceConfig:
     enable_web_ui: bool = True
     web_ui_port: int = 8897  # Standard dashboard port
     
-    # Qwen Agent
-    enable_qwen_agent: bool = True
-    qwen_model: str = "qwen2.5-coder:32b"
-    qwen_base_url: str = "http://localhost:11434"
+    # Code Agent (formerly Qwen Agent)
+    enable_code_agent: bool = True
+    qwen_model: str = "qwen2.5-coder:32b"  # Keep param name for backward compat
+    qwen_base_url: str = "http://localhost:11434"  # Keep param name for backward compat
     
     # Health check
     health_check_interval: int = 30  # seconds
@@ -138,15 +138,15 @@ class ServiceManager:
             self.health_status['polling'] = False
             raise
     
-    async def _start_qwen_agent(self):
-        """Start Qwen agent."""
+    async def _start_code_agent(self):
+        """Start code agent."""
         try:
-            from agents.qwen_agent import QwenAgent
+            from agents.code_agent import CodeAgent
             
-            logger.info("Starting Qwen agent...")
+            logger.info("Starting code agent...")
             
             # Create agent instance
-            agent = QwenAgent(
+            agent = CodeAgent(
                 model=self.config.qwen_model,
                 ollama_url=self.config.qwen_base_url,
                 project_root="/opt/agent-forge",
@@ -154,10 +154,10 @@ class ServiceManager:
                 agent_id="qwen-main-agent"
             )
             
-            self.services['qwen_agent'] = agent
-            self.health_status['qwen_agent'] = True
+            self.services['code_agent'] = agent
+            self.health_status['code_agent'] = True
             
-            logger.info("✅ Qwen agent initialized and registered with monitor")
+            logger.info("✅ Code agent initialized and registered with monitor")
             
             # Keep agent alive (it handles issues via polling service callbacks)
             while self.running:
@@ -165,8 +165,8 @@ class ServiceManager:
                 # Agent stays registered and ready
             
         except Exception as e:
-            logger.error(f"Qwen agent error: {e}", exc_info=True)
-            self.health_status['qwen_agent'] = False
+            logger.error(f"Code agent error: {e}", exc_info=True)
+            self.health_status['code_agent'] = False
             raise
             
     async def _start_monitoring_service(self):
@@ -348,10 +348,10 @@ class ServiceManager:
                 )
                 await asyncio.sleep(1)
             
-            # Start Qwen agent
-            if self.config.enable_qwen_agent:
-                self.tasks['qwen_agent'] = asyncio.create_task(
-                    self._start_qwen_agent()
+            # Start code agent
+            if self.config.enable_code_agent:
+                self.tasks['code_agent'] = asyncio.create_task(
+                    self._start_code_agent()
                 )
                 await asyncio.sleep(1)
                 
@@ -490,7 +490,7 @@ async def main():
         enable_polling=not args.no_polling,
         enable_monitoring=not args.no_monitoring,
         enable_web_ui=not args.no_web_ui,
-        enable_qwen_agent=not args.no_qwen,
+        enable_code_agent=not args.no_qwen,  # Keep --no-qwen flag for backward compat
         polling_interval=args.polling_interval,
         web_ui_port=args.web_port,
         monitoring_port=args.monitor_port,
