@@ -8,15 +8,15 @@ This script:
 3. Simulates some work to show in the dashboard
 """
 
-import asyncio
 import sys
 import os
 
 # Add parent directory to path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import asyncio
 from agents.monitor_service import get_monitor, AgentStatus
-from agents.qwen_agent import QwenAgent
+from agents.code_agent import CodeAgent
 
 
 async def test_qwen_with_monitoring():
@@ -40,7 +40,7 @@ async def test_qwen_with_monitoring():
     
     # Create Qwen agent with monitoring enabled
     print("\n1️⃣ Creating Qwen agent with monitoring...")
-    agent = QwenAgent(
+    agent = CodeAgent(
         config_path=None,  # Use default config
         enable_monitoring=True,
         agent_id="qwen-test-agent"

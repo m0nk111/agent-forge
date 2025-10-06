@@ -33,7 +33,7 @@ This guide helps you pick the right option and explains the obligations that com
 
 - Grants rights to keep derivative works closed-source.
 - Includes commercial support options and flexibility around redistribution.
-- Requires annual licensing fee (see `COMMERCIAL-LICENSE.md`).
+- Requires annual licensing fee (see `docs/COMMERCIAL-LICENSE.md`).
 - Ideal for startups, enterprises, and SaaS vendors who need to protect proprietary integrations or business logic.
 
 ---
@@ -95,7 +95,7 @@ A: Currently no CLA is required. Contributions are accepted under AGPLv3 plus a 
 
 - **Email**: licensing@m0nk111.dev
 - **Website**: https://agent-forge.m0nk111.dev/licensing
-- **Commercial License**: See `COMMERCIAL-LICENSE.md`
+- **Commercial License**: See `docs/COMMERCIAL-LICENSE.md`
 - **Open Source License**: See `LICENSE`
 
 ---

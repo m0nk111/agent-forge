@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Test script to register a dummy agent with the monitor."""
 
-import asyncio
 import sys
-sys.path.insert(0, '/home/flip/agent-forge')
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import asyncio
 from agents.monitor_service import get_monitor, AgentStatus
 
 

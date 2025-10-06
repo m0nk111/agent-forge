@@ -10,6 +10,10 @@ Demonstrates:
 - WebSocket connectivity
 """
 
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import asyncio
 import time
 from agents.monitor_service import get_monitor, AgentStatus

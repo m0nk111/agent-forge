@@ -5,7 +5,135 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - 2025-01-06
+## [Unreleased] - 2025-10-06
+
+### Added
+- **Workspace Identification** - Prominent header in `.github/copilot-instructions.md` to prevent agent confusion
+  - Added clear "WORKSPACE-SPECIFIC" warning at top of instructions file
+  - Identifies project as AGENT-FORGE to prevent mixing with other projects (Caramba, AudioTransfer, etc.)
+  - Resolves issue where agents worked on wrong project's issues
+
+- **Instruction Validation System** - Comprehensive validation of code changes against Copilot instructions (#63)
+  - `agents/instruction_parser.py` - Parse `.github/copilot-instructions.md` files
+  - `agents/instruction_validator.py` - Validate file locations, commit messages, changelog updates, port usage, and documentation language
+  - `config/instruction_rules.yaml` - Configuration for validation rules and exemptions
+  - Support for merging global and project-specific instructions
+  - Auto-fix capabilities for commit messages and changelog entries
+  - Compliance reporting with educational feedback
+  - 30 comprehensive tests with 78% code coverage
+  - Integration hooks in `IssueHandler`, `FileEditor`, `GitOperations`
+
+- **Comprehensive Documentation Suite** - Complete architecture and onboarding documentation (#67)
+  - **AGENT_ONBOARDING.md**: Structured checklist for AI agents to quickly understand the project
+    - Must-read documents in priority order
+    - Key architecture concepts to verify
+    - Port overview (8080, 7997, 8897) with common pitfalls
+    - Frontend structure clarification (dashboard.html is DEFAULT)
+    - Deployment verification steps
+    - Common mistakes and best practices
+  - **ARCHITECTURE.md**: Complete system architecture documentation (root level)
+    - Service Manager architecture and orchestration
+    - Agent roles and responsibilities
+    - WebSocket communication flow
+    - Frontend file structure and relationships
+    - Port allocation table with bind addresses
+    - Configuration management hierarchy
+    - Deployment architectures (local, systemd, future Docker)
+    - Security considerations
+  - **docs/diagrams/architecture-overview.md**: Visual system architecture (Mermaid)
+    - Service Manager with all services and agents
+    - Frontend structure (index→dashboard→unified→config→monitoring)
+    - GitHub API integration
+    - LLM connections (Ollama, OpenAI, Anthropic, Google)
+    - Network topology diagram
+  - **docs/diagrams/data-flow.md**: Complete data flow diagrams (Mermaid)
+    - Issue processing lifecycle with sequence diagram
+    - Monitoring data flow (agent → monitor → WebSocket → dashboards)
+    - Configuration update flow with validation
+    - WebSocket message types and patterns
+    - Git operations flow (branch, commit, push, PR)
+    - Rate limiting and caching strategies
+  - **docs/diagrams/component-interactions.md**: Component communication patterns (Mermaid)
+    - Service Manager orchestration lifecycle
+    - Inter-agent communication via Message Bus
+    - Configuration load and runtime update flows
+    - Agent state tracking and metrics collection
+    - Error handling and retry strategies
+    - WebSocket connection management
+    - API request lifecycle
+  - **docs/PORT_REFERENCE.md**: Complete port allocation guide
+    - Detailed port usage table (8080, 7997, 8897, 7996, 11434)
+    - Configuration methods (env vars, config files, CLI)
+    - Common port conflicts and resolutions
+    - WebSocket troubleshooting
+    - LAN access configuration
+    - Firewall rules
+    - Quick commands reference
+    - Troubleshooting matrix
+- **Documentation Cross-References**: Updated existing docs with diagram references
+  - README.md: Added visual documentation link to Architecture section
+  - QWEN_MONITORING.md: Added data flow diagram reference
+  - MULTI_AGENT_GITHUB_STRATEGY.md: Added architecture and data flow references
+- **Dashboard Footer Enhancement**: Link to unified dashboard from main dashboard
+  - Added green "🚀 Try New Unified Dashboard" link in footer-left of dashboard.html
+  - Added "✨ You are on the New Unified Dashboard" indicator in unified_dashboard.html footer
+
+- **Agent Configuration Modal** - Direct agent configuration from dashboard (Issue #65)
+  - **Configuration Button**: Added gear icon (⚙️) to top-right of each agent card
+  - **Modal Design**: Clean overlay modal with organized sections for all config options
+  - **Basic Information**: Agent name and LLM model selection (GPT-4, Claude 3, Qwen, Gemini, etc.)
+  - **API Configuration**: Fields for API token and GitHub token (secure password inputs)
+  - **Model Parameters**: Temperature (0-2) and max tokens controls with helpful descriptions
+  - **Capabilities**: Checkboxes for code generation, code review, issue management, PR management, documentation
+  - **Permissions**: Granular controls for file operations, terminal commands, PR creation/merging with warning labels
+  - **Custom Instructions**: Textarea for additional agent-specific instructions
+  - **Rate Limits**: API calls per minute control to prevent quota exhaustion
+  - **Validation**: Required field validation and user-friendly error messages
+  - **Accessibility**: Keyboard navigation (ESC to close), ARIA labels, hover effects
+  - **Save/Cancel/Reset**: Three action buttons with clear labels and confirmation for destructive actions
+  - **Smooth Animations**: Rotating gear icon on hover, modal fade-in with backdrop blur
+  - **Responsive Design**: Works within fixed 1280x1024 dashboard layout
+  - **Backend Ready**: Form collects all data for future API integration
+
+- **Unified Dashboard** - New modern dashboard combining monitoring and configuration (Issues #27, #28)
+  - **Fixed Layout**: 1280x1024 viewport with agent list (40%) + live logs (60%)
+  - **Agent Cards**: Click-to-select agents with real-time status, model info, task progress
+  - **Live Log Filtering**: View all logs or filter by selected agent
+  - **Sliding Sidebar**: 400px configuration panel with smooth animations
+  - **Agent Configuration**: Add/edit agents with model selection, permissions, capabilities
+  - **Permission System**: Granular permissions (read files, write files, execute commands, GitHub ops, APIs)
+  - **Model Selection**: Dropdown with GPT-4, Claude 3, Qwen 2.5 Coder, Gemini Pro options
+  - **WebSocket Integration**: Real-time updates via existing monitoring infrastructure
+  - **Dark Theme**: Consistent with existing Agent-Forge UI
+  - **Footer Links**: Added navigation to unified dashboard from classic monitoring and config UI
+  - **Backward Compatible**: Old dashboards remain default, new UI accessible via footer links
+
+### Changed
+- **BREAKING: Agent Refactoring** - Renamed `qwen_agent.py` to `code_agent.py` for generic LLM support (Issue #66)
+  - **Class Rename**: `QwenAgent` → `CodeAgent` 
+  - **File Rename**: `agents/qwen_agent.py` → `agents/code_agent.py`
+  - **Service Manager**: Updated all service keys and methods (`enable_qwen_agent` → `enable_code_agent`)
+  - **Configuration**: CLI flag `--no-qwen` kept for backward compatibility
+  - **Documentation**: Updated all references in README, QWEN_MONITORING.md, MULTI_AGENT_GITHUB_STRATEGY.md, SETUP_QWEN_GITHUB_ACCOUNT.md
+  - **Tests**: Updated imports in `test_issue_handler.py` and `test_qwen_monitoring.py`
+  - **Migration Required**: Update any external code importing `QwenAgent` to use `CodeAgent`
+
+### Added
+- **API Test Endpoint** - Added `/api/hello` endpoint for API health verification (Issue #54)
+  - Returns JSON with status, message, and UTC timestamp
+  - No authentication required
+  - Useful for testing and monitoring
+
+### Changed
+- **Project Structure Cleanup** - Reorganized root directory to comply with Copilot instructions
+  - Moved all test scripts from root to `tests/` directory
+  - Moved demo and utility scripts from root to `scripts/` directory
+  - Moved YAML configuration files from root to `config/` directory
+  - Moved documentation files (`BUGS_TRACKING.md`, `COMMERCIAL-LICENSE.md`) to `docs/` directory
+  - Updated all references and import paths in documentation and scripts
+  - Added dynamic sys.path fixes to standalone test scripts for proper imports
+  - Root directory now only contains: README.md, CHANGELOG.md, LICENSE, .gitignore, requirements.txt, and standard config files
+  - All functionality verified working after reorganization
 
 ### Added
 - **Instruction Validation System** - Comprehensive validation of code changes against Copilot instructions

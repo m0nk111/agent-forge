@@ -1,6 +1,9 @@
 # Multi-Agent GitHub Strategy
 
+> **📊 Visual Documentation**: See [Architecture Diagram](diagrams/architecture-overview.md) for agent communication patterns and [Data Flow](diagrams/data-flow.md#issue-processing-flow) for GitHub integration flow.
+
 ## Problem
+
 Using a single GitHub account for multiple AI agents makes it impossible to:
 - Track which agent made which changes
 - Apply different permissions per agent
@@ -75,8 +78,8 @@ Or use temporary email services for machine accounts.
 
 #### 4. Configure Agent
 ```python
-# agents/qwen_agent.py
-class QwenAgent:
+# agents/code_agent.py
+class CodeAgent:
     def __init__(self, config_path: str):
         # Load GitHub token from environment
         self.github_token = os.getenv('QWEN_GITHUB_TOKEN')
@@ -235,7 +238,7 @@ For more advanced setups, create a **GitHub App**:
 - [x] Document strategy (this file)
 - [ ] Create m0nk111-qwen-agent account
 - [ ] Generate PAT and add to environment
-- [ ] Update qwen_agent.py to use agent identity
+- [ ] Update code_agent.py to use agent identity
 
 **Priority 2 (Phase 2):**
 - [ ] Add git commit functionality to agent

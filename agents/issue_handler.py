@@ -35,7 +35,7 @@ class IssueHandler:
         Initialize issue handler.
         
         Args:
-            agent: QwenAgent instance with all capabilities
+            agent: CodeAgent instance with all capabilities
         """
         self.agent = agent
         self.project_root = agent.project_root

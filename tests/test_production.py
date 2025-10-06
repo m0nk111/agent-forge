@@ -6,7 +6,8 @@ Tests all capabilities with a real-world Caramba task.
 """
 
 import sys
-sys.path.insert(0, '/home/flip/agent-forge')
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from agents.file_editor import FileEditor
 from agents.terminal_operations import TerminalOperations

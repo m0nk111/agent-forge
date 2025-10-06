@@ -97,8 +97,8 @@ class Colors:
     UNDERLINE = '\033[4m'
 
 
-class QwenAgent:
-    """Generic agent that uses Qwen2.5-Coder to implement projects from config"""
+class CodeAgent:
+    """Generic code agent that can use any LLM to implement projects from config"""
     
     def __init__(
         self,
@@ -837,16 +837,16 @@ def main():
         epilog="""
 Examples:
   # Use config file
-  python3 agents/qwen_agent.py --config configs/caramba_personality_ai.yaml --phase 1 --dry-run
+  python3 agents/code_agent.py --config configs/caramba_personality_ai.yaml --phase 1 --dry-run
   
   # Override project root
-  python3 agents/qwen_agent.py --config configs/my_project.yaml --project-root /path/to/project --phase 1
+  python3 agents/code_agent.py --config configs/my_project.yaml --project-root /path/to/project --phase 1
   
   # Execute all phases
-  python3 agents/qwen_agent.py --config configs/my_project.yaml --phase all
+  python3 agents/code_agent.py --config configs/my_project.yaml --phase all
   
   # Custom task
-  python3 agents/qwen_agent.py --task "Add authentication middleware"
+  python3 agents/code_agent.py --task "Add authentication middleware"
         """
     )
     
@@ -901,7 +901,7 @@ Examples:
     args = parser.parse_args()
     
     # Create agent
-    agent = QwenAgent(
+    agent = CodeAgent(
         config_path=args.config,
         model=args.model,
         project_root=args.project_root,

@@ -128,7 +128,7 @@ echo -e "${GREEN}=== Installation Complete! ===${NC}"
 echo
 echo "Next steps:"
 echo "1. Edit /etc/default/agent-forge and add your GitHub token"
-echo "2. Configure repositories in $INSTALL_DIR/polling_config.yaml"
+echo "2. Configure repositories in $INSTALL_DIR/config/polling_config.yaml"
 echo "3. Start the service:"
 echo "   ${GREEN}sudo systemctl start agent-forge${NC}"
 echo
