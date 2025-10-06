@@ -142,6 +142,8 @@ agent-forge/
 - [Monitoring Guide](docs/QWEN_MONITORING.md) - Dashboard and WebSocket setup
 - [Bot Usage Guide](docs/BOT_USAGE_GUIDE.md) - Bot account setup and usage
 - [Security Guide](docs/SECURITY.md) - Security best practices
+- [Licensing Guide](docs/LICENSING.md) - Dual-license overview and decision matrix
+- [Commercial License Terms](COMMERCIAL-LICENSE.md) - Proprietary usage agreement
 
 ## 🎯 Use Cases
 
@@ -280,7 +282,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+Agent-Forge is **dual licensed**:
+
+- **GNU Affero General Public License v3.0 (AGPLv3)** — see [LICENSE](LICENSE)
+- **Agent Forge Commercial License** — see [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md)
+
+Choose the license that matches your use case. See [docs/LICENSING.md](docs/LICENSING.md) for guidance and FAQs.
 
 ## 🙏 Credits
 
