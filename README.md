@@ -12,6 +12,7 @@ Agent-Forge is an intelligent multi-agent system that automates GitHub workflows
 - 🔄 **Autonomous Operation**: Automatic issue detection and task distribution
 - 🧪 **Agent Modes**: Switch between idle, test, and production modes per agent
 - 🔍 **Code Review Automation**: AI-powered PR reviews with quality scoring
+- ✅ **Instruction Validation**: Automatic enforcement of Copilot instructions and project standards
 - 📝 **Comprehensive Logging**: Structured logging with real-time updates
 - 🌐 **LAN Access**: Dashboard accessible from any device on your network
 - 🔒 **Bot Account Support**: Dedicated bot account for GitHub operations (no email spam)
@@ -141,6 +142,7 @@ agent-forge/
 - [Agent Roles](docs/AGENT_ROLES.md) - Detailed role descriptions
 - [Monitoring Guide](docs/QWEN_MONITORING.md) - Dashboard and WebSocket setup
 - [Bot Usage Guide](docs/BOT_USAGE_GUIDE.md) - Bot account setup and usage
+- [Instruction Validation Guide](docs/INSTRUCTION_VALIDATION_GUIDE.md) - Enforce project standards
 - [Security Guide](docs/SECURITY.md) - Security best practices
 - [Licensing Guide](docs/LICENSING.md) - Dual-license overview and decision matrix
 - [Commercial License Terms](COMMERCIAL-LICENSE.md) - Proprietary usage agreement
@@ -197,6 +199,52 @@ AI-powered PR reviews with comprehensive checks:
 ```bash
 python -m agents.pr_reviewer owner/repo 42 --username my-bot
 ```
+
+### Instruction Validation
+
+Automatically enforce project standards defined in `.github/copilot-instructions.md`:
+
+```python
+from agents.instruction_validator import InstructionValidator
+
+# Initialize validator
+validator = InstructionValidator(project_root="/path/to/project")
+
+# Validate file location (blocks root directory violations)
+result = validator.validate_file_location("test.py")
+if not result.valid:
+    print(f"❌ {result.message}")
+
+# Validate commit message (enforces conventional commits)
+result = validator.validate_commit_message("update files")
+if not result.valid:
+    # Auto-fix invalid format
+    fixed = validator.auto_fix_commit_message("update files")
+    print(f"✅ Auto-fixed: {fixed}")
+
+# Generate compliance report
+report = validator.generate_compliance_report(
+    changed_files=["agents/test.py", "CHANGELOG.md"],
+    commit_message="feat(validator): add validation"
+)
+print(report.get_summary())
+```
+
+**Features:**
+- ✅ File location validation (root directory rule)
+- ✅ Commit message format enforcement (conventional commits)
+- ✅ Changelog requirement checking
+- ✅ Port usage validation (assigned ranges)
+- ✅ Documentation language checking (English)
+- ✅ Auto-fix for common violations
+- ✅ Educational feedback explaining rules
+
+**Integration:**
+- Automatically integrated into `IssueHandler`, `FileEditor`, and `GitOperations`
+- Non-breaking and optional (fails gracefully if disabled)
+- Configurable via `config/instruction_rules.yaml`
+
+See [Instruction Validation Guide](docs/INSTRUCTION_VALIDATION_GUIDE.md) for detailed usage.
 
 ### Bot Account Operations
 

@@ -9,6 +9,13 @@ env/
 ENV/
 .venv
 
+# Testing
+.coverage
+.pytest_cache/
+htmlcov/
+.tox/
+*.cover
+
 # Agent output
 output_review.txt
 *.log

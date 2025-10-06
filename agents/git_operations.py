@@ -35,6 +35,15 @@ class GitOperations:
                 "QWEN_GITHUB_TOKEN not set in environment.\n"
                 "Run: source ~/.agent-forge.env"
             )
+        
+        # Initialize instruction validator (optional)
+        self.validator = None
+        try:
+            from agents.instruction_validator import InstructionValidator
+            self.validator = InstructionValidator()
+        except Exception:
+            # Validator is optional - continue without it
+            pass
     
     def configure_identity(self, repo_path: str) -> bool:
         """
@@ -106,6 +115,25 @@ class GitOperations:
         Returns:
             True if successful, False otherwise
         """
+        # Validate commit message format
+        if self.validator:
+            try:
+                result = self.validator.validate_commit_message(message)
+                if not result.valid:
+                    print(f"⚠️  {result.message}")
+                    if result.suggestions:
+                        print(f"   💡 Suggestion: {result.suggestions[0]}")
+                    
+                    # Try auto-fix
+                    if result.auto_fixable:
+                        fixed = self.validator.auto_fix_commit_message(message)
+                        if fixed:
+                            print(f"   🔧 Auto-fixed to: {fixed.split(chr(10))[0]}")
+                            message = fixed
+            except Exception:
+                # Don't fail on validator errors
+                pass
+        
         # Build commit message with agent signature
         signature = f"\n\nAgent: Qwen2.5-Coder 7B"
         if phase:

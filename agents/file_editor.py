@@ -31,6 +31,40 @@ class FileEditor:
             project_root: Root directory for all file operations
         """
         self.project_root = Path(project_root).resolve()
+        
+        # Initialize instruction validator (optional)
+        self.validator = None
+        try:
+            from agents.instruction_validator import InstructionValidator
+            self.validator = InstructionValidator(project_root=str(self.project_root))
+        except Exception:
+            # Validator is optional - continue without it
+            pass
+    
+    def _validate_file_location(self, filepath: str) -> bool:
+        """
+        Validate file location before edit/create.
+        
+        Args:
+            filepath: Relative path from project root
+            
+        Returns:
+            True if location is valid or validation disabled
+        """
+        if not self.validator:
+            return True
+        
+        try:
+            result = self.validator.validate_file_location(filepath)
+            if not result.valid:
+                print(f"⚠️  {result.message}")
+                if result.suggestions:
+                    print(f"   💡 {result.suggestions[0]}")
+                return False
+            return True
+        except Exception:
+            # Don't fail on validator errors
+            return True
     
     def replace_in_file(
         self,
@@ -53,6 +87,11 @@ class FileEditor:
         Returns:
             True if successful, False otherwise
         """
+        # Validate file location first
+        if not self._validate_file_location(filepath):
+            print(f"❌ File location validation failed for: {filepath}")
+            return False
+        
         full_path = self.project_root / filepath
         
         if not full_path.exists():
