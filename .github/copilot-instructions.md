@@ -1,3 +1,13 @@
+# WORKSPACE-SPECIFIC COPILOT INSTRUCTIONS - AGENT-FORGE PROJECT ONLY
+
+**IMPORTANT: These instructions apply ONLY to this workspace (Agent-Forge multi-agent platform project).**
+**Do NOT apply these rules to other workspaces or projects.**
+**Each workspace should have its own .github/copilot-instructions.md file with project-specific rules.**
+
+**THIS IS AGENT-FORGE, NOT CARAMBA, NOT AUDIOTRANSFER, NOT ANY OTHER PROJECT.**
+
+---
+
 # GitHub Copilot Instructions
 
 ## Project Structure Conventions
