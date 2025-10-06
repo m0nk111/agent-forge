@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased] - 2025-10-06
 
 ### Added
+- **Enterprise Visual Documentation Suite** - 13 comprehensive Mermaid diagrams covering all architectural aspects
+  - `docs/diagrams/ENTERPRISE_DIAGRAMS.md` - 10 enterprise-level diagrams (~550 lines)
+    * High-Level System Architecture (C4 Context model)
+    * Deployment Architecture (Dev, Systemd, Docker scenarios)
+    * Agent Lifecycle State Machine (complete state transitions)
+    * Request Flow Sequences (issue processing, manual assignment)
+    * WebSocket Communication Protocol (real-time updates, heartbeat)
+    * Configuration Management Hierarchy (priority order, runtime updates)
+    * Error Handling Flow (classification, retry logic, notifications)
+    * Security Architecture (network/application/service/data layers)
+    * Database Schema (ER diagram with all entities and relationships)
+    * CI/CD Pipeline (complete GitHub Actions workflow)
+  - `docs/diagrams/README.md` - Comprehensive diagram index (~800 lines)
+    * Catalog of all 13 diagrams (architecture, deployment, communication, context)
+    * Role-based navigation guides (Developer, DevOps, Contributor, Manager)
+    * Viewing instructions (GitHub, VS Code, CLI export, online editor)
+    * Diagram conventions, templates, and update procedures
+    * Complete checklist for diagram maintenance
+  - Total: ~2100 lines of visual documentation complementing 4,346 lines of text documentation
+
 - **Workspace Identification** - Prominent header in `.github/copilot-instructions.md` to prevent agent confusion
   - Added clear "WORKSPACE-SPECIFIC" warning at top of instructions file
   - Identifies project as AGENT-FORGE to prevent mixing with other projects (Caramba, AudioTransfer, etc.)
