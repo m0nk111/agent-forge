@@ -8,6 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased] - 2025-10-06
 
 ### Added
+
+- **Prominent Unified Dashboard Button** - Highly visible button in dashboard footer
+  - Replaced small text link with styled green gradient button
+  - Increased font size from 10px to 12px for better visibility
+  - Added padding, border-radius, box shadow for button appearance
+  - Implemented hover effect with transform and shadow animation
+  - Used !important flags to override CSS cascade issues
+  - Much more discoverable and clickable than previous text link
+
+- **Auto-Deploy Frontend Script** - Automated deployment system for frontend changes
+  - Created `/home/flip/agent-forge/scripts/auto_deploy_frontend.sh` (3.0K)
+  - Systemd timer triggers every 60 seconds
+  - Detects new commits on main branch via git fetch
+  - Syncs frontend changes to production directory (/opt/agent-forge)
+  - Restarts agent-forge.service when frontend files change
+  - Lock file prevents concurrent deployments
+  - Comprehensive logging to /var/log/agent-forge-deploy.log
+
 - **Enterprise Visual Documentation Suite** - 13 comprehensive Mermaid diagrams covering all architectural aspects
   - `docs/diagrams/ENTERPRISE_DIAGRAMS.md` - 10 enterprise-level diagrams (~550 lines)
     * High-Level System Architecture (C4 Context model)
