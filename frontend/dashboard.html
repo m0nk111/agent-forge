@@ -35,6 +35,14 @@
             gap: 12px;
         }
 
+        /* Main Content Wrapper - Side-by-Side Layout */
+        .content-wrapper {
+            flex: 1;
+            display: flex;
+            gap: 12px;
+            min-height: 0;
+        }
+
         /* Header */
         header {
             background: rgba(30, 41, 59, 0.8);
@@ -95,9 +103,10 @@
             border-radius: 8px;
             padding: 14px;
             border: 1px solid rgba(96, 165, 250, 0.2);
-            height: 300px;
+            flex: 0 0 400px; /* Fixed width for agent cards */
             display: flex;
             flex-direction: column;
+            min-height: 0;
         }
 
         .section-header {
@@ -306,7 +315,7 @@
             border-radius: 8px;
             padding: 14px;
             border: 1px solid rgba(96, 165, 250, 0.2);
-            flex: 1;
+            flex: 1; /* Take remaining space */
             display: flex;
             flex-direction: column;
             min-height: 0;
@@ -902,41 +911,45 @@
             </div>
         </header>
 
-        <!-- Agents Section -->
-        <div class="agents-section">
-            <div class="section-header">
-                <h2 class="section-title">Active Agents</h2>
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <div class="view-toggle">
-                        <button onclick="setViewMode('list')" id="list-view-btn" class="active">📋 List</button>
-                        <button onclick="setViewMode('grid')" id="grid-view-btn">⊞ Grid</button>
+        <!-- Main Content Wrapper (Side-by-Side) -->
+        <div class="content-wrapper">
+            <!-- Agents Section -->
+            <div class="agents-section">
+                <div class="section-header">
+                    <h2 class="section-title">Active Agents</h2>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div class="view-toggle">
+                            <button onclick="setViewMode('list')" id="list-view-btn" class="active">📋 List</button>
+                            <button onclick="setViewMode('grid')" id="grid-view-btn">⊞ Grid</button>
+                        </div>
+                        <div id="agent-count" style="color: #94a3b8; font-size: 14px;">
+                            <span class="loading">
+                                <div class="spinner"></div>
+                                Loading agents...
+                            </span>
+                        </div>
                     </div>
-                    <div id="agent-count" style="color: #94a3b8; font-size: 14px;">
-                        <span class="loading">
-                            <div class="spinner"></div>
-                            Loading agents...
-                        </span>
+                </div>
+                <div class="agents-container">
+                    <div class="agents-list" id="agents-grid">
+                        <!-- Agent cards will be inserted here -->
                     </div>
                 </div>
             </div>
-                                <div class="agents-container">
-                        <div class="agents-list" id="agents-grid">
-                <!-- Agent cards will be inserted here -->
-            </div>
-        </div>
 
-        <!-- Logs Section -->
-        <div class="logs-section">
-            <div class="section-header">
-                <h2 class="section-title">Live Logs</h2>
-                <div style="color: #94a3b8; font-size: 14px;" id="selected-agent-name">
-                    Select an agent to view logs
+            <!-- Logs Section -->
+            <div class="logs-section">
+                <div class="section-header">
+                    <h2 class="section-title">Live Logs</h2>
+                    <div style="color: #94a3b8; font-size: 14px;" id="selected-agent-name">
+                        Select an agent to view logs
+                    </div>
                 </div>
-            </div>
-            <div class="logs-container" id="logs-container">
-                <div class="empty-state">
-                    <div class="empty-state-icon">📝</div>
-                    <p>Select an agent from above to view their logs</p>
+                <div class="logs-container" id="logs-container">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📝</div>
+                        <p>Select an agent from above to view their logs</p>
+                    </div>
                 </div>
             </div>
         </div>
