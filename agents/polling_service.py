@@ -53,7 +53,8 @@ from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Set
-import subprocess
+
+from agents.github_api_helper import GitHubAPIHelper
 
 logger = logging.getLogger(__name__)
 
@@ -148,6 +149,9 @@ class PollingService:
         self.enable_monitoring = enable_monitoring
         self.monitor = None
         self.api_calls = 0  # Track API calls
+        
+        # Initialize GitHub API helper
+        self.github_api = GitHubAPIHelper(token=config.github_token)
         
         # Register with monitor if enabled
         if enable_monitoring:
@@ -277,37 +281,29 @@ class PollingService:
         
         for repo in self.config.repositories:
             try:
-                # Use gh CLI to query issues
-                cmd = [
-                    "gh", "issue", "list",
-                    "--repo", repo,
-                    "--assignee", self.config.github_username,
-                    "--state", "open",
-                    "--json", "number,title,labels,assignees,url,createdAt,updatedAt",
-                    "--limit", "100"
-                ]
+                owner, repo_name = repo.split('/')
                 
-                result = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    text=True,
-                    check=True
+                # Use GitHub REST API instead of gh CLI
+                issues = self.github_api.list_issues(
+                    owner=owner,
+                    repo=repo_name,
+                    assignee=self.config.github_username,
+                    state="open",
+                    per_page=100
                 )
                 
                 # Increment API call counter
                 self.api_calls += 1
                 
-                issues = json.loads(result.stdout)
+                # Add repository field to each issue
                 for issue in issues:
                     issue['repository'] = repo
                 all_issues.extend(issues)
                 
                 logger.info(f"Found {len(issues)} assigned issues in {repo}")
                 
-            except subprocess.CalledProcessError as e:
-                logger.error(f"Failed to query issues for {repo}: {e.stderr}")
             except Exception as e:
-                logger.error(f"Error checking {repo}: {e}")
+                logger.error(f"Failed to query issues for {repo}: {e}")
         
         logger.info(f"Total assigned issues found: {len(all_issues)}")
         return all_issues
@@ -360,22 +356,14 @@ class PollingService:
             True if already claimed and claim is still valid
         """
         try:
-            # Query issue comments
-            cmd = [
-                "gh", "issue", "view", str(issue_number),
-                "--repo", repo,
-                "--json", "comments",
-            ]
+            owner, repo_name = repo.split('/')
             
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                check=True
+            # Use GitHub REST API to get comments
+            comments = self.github_api.get_issue_comments(
+                owner=owner,
+                repo=repo_name,
+                issue_number=issue_number
             )
-            
-            data = json.loads(result.stdout)
-            comments = data.get('comments', [])
             
             # Check for agent claim comments
             now = datetime.utcnow()
@@ -409,15 +397,17 @@ class PollingService:
             True if successfully claimed
         """
         try:
+            owner, repo_name = repo.split('/')
             comment = f"🤖 Agent **{self.config.github_username}** started working on this issue at {datetime.utcnow().isoformat()}Z"
             
-            cmd = [
-                "gh", "issue", "comment", str(issue_number),
-                "--repo", repo,
-                "--body", comment
-            ]
+            # Use GitHub REST API to create comment
+            self.github_api.create_issue_comment(
+                owner=owner,
+                repo=repo_name,
+                issue_number=issue_number,
+                body=comment
+            )
             
-            subprocess.run(cmd, capture_output=True, text=True, check=True)
             logger.info(f"Claimed issue {repo}#{issue_number}")
             return True
             
