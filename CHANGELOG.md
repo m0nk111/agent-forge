@@ -8,6 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased] - 2025-01-06
 
 ### Added
+- **API Test Endpoint** - Added `/api/hello` endpoint for API health verification (Issue #54)
+  - Returns JSON with status, message, and UTC timestamp
+  - No authentication required
+  - Useful for testing and monitoring
+
+### Changed
+- **Project Structure Cleanup** - Reorganized root directory to comply with Copilot instructions
+  - Moved all test scripts from root to `tests/` directory
+  - Moved demo and utility scripts from root to `scripts/` directory
+  - Moved YAML configuration files from root to `config/` directory
+  - Moved documentation files (`BUGS_TRACKING.md`, `COMMERCIAL-LICENSE.md`) to `docs/` directory
+  - Updated all references and import paths in documentation and scripts
+  - Added dynamic sys.path fixes to standalone test scripts for proper imports
+  - Root directory now only contains: README.md, CHANGELOG.md, LICENSE, .gitignore, requirements.txt, and standard config files
+  - All functionality verified working after reorganization
+
+### Added
 - **Instruction Validation System** - Comprehensive validation of code changes against Copilot instructions
   - `agents/instruction_parser.py` - Parse `.github/copilot-instructions.md` files
   - `agents/instruction_validator.py` - Validate file locations, commit messages, changelog updates, port usage, and documentation language
