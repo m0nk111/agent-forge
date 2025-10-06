@@ -39,6 +39,15 @@ class IssueHandler:
         """
         self.agent = agent
         self.project_root = agent.project_root
+        
+        # Initialize instruction validator (optional)
+        self.validator = None
+        try:
+            from agents.instruction_validator import InstructionValidator
+            self.validator = InstructionValidator(project_root=str(self.project_root))
+        except Exception:
+            # Validator is optional - continue without it
+            pass
     
     def assign_to_issue(self, repo: str, issue_number: int) -> Dict:
         """
@@ -509,6 +518,28 @@ class IssueHandler:
             'warnings': []
         }
         
+        # Validate with instruction validator if available
+        if self.validator:
+            try:
+                report = self.validator.generate_compliance_report(
+                    changed_files=files_modified
+                )
+                
+                # Add instruction validation results
+                for result in report.results:
+                    if not result.valid and result.severity == "error":
+                        validation['errors'].append(result.message)
+                        if result.suggestions:
+                            validation['errors'].append(f"  Suggestion: {result.suggestions[0]}")
+                    elif result.severity == "warning":
+                        validation['warnings'].append(result.message)
+                
+                if not report.is_compliant():
+                    validation['valid'] = False
+            except Exception as e:
+                # Don't fail if validator has issues
+                validation['warnings'].append(f"Instruction validator error: {e}")
+        
         for file_path in files_modified:
             # Check 1: File existence
             if not os.path.exists(file_path):
@@ -551,6 +582,41 @@ class IssueHandler:
         
         return validation
     
+    def _validate_commit_message(self, message: str) -> Dict:
+        """
+        Validate commit message format.
+        
+        Args:
+            message: Commit message to validate
+            
+        Returns:
+            Dict with: valid, message, suggestions (optional)
+        """
+        if not self.validator:
+            return {'valid': True, 'message': 'Validation disabled'}
+        
+        try:
+            result = self.validator.validate_commit_message(message)
+            
+            response = {
+                'valid': result.valid,
+                'message': result.message
+            }
+            
+            if not result.valid:
+                response['suggestions'] = result.suggestions
+                
+                # Try auto-fix if enabled
+                if result.auto_fixable:
+                    fixed = self.validator.auto_fix_commit_message(message)
+                    if fixed:
+                        response['auto_fixed'] = fixed
+            
+            return response
+        except Exception as e:
+            # Don't fail on validator errors
+            return {'valid': True, 'message': f'Validator error: {e}'}
+    
     def _create_pull_request(self, repo: str, issue: Dict, execution_result: Dict) -> Optional[Dict]:
         """Create PR with implemented changes."""
         try:
@@ -564,7 +630,15 @@ class IssueHandler:
             branch_name = f"fix/issue-{issue['number']}"
             
             # Commit changes
-            commit_message = f"Fix: {issue['title']}\n\nResolves #{issue['number']}"
+            commit_message = f"fix: {issue['title']}\n\nResolves #{issue['number']}"
+            
+            # Validate commit message
+            validation = self._validate_commit_message(commit_message)
+            if not validation['valid'] and 'auto_fixed' in validation:
+                # Use auto-fixed message
+                commit_message = validation['auto_fixed']
+                print(f"   ℹ️  Auto-fixed commit message: {commit_message.split(chr(10))[0]}")
+            
             git.commit(self.project_root, commit_message)
             
             # Push branch
