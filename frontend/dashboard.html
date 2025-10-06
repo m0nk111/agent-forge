@@ -860,6 +860,7 @@
                         handleMessage(data);
                     } catch (error) {
                         console.error('Failed to parse message:', error);
+                        console.error('Raw message:', event.data);
                     }
                 };
                 
@@ -883,24 +884,45 @@
 
         function handleMessage(data) {
             if (data.type === 'agent_update') {
-                updateAgent(data.agent);
+                if (data.agent && data.agent.agent_id) {
+                    updateAgent(data.agent);
+                } else {
+                    console.warn('⚠️ Received agent_update without valid agent data:', data);
+                }
             } else if (data.type === 'log_entry') {
-                addLogEntry(data.agent_id, data.log);
+                if (data.agent_id && data.log) {
+                    addLogEntry(data.agent_id, data.log);
+                } else {
+                    console.warn('⚠️ Received log_entry without agent_id or log:', data);
+                }
             } else if (data.type === 'initial_state') {
                 // Load initial agents
                 console.log('📦 Initial state received:', data);
                 const agentList = data.data?.agents || data.agents || [];
                 console.log(`📊 Loading ${agentList.length} agents`);
-                agentList.forEach(agent => updateAgent(agent));
+                agentList.forEach(agent => {
+                    if (agent && agent.agent_id) {
+                        updateAgent(agent);
+                    }
+                });
             }
         }
 
         function updateAgent(agent) {
+            if (!agent || !agent.agent_id) {
+                console.warn('⚠️ Cannot update agent without agent_id:', agent);
+                return;
+            }
             agents.set(agent.agent_id, agent);
             renderAgents();
         }
 
         function addLogEntry(agentId, log) {
+            if (!agentId || !log) {
+                console.warn('⚠️ Cannot add log entry without agentId or log:', { agentId, log });
+                return;
+            }
+            
             if (!agentLogs.has(agentId)) {
                 agentLogs.set(agentId, []);
             }
@@ -1059,7 +1081,9 @@
         }
 
         function formatTimestamp(timestamp) {
-            const date = new Date(timestamp);
+            // Python time.time() returns seconds, JavaScript Date needs milliseconds
+            const ts = timestamp > 9999999999 ? timestamp : timestamp * 1000;
+            const date = new Date(ts);
             return date.toLocaleTimeString('en-US', { hour12: false });
         }
 

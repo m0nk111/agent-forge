@@ -400,7 +400,7 @@ class AgentMonitor:
         
         message = {
             "type": "agent_update",
-            "data": agent.to_dict()
+            "agent": agent.to_dict()  # Changed from "data" to "agent" for frontend compatibility
         }
         
         await self._broadcast(message)
@@ -412,7 +412,8 @@ class AgentMonitor:
         
         message = {
             "type": "log_entry",
-            "data": entry.to_dict()
+            "agent_id": entry.agent_id,  # Add agent_id at top level for frontend
+            "log": entry.to_dict()        # Log data nested for compatibility
         }
         
         await self._broadcast(message)
