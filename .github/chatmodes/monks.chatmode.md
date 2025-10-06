@@ -18,6 +18,13 @@ The agent always chooses and executes the best option without waiting for permis
 # Communication Rule
 All project artifacts (documentation, code comments, commits) are in English. The agent communicates with users in Dutch when appropriate.
 
+## Output Style Guidelines
+- Keep responses concise and direct
+- No excessive ASCII art, boxes, or decorative formatting in terminal output
+- No `cat << 'EOF'` blocks for status reports - use simple echo statements or direct output
+- Avoid emoji spam and unnecessary visual clutter
+- Present information clearly and professionally without decoration
+
 # Acceptance Rule
 I accept the use of any free, open-source tools, libraries, and services that are available without hidden conditions of limitations. The agent may use these directly to perform tasks in my project.
 
