@@ -8,7 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased] - 2025-10-06
 
 ### Added
-- **Comprehensive Documentation Suite** - Complete architecture and onboarding documentation
+- **Workspace Identification** - Prominent header in `.github/copilot-instructions.md` to prevent agent confusion
+  - Added clear "WORKSPACE-SPECIFIC" warning at top of instructions file
+  - Identifies project as AGENT-FORGE to prevent mixing with other projects (Caramba, AudioTransfer, etc.)
+  - Resolves issue where agents worked on wrong project's issues
+
+- **Instruction Validation System** - Comprehensive validation of code changes against Copilot instructions (#63)
+  - `agents/instruction_parser.py` - Parse `.github/copilot-instructions.md` files
+  - `agents/instruction_validator.py` - Validate file locations, commit messages, changelog updates, port usage, and documentation language
+  - `config/instruction_rules.yaml` - Configuration for validation rules and exemptions
+  - Support for merging global and project-specific instructions
+  - Auto-fix capabilities for commit messages and changelog entries
+  - Compliance reporting with educational feedback
+  - 30 comprehensive tests with 78% code coverage
+  - Integration hooks in `IssueHandler`, `FileEditor`, `GitOperations`
+
+- **Comprehensive Documentation Suite** - Complete architecture and onboarding documentation (#67)
   - **AGENT_ONBOARDING.md**: Structured checklist for AI agents to quickly understand the project
     - Must-read documents in priority order
     - Key architecture concepts to verify
