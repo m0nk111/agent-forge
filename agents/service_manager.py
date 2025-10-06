@@ -48,7 +48,7 @@ class ServiceConfig:
     
     # Polling service
     enable_polling: bool = True
-    polling_interval: int = 30  # 30 seconds (dev mode)
+    polling_interval: int = 300  # 5 minutes
     polling_repos: list = None
     
     # Monitoring service  
@@ -111,7 +111,6 @@ class ServiceManager:
         """Start autonomous polling service."""
         try:
             from agents.polling_service import PollingService, PollingConfig
-            from agents.monitor_service import get_monitor
             
             logger.info("Starting polling service...")
             
@@ -126,11 +125,8 @@ class ServiceManager:
                 state_file="/opt/agent-forge/data/polling_state.json"
             )
             
-            # Get monitor instance (will be available if monitoring is enabled)
-            monitor = get_monitor() if self.config.enable_monitoring else None
-            
-            # Create service
-            service = PollingService(config, monitor=monitor)
+            # Create service with monitoring enabled
+            service = PollingService(config, enable_monitoring=True)
             self.services['polling'] = service
             self.health_status['polling'] = True
             

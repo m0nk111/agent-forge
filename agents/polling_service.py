@@ -7,7 +7,38 @@ Features:
 - Configurable polling intervals (default: 5 minutes)
 - Multi-repository support
 - Label-based filtering (agent-ready, auto-assign)
-- Issue locking to prevent duplicate work by multiple agents
+- Issue locking to prevent duplicate work by         except Exception as e:
+            logger.error(f"Error during polling cycle: {e}")
+            if self.monitor:
+                from agents.monitor_service import AgentStatus
+                self.monitor.update_agent_status(
+                    agent_id="polling-service",
+                    status=AgentStatus.ERROR,
+                    error_message=str(e)
+                )
+                self.monitor.add_log(
+                    agent_id="polling-service",
+                    level="ERROR",
+                    message=f"Polling error: {e}"
+                )
+        finally:
+            # Cleanup old state
+            self.cleanup_old_state()
+            logger.info("=== Polling cycle complete ===")
+            
+            # Return to idle
+            if self.monitor:
+                from agents.monitor_service import AgentStatus
+                self.monitor.update_agent_status(
+                    agent_id="polling-service",
+                    status=AgentStatus.IDLE,
+                    current_task=f"Waiting (next poll in {self.config.interval_seconds}s)"
+                )
+                self.monitor.add_log(
+                    agent_id="polling-service",
+                    level="INFO",
+                    message="Polling cycle complete"
+                )le agents
 - State persistence across restarts
 - Graceful error handling with retry logic
 - Structured logging for all events
@@ -22,9 +53,45 @@ from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Set
-import requests
+
+from agents.github_api_helper import GitHubAPIHelper
 
 logger = logging.getLogger(__name__)
+
+
+class MonitorLogHandler(logging.Handler):
+    """Custom log handler that forwards logs to monitor service."""
+    
+    def __init__(self, monitor, agent_id: str):
+        super().__init__()
+        self.monitor = monitor
+        self.agent_id = agent_id
+    
+    def emit(self, record):
+        """Forward log record to monitor service."""
+        try:
+            # Format the message
+            message = self.format(record)
+            
+            # Map logging levels to monitor levels
+            level_map = {
+                logging.DEBUG: "DEBUG",
+                logging.INFO: "INFO",
+                logging.WARNING: "WARNING",
+                logging.ERROR: "ERROR",
+                logging.CRITICAL: "CRITICAL"
+            }
+            level = level_map.get(record.levelno, "INFO")
+            
+            # Send to monitor with current timestamp
+            self.monitor.add_log(
+                agent_id=self.agent_id,
+                level=level,
+                message=message
+            )
+        except Exception:
+            # Don't let logging errors crash the application
+            pass
 
 
 @dataclass
@@ -38,7 +105,7 @@ class PollingConfig:
     watch_labels: List[str] = None  # ["agent-ready", "auto-assign"]
     max_concurrent_issues: int = 3
     claim_timeout_minutes: int = 60
-    state_file: str = "/opt/agent-forge/data/polling_state.json"
+    state_file: str = "polling_state.json"
     
     def __post_init__(self):
         """Initialize default values."""
@@ -64,108 +131,60 @@ class IssueState:
     completed_at: Optional[str] = None
 
 
-class GitHubAPI:
-    """Helper class for GitHub REST API calls."""
-    
-    BASE_URL = "https://api.github.com"
-    
-    def __init__(self, token: str):
-        """Initialize with GitHub token.
-        
-        Args:
-            token: GitHub personal access token
-        """
-        self.token = token
-        self.session = requests.Session()
-        self.session.headers.update({
-            'Authorization': f'Bearer {token}',
-            'Accept': 'application/vnd.github+json',
-            'X-GitHub-Api-Version': '2022-11-28'
-        })
-    
-    def get_issues(self, owner: str, repo: str, assignee: str, state: str = 'open', per_page: int = 100) -> List[Dict]:
-        """Get issues from a repository.
-        
-        Args:
-            owner: Repository owner
-            repo: Repository name
-            assignee: Filter by assignee
-            state: Issue state (open/closed)
-            per_page: Results per page
-            
-        Returns:
-            List of issue dictionaries
-        """
-        url = f"{self.BASE_URL}/repos/{owner}/{repo}/issues"
-        params = {
-            'assignee': assignee,
-            'state': state,
-            'per_page': per_page
-        }
-        response = self.session.get(url, params=params, timeout=30)
-        response.raise_for_status()
-        return response.json()
-    
-    def get_issue_comments(self, owner: str, repo: str, issue_number: int) -> List[Dict]:
-        """Get comments for an issue.
-        
-        Args:
-            owner: Repository owner
-            repo: Repository name
-            issue_number: Issue number
-            
-        Returns:
-            List of comment dictionaries
-        """
-        url = f"{self.BASE_URL}/repos/{owner}/{repo}/issues/{issue_number}/comments"
-        response = self.session.get(url, timeout=30)
-        response.raise_for_status()
-        return response.json()
-    
-    def create_issue_comment(self, owner: str, repo: str, issue_number: int, body: str) -> Dict:
-        """Create a comment on an issue.
-        
-        Args:
-            owner: Repository owner
-            repo: Repository name
-            issue_number: Issue number
-            body: Comment body
-            
-        Returns:
-            Created comment dictionary
-        """
-        url = f"{self.BASE_URL}/repos/{owner}/{repo}/issues/{issue_number}/comments"
-        data = {'body': body}
-        response = self.session.post(url, json=data, timeout=30)
-        response.raise_for_status()
-        return response.json()
-
-
 class PollingService:
     """Service for autonomous GitHub issue polling and workflow initiation."""
     
-    def __init__(self, config: PollingConfig, monitor=None):
+    def __init__(self, config: PollingConfig, enable_monitoring: bool = True):
         """Initialize polling service.
         
         Args:
             config: Polling configuration
-            monitor: Optional AgentMonitor instance for status tracking
+            enable_monitoring: Whether to register with monitor service
         """
         self.config = config
-        self.monitor = monitor
         self.state_file = Path(config.state_file)
         self.state: Dict[str, IssueState] = {}
-        
-        # Initialize GitHub API client
-        if not config.github_token:
-            raise ValueError("GitHub token is required. Set BOT_GITHUB_TOKEN or GITHUB_TOKEN environment variable.")
-        self.github_api = GitHubAPI(config.github_token)
-        
-        # Metrics tracking
-        self.api_calls = 0
-        
         self.load_state()
         self.running = False
+        self.enable_monitoring = enable_monitoring
+        self.monitor = None
+        self.api_calls = 0  # Track API calls
+        
+        # Initialize GitHub API helper
+        self.github_api = GitHubAPIHelper(token=config.github_token)
+        
+        # Register with monitor if enabled
+        if enable_monitoring:
+            try:
+                import psutil
+                self.process = psutil.Process()
+            except ImportError:
+                self.process = None
+                logger.warning("psutil not installed, metrics will not be available")
+            
+            try:
+                from agents.monitor_service import get_monitor, AgentStatus
+                self.monitor = get_monitor()
+                self.monitor.register_agent(
+                    agent_id="polling-service",
+                    agent_name="GitHub Polling Service"
+                )
+                self.monitor.update_agent_status(
+                    agent_id="polling-service",
+                    status=AgentStatus.IDLE,
+                    current_task="Initialized"
+                )
+                
+                # Add custom logging handler to forward all logs to monitor
+                monitor_handler = MonitorLogHandler(self.monitor, "polling-service")
+                monitor_handler.setFormatter(logging.Formatter('%(message)s'))
+                logger.addHandler(monitor_handler)
+                logger.setLevel(logging.INFO)  # Ensure INFO level is captured
+                
+                logger.info("✅ Registered with monitoring service")
+            except Exception as e:
+                logger.warning(f"Could not register with monitor: {e}")
+                self.monitor = None
         
     def load_state(self):
         """Load polling state from disk."""
@@ -217,6 +236,27 @@ class PollingService:
         if to_remove:
             self.save_state()
     
+    def update_metrics(self):
+        """Update agent metrics in monitor."""
+        if not self.monitor or not self.process:
+            return
+        
+        try:
+            # Get CPU and memory usage
+            cpu_percent = self.process.cpu_percent(interval=0.1)
+            memory_info = self.process.memory_info()
+            memory_percent = (memory_info.rss / psutil.virtual_memory().total) * 100
+            
+            # Update monitor
+            self.monitor.update_agent_metrics(
+                agent_id="polling-service",
+                cpu_usage=cpu_percent,
+                memory_usage=memory_percent,
+                api_calls=self.api_calls
+            )
+        except Exception as e:
+            logger.debug(f"Error updating metrics: {e}")
+    
     def get_issue_key(self, repo: str, issue_number: int) -> str:
         """Generate unique key for issue.
         
@@ -230,66 +270,40 @@ class PollingService:
         return f"{repo}#{issue_number}"
     
     async def check_assigned_issues(self) -> List[Dict]:
-        """Check for issues assigned to the bot.
+        """Query GitHub API for assigned issues.
         
         Returns:
             List of assigned issue dictionaries
         """
         logger.info("Checking for assigned issues...")
+        
         all_issues = []
-        max_retries = 3
-        retry_delay = 2
         
         for repo in self.config.repositories:
-            owner, repo_name = repo.split('/')
-            
-            for attempt in range(max_retries):
-                try:
-                    # Use GitHub REST API to query issues
-                    issues = self.github_api.get_issues(
-                        owner=owner,
-                        repo=repo_name,
-                        assignee=self.config.github_username,
-                        state='open',
-                        per_page=100
-                    )
-                    
-                    # Increment API call counter
-                    self.api_calls += 1
-                    
-                    # Transform API response to match expected format
-                    for issue in issues:
-                        issue['repository'] = repo
-                        issue['createdAt'] = issue.get('created_at')
-                        issue['updatedAt'] = issue.get('updated_at')
-                    
-                    all_issues.extend(issues)
-                    logger.info(f"Found {len(issues)} assigned issues in {repo}")
-                    break  # Success, exit retry loop
-                    
-                except requests.exceptions.Timeout:
-                    logger.warning(f"Timeout querying {repo} (attempt {attempt + 1}/{max_retries})")
-                    if attempt < max_retries - 1:
-                        await asyncio.sleep(retry_delay)
-                    else:
-                        logger.error(f"Max retries exceeded for {repo} (timeout)")
-                        
-                except requests.exceptions.HTTPError as e:
-                    logger.error(f"HTTP error querying {repo}: {e.response.status_code} (attempt {attempt + 1}/{max_retries})")
-                    if 'authentication' in str(e).lower() or 'token' in str(e).lower():
-                        logger.error("Authentication error - skipping retries")
-                        break
-                    if attempt < max_retries - 1:
-                        await asyncio.sleep(retry_delay)
-                    else:
-                        logger.error(f"Max retries exceeded for {repo}")
-                        
-                except Exception as e:
-                    logger.error(f"Error checking {repo}: {type(e).__name__}: {e} (attempt {attempt + 1}/{max_retries})")
-                    if attempt < max_retries - 1:
-                        await asyncio.sleep(retry_delay)
-                    else:
-                        logger.error(f"Max retries exceeded for {repo} (unexpected error)")
+            try:
+                owner, repo_name = repo.split('/')
+                
+                # Use GitHub REST API instead of gh CLI
+                issues = self.github_api.list_issues(
+                    owner=owner,
+                    repo=repo_name,
+                    assignee=self.config.github_username,
+                    state="open",
+                    per_page=100
+                )
+                
+                # Increment API call counter
+                self.api_calls += 1
+                
+                # Add repository field to each issue
+                for issue in issues:
+                    issue['repository'] = repo
+                all_issues.extend(issues)
+                
+                logger.info(f"Found {len(issues)} assigned issues in {repo}")
+                
+            except Exception as e:
+                logger.error(f"Failed to query issues for {repo}: {e}")
         
         logger.info(f"Total assigned issues found: {len(all_issues)}")
         return all_issues
@@ -332,27 +346,24 @@ class PollingService:
         return actionable
     
     def is_issue_claimed(self, repo: str, issue_number: int) -> bool:
-        """Check if an issue is already claimed by another agent.
+        """Check if issue is already claimed by another agent.
         
         Args:
-            repo: Repository name (owner/repo)
+            repo: Repository (owner/repo)
             issue_number: Issue number
             
         Returns:
-            True if issue is claimed by another agent, False otherwise
+            True if already claimed and claim is still valid
         """
         try:
             owner, repo_name = repo.split('/')
             
-            # Query issue comments using GitHub REST API
+            # Use GitHub REST API to get comments
             comments = self.github_api.get_issue_comments(
                 owner=owner,
                 repo=repo_name,
                 issue_number=issue_number
             )
-            
-            if not comments:
-                return False
             
             # Check for agent claim comments
             now = datetime.utcnow()
@@ -362,29 +373,18 @@ class PollingService:
                 body = comment.get('body', '')
                 if '🤖 Agent' in body and 'started working on this issue' in body:
                     # Check timestamp
-                    try:
-                        created_at_str = comment.get('created_at', '')
-                        created_at = datetime.fromisoformat(
-                            created_at_str.replace('Z', '+00:00')
-                        )
-                        if now - created_at.replace(tzinfo=None) < timeout:
-                            logger.info(f"Issue {repo}#{issue_number} claimed by another agent")
-                            return True
-                    except (ValueError, KeyError) as e:
-                        logger.warning(f"Could not parse comment timestamp: {type(e).__name__}: {e}")
-                        continue
+                    created_at = datetime.fromisoformat(
+                        comment['createdAt'].replace('Z', '+00:00')
+                    )
+                    if now - created_at.replace(tzinfo=None) < timeout:
+                        logger.info(f"Issue {repo}#{issue_number} claimed by another agent")
+                        return True
             
             return False
             
-        except requests.exceptions.Timeout:
-            logger.error(f"Timeout checking claim status for {repo}#{issue_number}")
-            return False
-        except requests.exceptions.HTTPError as e:
-            logger.error(f"HTTP error checking claim status for {repo}#{issue_number}: {e.response.status_code}")
-            return False
         except Exception as e:
-            logger.error(f"Error checking claim status for {repo}#{issue_number}: {type(e).__name__}: {e}")
-            return False
+            logger.error(f"Error checking claim status: {e}")
+            return False  # Assume not claimed on error
     
     async def claim_issue(self, repo: str, issue_number: int) -> bool:
         """Claim an issue by adding a comment.
@@ -396,47 +396,24 @@ class PollingService:
         Returns:
             True if successfully claimed
         """
-        max_retries = 3
-        retry_delay = 2
-        owner, repo_name = repo.split('/')
-        
-        for attempt in range(max_retries):
-            try:
-                comment = f"🤖 Agent **{self.config.github_username}** started working on this issue at {datetime.utcnow().isoformat()}Z"
-                
-                # Use GitHub REST API to create comment
-                self.github_api.create_issue_comment(
-                    owner=owner,
-                    repo=repo_name,
-                    issue_number=issue_number,
-                    body=comment
-                )
-                
-                logger.info(f"Claimed issue {repo}#{issue_number}")
-                return True
-                
-            except requests.exceptions.Timeout:
-                logger.warning(f"Timeout claiming {repo}#{issue_number} (attempt {attempt + 1}/{max_retries})")
-                if attempt < max_retries - 1:
-                    await asyncio.sleep(retry_delay)
-                else:
-                    logger.error(f"Max retries exceeded claiming {repo}#{issue_number} (timeout)")
-                    
-            except requests.exceptions.HTTPError as e:
-                logger.error(f"HTTP error claiming {repo}#{issue_number}: {e.response.status_code} (attempt {attempt + 1}/{max_retries})")
-                if attempt < max_retries - 1:
-                    await asyncio.sleep(retry_delay)
-                else:
-                    logger.error(f"Max retries exceeded claiming {repo}#{issue_number}")
-                    
-            except Exception as e:
-                logger.error(f"Unexpected error claiming {repo}#{issue_number}: {type(e).__name__}: {e}")
-                if attempt < max_retries - 1:
-                    await asyncio.sleep(retry_delay)
-                else:
-                    logger.error(f"Max retries exceeded claiming {repo}#{issue_number} (unexpected error)")
-        
-        return False
+        try:
+            owner, repo_name = repo.split('/')
+            comment = f"🤖 Agent **{self.config.github_username}** started working on this issue at {datetime.utcnow().isoformat()}Z"
+            
+            # Use GitHub REST API to create comment
+            self.github_api.create_issue_comment(
+                owner=owner,
+                repo=repo_name,
+                issue_number=issue_number,
+                body=comment
+            )
+            
+            logger.info(f"Claimed issue {repo}#{issue_number}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to claim issue {repo}#{issue_number}: {e}")
+            return False
     
     async def start_issue_workflow(self, issue: Dict) -> bool:
         """Start IssueHandler workflow for an issue.
@@ -475,25 +452,10 @@ class PollingService:
         try:
             # Import here to avoid circular dependency
             from agents.issue_handler import IssueHandler
-            from agents.qwen_agent import QwenAgent
             
-            # Get or create QwenAgent instance
-            # In production, this would be the already-running agent
-            qwen = QwenAgent(
-                project_root="/opt/agent-forge",
-                model="qwen2.5-coder:32b",
-                ollama_url="http://localhost:11434",
-                enable_monitoring=self.monitor is not None
-            )
-            
-            # Attach monitor if available
-            if self.monitor:
-                qwen.monitor = self.monitor
-            
-            # Start issue handler with agent
-            handler = IssueHandler(agent=qwen)
-            result = handler.assign_to_issue(repo, issue_number)
-            success = result.get('success', False) if isinstance(result, dict) else False
+            # Start issue handler (this would run in background/separate process in production)
+            handler = IssueHandler()
+            success = await handler.handle_issue(repo, issue_number)
             
             # Update state
             self.state[issue_key].completed = success
@@ -525,6 +487,20 @@ class PollingService:
         """Perform one polling cycle."""
         logger.info("=== Starting polling cycle ===")
         
+        # Update monitor status
+        if self.monitor:
+            from agents.monitor_service import AgentStatus
+            self.monitor.update_agent_status(
+                agent_id="polling-service",
+                status=AgentStatus.WORKING,
+                current_task="Polling repositories for issues"
+            )
+            self.monitor.add_log(
+                agent_id="polling-service",
+                level="INFO",
+                message="Starting polling cycle"
+            )
+        
         try:
             # Check assigned issues
             issues = await self.check_assigned_issues()
@@ -534,7 +510,19 @@ class PollingService:
             
             if not actionable:
                 logger.info("No actionable issues found")
-                return
+                if self.monitor:
+                    self.monitor.add_log(
+                        agent_id="polling-service",
+                        level="INFO",
+                        message="No actionable issues found"
+                    )
+            else:
+                if self.monitor:
+                    self.monitor.add_log(
+                        agent_id="polling-service",
+                        level="INFO",
+                        message=f"Found {len(actionable)} actionable issues"
+                    )
             
             # Check capacity
             processing_count = self.get_processing_count()
@@ -542,19 +530,37 @@ class PollingService:
             
             if available_slots <= 0:
                 logger.info(f"At max capacity ({self.config.max_concurrent_issues} concurrent issues)")
-                return
-            
-            # Start workflows for available slots
-            for issue in actionable[:available_slots]:
-                await self.start_issue_workflow(issue)
-                # Small delay between starts
-                await asyncio.sleep(2)
+                if self.monitor:
+                    self.monitor.add_log(
+                        agent_id="polling-service",
+                        level="WARNING",
+                        message=f"At max capacity ({self.config.max_concurrent_issues} concurrent)"
+                    )
+            elif actionable:
+                # Start workflows for available slots
+                for issue in actionable[:available_slots]:
+                    await self.start_issue_workflow(issue)
+                    # Small delay between starts
+                    await asyncio.sleep(2)
             
         except Exception as e:
             logger.error(f"Error in polling cycle: {e}")
         finally:
+            # Update metrics
+            self.update_metrics()
+            
             # Cleanup old state
             self.cleanup_old_state()
+            
+            # Set back to IDLE
+            if self.monitor:
+                from agents.monitor_service import AgentStatus
+                self.monitor.update_agent_status(
+                    agent_id="polling-service",
+                    status=AgentStatus.IDLE,
+                    current_task=None
+                )
+            
             logger.info("=== Polling cycle complete ===")
     
     async def run(self):
