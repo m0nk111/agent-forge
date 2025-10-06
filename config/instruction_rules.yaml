@@ -1,0 +1,158 @@
+# Instruction Validation Configuration
+#
+# Controls validation behavior and enforcement levels
+# for Copilot instructions compliance.
+
+validation:
+  # Project Structure Rules
+  enforce_root_files: true
+  root_allowed_files:
+    - README.md
+    - CHANGELOG.md
+    - LICENSE
+    - LICENSE.md
+    - .gitignore
+    - .gitattributes
+    - requirements.txt
+    - package.json
+    - pyproject.toml
+    - setup.py
+    - setup.cfg
+    - Makefile
+    - Dockerfile
+    - docker-compose.yml
+  
+  root_allowed_dirs:
+    - .github
+    - .vscode
+    - .git
+  
+  # Documentation Rules
+  require_changelog: true
+  require_docs_changelog: false  # Optional for now
+  check_documentation_language: true
+  
+  # Git Standards
+  validate_commit_format: true
+  block_external_commits: true
+  external_code_dirs:
+    - external-code
+    - vendor
+    - third-party
+  
+  # Code Quality Rules
+  require_debug_logging: false  # Optional - can be enabled per project
+  enforce_error_handling: false  # Optional
+  min_test_coverage: 80
+  
+  # Infrastructure Rules
+  enforce_port_ranges: true
+  port_range:
+    min: 7000
+    max: 7999
+  
+  enforce_ip_conventions: false  # Optional
+
+# Exemptions - files/patterns that bypass validation
+exemptions:
+  files:
+    - .gitignore
+    - .github/*
+    - .vscode/*
+    - "*.pyc"
+    - "*.pyo"
+    - __pycache__/*
+    - "*.egg-info/*"
+    - dist/*
+    - build/*
+  
+  directories:
+    - tests/*
+    - docs/*
+    - examples/*
+    - external-code/*
+  
+  # Specific rules can be exempted for certain paths
+  rule_exemptions:
+    root_directory_rule:
+      - test_*.py  # Allow test files in root during development
+    
+    changelog_requirement:
+      - "*.md"  # Don't require changelog for doc-only changes
+
+# Auto-fix capabilities
+auto_fix:
+  enabled: true
+  
+  # Which categories can be auto-fixed
+  categories:
+    - formatting
+    - documentation
+    - commit_messages
+  
+  # Specific auto-fixes
+  commit_message_format: true
+  changelog_generation: true
+  
+  # Safe mode - ask before applying fixes
+  safe_mode: true
+
+# Reporting
+reporting:
+  # Generate compliance report for each validation
+  generate_reports: true
+  
+  # Report format (text, json, markdown)
+  format: markdown
+  
+  # Include educational feedback
+  include_rationale: true
+  
+  # Metrics tracking
+  track_metrics: true
+  metrics_file: .validation_metrics.json
+  
+  # Severity levels to report
+  report_levels:
+    - error
+    - warning
+    # - info  # Uncomment to include info messages
+
+# Educational mode
+education:
+  # Explain WHY rules exist when violations found
+  explain_violations: true
+  
+  # Gradual enforcement - warn first, then block
+  gradual_enforcement: false
+  training_period_days: 7
+  
+  # Track most violated rules to improve instructions
+  track_violations: true
+  violations_file: .violation_stats.json
+
+# Integration settings
+integration:
+  # Pre-commit validation
+  pre_commit_hooks: true
+  
+  # Pre-file-edit validation
+  pre_edit_validation: true
+  
+  # Pre-PR validation
+  pre_pr_validation: true
+  
+  # Block operations on violations
+  block_on_errors: true
+  block_on_warnings: false
+
+# Notification settings
+notifications:
+  # Show validation results in console
+  console_output: true
+  
+  # Emoji in output
+  use_emoji: true
+  
+  # Verbose mode
+  verbose: false
