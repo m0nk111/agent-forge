@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Agent Configuration Modal** - Per-agent configuration interface integrated into default dashboard
+  - Added gear icon (⚙️) button to each agent card
+  - Full-featured modal with 8 configuration sections:
+    * Basic Information (agent name, LLM model selection)
+    * API Configuration (API tokens, GitHub PAT)
+    * Model Parameters (temperature, max tokens)
+    * Capabilities (code generation, review, issue/PR management, documentation)
+    * Permissions (file read/write, terminal commands, PR operations)
+    * Custom Instructions (agent-specific rules)
+    * Rate Limits (API throttling)
+  - Modal features:
+    * Form validation for required fields
+    * Reset to defaults button with confirmation
+    * ESC key to close modal
+    * Click-outside-to-close behavior
+    * Smooth animations (slide-in effect)
+    * Dark theme consistent with dashboard
+  - Backend integration ready (TODO: connect to /api/config/agents/:id endpoint)
+  - File size: dashboard.html grew from 1,341 lines to 1,808 lines (+467 lines, +35%)
+  - Replaces need for separate unified_dashboard.html
+  - Implements features from GitHub issues #27, #28, #65
+
 - **Prominent Unified Dashboard Button** - Highly visible button in dashboard footer
   - Replaced small text link with styled green gradient button
   - Increased font size from 10px to 12px for better visibility
