@@ -114,11 +114,15 @@ class ServiceManager:
             
             logger.info("Starting polling service...")
             
+            # Create polling config
             config = PollingConfig(
                 interval_seconds=self.config.polling_interval,
-                repositories=self.config.polling_repos,
+                github_token=os.getenv("BOT_GITHUB_TOKEN") or os.getenv("GITHUB_TOKEN"),
+                github_username="m0nk111-qwen-agent",
+                repositories=["m0nk111/agent-forge", "m0nk111/stepperheightcontrol"],
                 watch_labels=["agent-ready", "auto-assign"],
-                max_concurrent_issues=3
+                max_concurrent_issues=3,
+                state_file="/opt/agent-forge/data/polling_state.json"
             )
             
             # Create service with monitoring enabled
