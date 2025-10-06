@@ -424,6 +424,21 @@ async def health_check():
     }
 
 
+@app.get("/api/hello")
+async def hello():
+    """
+    Test endpoint to verify API is working.
+    
+    Returns:
+        dict: Status message with timestamp
+    """
+    return {
+        "status": "ok",
+        "message": "Hello from Agent-Forge!",
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+
 @app.post("/api/config/backup/cleanup")
 async def cleanup_backups(
     keep_days: int = 7,
