@@ -182,6 +182,31 @@
             border-left: 4px solid #10b981;
         }
 
+        .agent-config-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 32px;
+            height: 32px;
+            background: #334155;
+            border: none;
+            border-radius: 6px;
+            color: #94a3b8;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.2s;
+            z-index: 1;
+        }
+
+        .agent-config-btn:hover {
+            background: #475569;
+            color: #60a5fa;
+            transform: rotate(90deg);
+        }
+
         .agent-top {
             display: flex;
             justify-content: space-between;
@@ -628,6 +653,222 @@
         .dashboard-footer a:hover {
             text-decoration: underline;
         }
+
+        /* Configuration Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1e293b;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            border: 1px solid #334155;
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            font-size: 20px;
+            color: #60a5fa;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .modal-close:hover {
+            background: #334155;
+            color: #e2e8f0;
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .config-section {
+            margin-bottom: 24px;
+        }
+
+        .config-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .config-section h3 {
+            font-size: 14px;
+            color: #60a5fa;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            color: #cbd5e1;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            color: #e2e8f0;
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #60a5fa;
+            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .form-group input[type="number"] {
+            max-width: 150px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .checkbox-item label {
+            margin: 0;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        .help-text {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 4px;
+            display: flex;
+            align-items: start;
+            gap: 6px;
+        }
+
+        .warning-text {
+            color: #f59e0b;
+        }
+
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid #334155;
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .modal-footer button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-secondary {
+            background: #334155;
+            color: #e2e8f0;
+        }
+
+        .btn-secondary:hover {
+            background: #475569;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
     </style>
 </head>
 <body>
@@ -871,11 +1112,17 @@
         function createAgentCard(agent) {
             const card = document.createElement('div');
             card.className = `agent-card ${agent.status}`;
+            card.style.position = 'relative';
             if (selectedAgentId === agent.agent_id) {
                 card.classList.add('selected');
             }
             
-            card.onclick = () => selectAgent(agent.agent_id);
+            card.onclick = (e) => {
+                // Don't select if clicking config button
+                if (!e.target.closest('.agent-config-btn')) {
+                    selectAgent(agent.agent_id);
+                }
+            };
 
             const statusClass = agent.status === 'working' ? 'busy' : 
                               agent.status === 'error' ? 'offline' : 'online';
@@ -886,6 +1133,9 @@
                            'No active task';
 
             card.innerHTML = `
+                <button class="agent-config-btn" onclick="openConfigModal('${agent.agent_id}')" title="Configure Agent">
+                    ⚙️
+                </button>
                 <div class="agent-top">
                     <div>
                         <div class="agent-name">${agent.agent_name}</div>
@@ -1022,8 +1272,302 @@
             alert('Agent configuration saved! (Backend integration pending)');
         }
 
+        // Configuration Modal Functions
+        let currentConfigAgentId = null;
+
+        function openConfigModal(agentId) {
+            currentConfigAgentId = agentId;
+            const agent = agents.get(agentId);
+            
+            if (!agent) {
+                console.error('Agent not found:', agentId);
+                return;
+            }
+
+            // Populate form with agent data
+            document.getElementById('configAgentName').value = agent.agent_name || '';
+            document.getElementById('configModel').value = agent.model || '';
+            document.getElementById('configTemperature').value = agent.temperature || 0.7;
+            document.getElementById('configMaxTokens').value = agent.max_tokens || 4096;
+            document.getElementById('configRateLimit').value = agent.rate_limit || 20;
+            
+            // TODO: Load other fields from backend when API is available
+            // For now, leave empty or use defaults
+            
+            // Show modal
+            document.getElementById('configModal').classList.add('active');
+            
+            // Prevent body scroll
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeConfigModal() {
+            document.getElementById('configModal').classList.remove('active');
+            document.body.style.overflow = '';
+            currentConfigAgentId = null;
+        }
+
+        function resetConfig() {
+            if (!confirm('Reset all configuration to defaults? This cannot be undone.')) {
+                return;
+            }
+            
+            // Reset form to defaults
+            document.getElementById('configAgentName').value = '';
+            document.getElementById('configModel').value = '';
+            document.getElementById('configApiToken').value = '';
+            document.getElementById('configGithubToken').value = '';
+            document.getElementById('configTemperature').value = 0.7;
+            document.getElementById('configMaxTokens').value = 4096;
+            document.getElementById('configRateLimit').value = 20;
+            document.getElementById('configInstructions').value = '';
+            
+            // Reset checkboxes
+            document.getElementById('capCodeGeneration').checked = true;
+            document.getElementById('capCodeReview').checked = false;
+            document.getElementById('capIssueManagement').checked = true;
+            document.getElementById('capPRManagement').checked = false;
+            document.getElementById('capDocumentation').checked = false;
+            
+            document.getElementById('permReadFiles').checked = true;
+            document.getElementById('permWriteFiles').checked = true;
+            document.getElementById('permRunCommands').checked = false;
+            document.getElementById('permCreatePRs').checked = false;
+            document.getElementById('permMergePRs').checked = false;
+        }
+
+        function saveConfigFromModal() {
+            if (!currentConfigAgentId) {
+                alert('No agent selected');
+                return;
+            }
+
+            // Collect all form data
+            const configData = {
+                agent_id: currentConfigAgentId,
+                agent_name: document.getElementById('configAgentName').value,
+                model: document.getElementById('configModel').value,
+                api_token: document.getElementById('configApiToken').value,
+                github_token: document.getElementById('configGithubToken').value,
+                temperature: parseFloat(document.getElementById('configTemperature').value),
+                max_tokens: parseInt(document.getElementById('configMaxTokens').value),
+                rate_limit: parseInt(document.getElementById('configRateLimit').value),
+                custom_instructions: document.getElementById('configInstructions').value,
+                capabilities: {
+                    code_generation: document.getElementById('capCodeGeneration').checked,
+                    code_review: document.getElementById('capCodeReview').checked,
+                    issue_management: document.getElementById('capIssueManagement').checked,
+                    pr_management: document.getElementById('capPRManagement').checked,
+                    documentation: document.getElementById('capDocumentation').checked
+                },
+                permissions: {
+                    read_files: document.getElementById('permReadFiles').checked,
+                    write_files: document.getElementById('permWriteFiles').checked,
+                    run_commands: document.getElementById('permRunCommands').checked,
+                    create_prs: document.getElementById('permCreatePRs').checked,
+                    merge_prs: document.getElementById('permMergePRs').checked
+                }
+            };
+
+            // Validate required fields
+            if (!configData.agent_name || !configData.model) {
+                alert('Please fill in all required fields (Agent Name and Model)');
+                return;
+            }
+
+            console.log('Saving configuration:', configData);
+
+            // TODO: Send to backend API endpoint
+            // fetch('/api/config/agents/' + currentConfigAgentId, {
+            //     method: 'PATCH',
+            //     headers: { 'Content-Type': 'application/json' },
+            //     body: JSON.stringify(configData)
+            // })
+            // .then(response => response.json())
+            // .then(data => {
+            //     alert('Configuration saved successfully!');
+            //     closeConfigModal();
+            //     // Refresh agent data
+            //     connect();
+            // })
+            // .catch(error => {
+            //     alert('Failed to save configuration: ' + error.message);
+            // });
+
+            // For now, just close modal
+            alert('Configuration saved! (Backend integration pending)');
+            closeConfigModal();
+        }
+
+        // Close modal on ESC key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && document.getElementById('configModal').classList.contains('active')) {
+                closeConfigModal();
+            }
+        });
+
         // Initialize
         connect();
     </script>
+
+    <!-- Configuration Modal -->
+    <div class="modal-overlay" id="configModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>⚙️ Agent Configuration</h2>
+                <button class="modal-close" onclick="closeConfigModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="configForm" onsubmit="saveConfig(event)">
+                    <!-- Basic Information -->
+                    <div class="config-section">
+                        <h3>📋 Basic Information</h3>
+                        <div class="form-group">
+                            <label for="configAgentName">Agent Name</label>
+                            <input type="text" id="configAgentName" placeholder="e.g., Qwen Code Assistant" required>
+                            <div class="help-text">Display name for this agent</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="configModel">LLM Model</label>
+                            <select id="configModel" required>
+                                <option value="">Select Model...</option>
+                                <optgroup label="OpenAI">
+                                    <option value="gpt-4">GPT-4</option>
+                                    <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                                    <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                                </optgroup>
+                                <optgroup label="Anthropic">
+                                    <option value="claude-3-opus">Claude 3 Opus</option>
+                                    <option value="claude-3-sonnet">Claude 3 Sonnet</option>
+                                    <option value="claude-3-haiku">Claude 3 Haiku</option>
+                                </optgroup>
+                                <optgroup label="Local (Qwen)">
+                                    <option value="qwen2.5-coder:32b">Qwen2.5 Coder 32B</option>
+                                    <option value="qwen2.5-coder:14b">Qwen2.5 Coder 14B</option>
+                                    <option value="qwen2.5-coder:7b">Qwen2.5 Coder 7B</option>
+                                </optgroup>
+                                <optgroup label="Other">
+                                    <option value="gemini-pro">Google Gemini Pro</option>
+                                    <option value="mistral-large">Mistral Large</option>
+                                </optgroup>
+                            </select>
+                            <div class="help-text">Language model to use for this agent</div>
+                        </div>
+                    </div>
+
+                    <!-- API Configuration -->
+                    <div class="config-section">
+                        <h3>🔑 API Configuration</h3>
+                        <div class="form-group">
+                            <label for="configApiToken">API Token / Key</label>
+                            <input type="password" id="configApiToken" placeholder="sk-... or API key">
+                            <div class="help-text">API key for commercial providers (leave empty for local models)</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="configGithubToken">GitHub Token</label>
+                            <input type="password" id="configGithubToken" placeholder="ghp_...">
+                            <div class="help-text">Personal access token for GitHub API</div>
+                        </div>
+                    </div>
+
+                    <!-- Model Parameters -->
+                    <div class="config-section">
+                        <h3>🎛️ Model Parameters</h3>
+                        <div class="form-group">
+                            <label for="configTemperature">Temperature (0-2)</label>
+                            <input type="number" id="configTemperature" min="0" max="2" step="0.1" value="0.7">
+                            <div class="help-text">Higher = more creative, Lower = more focused</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="configMaxTokens">Max Tokens</label>
+                            <input type="number" id="configMaxTokens" min="100" max="128000" step="100" value="4096">
+                            <div class="help-text">Maximum response length</div>
+                        </div>
+                    </div>
+
+                    <!-- Capabilities -->
+                    <div class="config-section">
+                        <h3>🛠️ Capabilities</h3>
+                        <div class="checkbox-group">
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="capCodeGeneration" checked>
+                                <label for="capCodeGeneration">Code Generation & Modification</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="capCodeReview">
+                                <label for="capCodeReview">Code Review</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="capIssueManagement" checked>
+                                <label for="capIssueManagement">Issue Management</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="capPRManagement">
+                                <label for="capPRManagement">Pull Request Management</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="capDocumentation">
+                                <label for="capDocumentation">Documentation Writing</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Permissions -->
+                    <div class="config-section">
+                        <h3>🔒 Permissions</h3>
+                        <div class="checkbox-group">
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="permReadFiles" checked>
+                                <label for="permReadFiles">Read Files</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="permWriteFiles" checked>
+                                <label for="permWriteFiles">Write Files</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="permRunCommands">
+                                <label for="permRunCommands">Run Terminal Commands</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="permCreatePRs">
+                                <label for="permCreatePRs">Create Pull Requests</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="permMergePRs">
+                                <label for="permMergePRs">Merge Pull Requests</label>
+                            </div>
+                            <div class="help-text warning-text">⚠️ Warning: Some permissions can have system-wide effects</div>
+                        </div>
+                    </div>
+
+                    <!-- Custom Instructions -->
+                    <div class="config-section">
+                        <h3>📝 Custom Instructions</h3>
+                        <div class="form-group">
+                            <label for="configInstructions">Additional Instructions</label>
+                            <textarea id="configInstructions" placeholder="Enter custom instructions for this agent..."></textarea>
+                            <div class="help-text">Special rules or guidelines for this agent</div>
+                        </div>
+                    </div>
+
+                    <!-- Rate Limits -->
+                    <div class="config-section">
+                        <h3>⏱️ Rate Limits</h3>
+                        <div class="form-group">
+                            <label for="configRateLimit">API Calls per Minute</label>
+                            <input type="number" id="configRateLimit" min="1" max="100" value="20">
+                            <div class="help-text">Limit API requests to prevent quota exhaustion</div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeConfigModal()">Cancel</button>
+                <button type="button" class="btn-danger" onclick="resetConfig()">Reset to Defaults</button>
+                <button type="button" class="btn-primary" onclick="saveConfigFromModal()">Save Configuration</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
+

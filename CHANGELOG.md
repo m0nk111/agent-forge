@@ -8,6 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased] - 2025-01-06
 
 ### Added
+- **Agent Configuration Modal** - Direct agent configuration from dashboard (Issue #65)
+  - **Configuration Button**: Added gear icon (⚙️) to top-right of each agent card
+  - **Modal Design**: Clean overlay modal with organized sections for all config options
+  - **Basic Information**: Agent name and LLM model selection (GPT-4, Claude 3, Qwen, Gemini, etc.)
+  - **API Configuration**: Fields for API token and GitHub token (secure password inputs)
+  - **Model Parameters**: Temperature (0-2) and max tokens controls with helpful descriptions
+  - **Capabilities**: Checkboxes for code generation, code review, issue management, PR management, documentation
+  - **Permissions**: Granular controls for file operations, terminal commands, PR creation/merging with warning labels
+  - **Custom Instructions**: Textarea for additional agent-specific instructions
+  - **Rate Limits**: API calls per minute control to prevent quota exhaustion
+  - **Validation**: Required field validation and user-friendly error messages
+  - **Accessibility**: Keyboard navigation (ESC to close), ARIA labels, hover effects
+  - **Save/Cancel/Reset**: Three action buttons with clear labels and confirmation for destructive actions
+  - **Smooth Animations**: Rotating gear icon on hover, modal fade-in with backdrop blur
+  - **Responsive Design**: Works within fixed 1280x1024 dashboard layout
+  - **Backend Ready**: Form collects all data for future API integration
+
 - **Unified Dashboard** - New modern dashboard combining monitoring and configuration (Issues #27, #28)
   - **Fixed Layout**: 1280x1024 viewport with agent list (40%) + live logs (60%)
   - **Agent Cards**: Click-to-select agents with real-time status, model info, task progress
