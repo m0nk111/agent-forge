@@ -1,15 +1,3 @@
-Agent Forge Dual License
-=========================
-
-Agent Forge is dual licensed under:
-
-- The GNU Affero General Public License v3.0 ("AGPLv3"); or
-- The Agent Forge Commercial License (see `COMMERCIAL-LICENSE.md`).
-
-You may use, copy, modify, and distribute this software under the terms of **either** license. If you prefer to use Agent Forge in a closed-source product or without the reciprocal obligations of the AGPLv3, please contact us to obtain a commercial license.
-
----
-
                     GNU AFFERO GENERAL PUBLIC LICENSE
                        Version 3, 19 November 2007
 
@@ -121,7 +109,7 @@ interfaces specified for a particular programming language, one that
 is widely used among developers working in that language.
 
   The "System Libraries" of an executable work include anything, other
-than the work as a whole, that (a) is included in the normal form of
+ than the work as a whole, that (a) is included in the normal form of
 packaging a Major Component, but which is not part of that Major
 Component, and (b) serves only to enable use of the work with that
 Major Component, or to implement a Standard Interface for which an
@@ -263,8 +251,7 @@ in one of these ways:
     product that is covered by this License, on a durable physical
     medium customarily used for software interchange, for a price no
     more than your reasonable cost of physically performing this
-    conveying of source, or (2) access to copy the
-Corresponding Source from a network server at no charge.
+    conveying of source, or (2) access to copy the Corresponding Source from a network server at no charge.
 
     c) Convey individual copies of the object code with a copy of the
     written offer to provide the Corresponding Source.  This
@@ -401,8 +388,8 @@ terms that apply to those files, or a notice indicating where to find the
 applicable terms.
 
   Additional terms, permissive or non-permissive, may be stated in the
-form of a separately written license, or stated as exceptions;
- the above requirements apply either way.
+form of a separately written license, or stated as exceptions; the above
+requirements apply either way.
 
   8. Termination.
 
@@ -434,4 +421,3 @@ material under section 10.
   9. Acceptance Not Required for Having Copies.
 
   You are not required to accept this License in order to receive or run
-```}
