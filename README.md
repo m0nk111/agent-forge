@@ -94,6 +94,10 @@ See [docs/QWEN_MONITORING.md](docs/QWEN_MONITORING.md) for detailed documentatio
 
 ## 🏗️ Architecture
 
+> **📊 Visual Documentation**: See [Architecture Diagrams](docs/diagrams/architecture-overview.md) for visual system overview, data flow, and component interactions.
+
+For complete architecture details, see [ARCHITECTURE.md](ARCHITECTURE.md).
+
 ### Agent Roles
 
 Agent-Forge supports multiple specialized agent roles:

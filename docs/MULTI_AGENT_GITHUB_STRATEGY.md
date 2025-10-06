@@ -1,6 +1,9 @@
 # Multi-Agent GitHub Strategy
 
+> **📊 Visual Documentation**: See [Architecture Diagram](diagrams/architecture-overview.md) for agent communication patterns and [Data Flow](diagrams/data-flow.md#issue-processing-flow) for GitHub integration flow.
+
 ## Problem
+
 Using a single GitHub account for multiple AI agents makes it impossible to:
 - Track which agent made which changes
 - Apply different permissions per agent

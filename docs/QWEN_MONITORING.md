@@ -1,8 +1,12 @@
 # Qwen Agent Monitoring Integration
 
+> **📊 Visual Documentation**: See [Data Flow Diagram](diagrams/data-flow.md#monitoring-data-flow) for visual representation of monitoring architecture.
+
 ## Overview
 
 The Qwen Agent now supports real-time monitoring dashboard integration, allowing you to track agent activity, progress, and logs in a live web interface.
+
+For complete architecture details, see [PORT_REFERENCE.md](PORT_REFERENCE.md) for WebSocket port information (7997).
 
 ## Features
 

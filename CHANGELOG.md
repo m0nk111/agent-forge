@@ -5,9 +5,64 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - 2025-01-06
+## [Unreleased] - 2025-10-06
 
 ### Added
+- **Comprehensive Documentation Suite** - Complete architecture and onboarding documentation
+  - **AGENT_ONBOARDING.md**: Structured checklist for AI agents to quickly understand the project
+    - Must-read documents in priority order
+    - Key architecture concepts to verify
+    - Port overview (8080, 7997, 8897) with common pitfalls
+    - Frontend structure clarification (dashboard.html is DEFAULT)
+    - Deployment verification steps
+    - Common mistakes and best practices
+  - **ARCHITECTURE.md**: Complete system architecture documentation (root level)
+    - Service Manager architecture and orchestration
+    - Agent roles and responsibilities
+    - WebSocket communication flow
+    - Frontend file structure and relationships
+    - Port allocation table with bind addresses
+    - Configuration management hierarchy
+    - Deployment architectures (local, systemd, future Docker)
+    - Security considerations
+  - **docs/diagrams/architecture-overview.md**: Visual system architecture (Mermaid)
+    - Service Manager with all services and agents
+    - Frontend structure (index→dashboard→unified→config→monitoring)
+    - GitHub API integration
+    - LLM connections (Ollama, OpenAI, Anthropic, Google)
+    - Network topology diagram
+  - **docs/diagrams/data-flow.md**: Complete data flow diagrams (Mermaid)
+    - Issue processing lifecycle with sequence diagram
+    - Monitoring data flow (agent → monitor → WebSocket → dashboards)
+    - Configuration update flow with validation
+    - WebSocket message types and patterns
+    - Git operations flow (branch, commit, push, PR)
+    - Rate limiting and caching strategies
+  - **docs/diagrams/component-interactions.md**: Component communication patterns (Mermaid)
+    - Service Manager orchestration lifecycle
+    - Inter-agent communication via Message Bus
+    - Configuration load and runtime update flows
+    - Agent state tracking and metrics collection
+    - Error handling and retry strategies
+    - WebSocket connection management
+    - API request lifecycle
+  - **docs/PORT_REFERENCE.md**: Complete port allocation guide
+    - Detailed port usage table (8080, 7997, 8897, 7996, 11434)
+    - Configuration methods (env vars, config files, CLI)
+    - Common port conflicts and resolutions
+    - WebSocket troubleshooting
+    - LAN access configuration
+    - Firewall rules
+    - Quick commands reference
+    - Troubleshooting matrix
+- **Documentation Cross-References**: Updated existing docs with diagram references
+  - README.md: Added visual documentation link to Architecture section
+  - QWEN_MONITORING.md: Added data flow diagram reference
+  - MULTI_AGENT_GITHUB_STRATEGY.md: Added architecture and data flow references
+- **Dashboard Footer Enhancement**: Link to unified dashboard from main dashboard
+  - Added green "🚀 Try New Unified Dashboard" link in footer-left of dashboard.html
+  - Added "✨ You are on the New Unified Dashboard" indicator in unified_dashboard.html footer
+
 - **Agent Configuration Modal** - Direct agent configuration from dashboard (Issue #65)
   - **Configuration Button**: Added gear icon (⚙️) to top-right of each agent card
   - **Modal Design**: Clean overlay modal with organized sections for all config options
