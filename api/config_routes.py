@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 import logging
+import requests
 
 from agents.config_manager import (
     get_config_manager,
@@ -854,6 +855,59 @@ async def cleanup_backups(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ==================== GITHUB UTILITIES ====================
+
+class GitHubTokenModel(BaseModel):
+    """GitHub token for validation"""
+    token: str
+
+
+@app.post("/api/github/validate-token")
+async def validate_github_token(
+    token_data: GitHubTokenModel,
+    user: dict = Depends(verify_token)
+):
+    """Validate GitHub token and return user information"""
+    try:
+        # Call GitHub API to get user info
+        response = requests.get(
+            "https://api.github.com/user",
+            headers={
+                'Authorization': f'Bearer {token_data.token}',
+                'Accept': 'application/vnd.github+json',
+                'X-GitHub-Api-Version': '2022-11-28'
+            },
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            user_data = response.json()
+            return {
+                "valid": True,
+                "username": user_data.get("login"),
+                "name": user_data.get("name"),
+                "email": user_data.get("email"),
+                "avatar_url": user_data.get("avatar_url"),
+                "account_type": user_data.get("type")  # User or Organization
+            }
+        elif response.status_code == 401:
+            return {
+                "valid": False,
+                "error": "Invalid token"
+            }
+        else:
+            return {
+                "valid": False,
+                "error": f"GitHub API error: {response.status_code}"
+            }
+    except requests.RequestException as e:
+        logger.error(f"Failed to validate GitHub token: {e}")
+        raise HTTPException(status_code=500, detail=f"Network error: {str(e)}")
+    except Exception as e:
+        logger.error(f"Failed to validate GitHub token: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     
@@ -871,3 +925,4 @@ if __name__ == "__main__":
         port=7996,
         log_level="info"
     )
+

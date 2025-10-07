@@ -918,6 +918,9 @@
                 <div class="section-header">
                     <h2 class="section-title">Active Agents</h2>
                     <div style="display: flex; align-items: center; gap: 12px;">
+                        <button onclick="openCreateAgentModal()" class="btn-primary" style="padding: 8px 16px; font-size: 14px;">
+                            ➕ Create New Agent
+                        </button>
                         <div class="view-toggle">
                             <button onclick="setViewMode('list')" id="list-view-btn" class="active">📋 List</button>
                             <button onclick="setViewMode('grid')" id="grid-view-btn">⊞ Grid</button>
@@ -1750,6 +1753,70 @@
         </div>
     </div>
 
+    <!-- Create New Agent Modal -->
+    <div class="modal-overlay" id="createAgentModal" onclick="closeCreateAgentModalOnOverlay(event)">
+        <div class="modal" onclick="event.stopPropagation()" style="max-width: 500px;">
+            <div class="modal-header">
+                <div class="modal-title">➕ Create New Agent</div>
+                <button class="modal-close" onclick="closeCreateAgentModal()">×</button>
+            </div>
+            <div class="modal-body" style="max-height: 600px;">
+                <form id="createAgentForm">
+                    <div class="form-group">
+                        <label for="newAgentId">Agent ID *</label>
+                        <input type="text" id="newAgentId" placeholder="e.g., qwen-agent-1" required pattern="[a-z0-9-]+">
+                        <div class="help-text">Unique identifier (lowercase, numbers, hyphens only)</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="newAgentName">Agent Name *</label>
+                        <input type="text" id="newAgentName" placeholder="e.g., Qwen Code Assistant" required>
+                        <div class="help-text">Display name for this agent</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="newAgentGithubToken">GitHub Token *</label>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="password" id="newAgentGithubToken" placeholder="ghp_..." required style="flex: 1;">
+                            <button type="button" class="btn btn-secondary" onclick="validateGithubToken()" style="white-space: nowrap;">
+                                🔍 Validate
+                            </button>
+                        </div>
+                        <div class="help-text">GitHub personal access token</div>
+                        <div id="tokenValidationStatus" style="margin-top: 8px; font-size: 13px;"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="newAgentGithubUsername">GitHub Username</label>
+                        <input type="text" id="newAgentGithubUsername" placeholder="Detected from token..." readonly>
+                        <div class="help-text">Automatically detected from token</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="newAgentProvider">LLM Provider *</label>
+                        <select id="newAgentProvider" required onchange="updateNewAgentModels()">
+                            <option value="local" selected>🏠 Local (Ollama)</option>
+                            <option value="openai">🟢 OpenAI</option>
+                            <option value="anthropic">🟣 Anthropic</option>
+                            <option value="google">🔵 Google</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="newAgentModel">Model *</label>
+                        <select id="newAgentModel" required>
+                            <option value="">Loading...</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeCreateAgentModal()">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="createNewAgent()">Create Agent</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Agent-specific configuration management
         let currentConfigAgentId = null;
@@ -1815,6 +1882,155 @@
         function closeAgentConfigModalOnOverlay(event) {
             if (event.target.id === 'agentConfigModal') {
                 closeAgentConfigModal();
+            }
+        }
+
+        // Create New Agent Modal Management
+        function openCreateAgentModal() {
+            document.getElementById('createAgentModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+            
+            // Reset form
+            document.getElementById('createAgentForm').reset();
+            document.getElementById('tokenValidationStatus').innerHTML = '';
+            document.getElementById('newAgentGithubUsername').value = '';
+            
+            // Load default models
+            updateNewAgentModels();
+        }
+
+        function closeCreateAgentModal() {
+            document.getElementById('createAgentModal').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        function closeCreateAgentModalOnOverlay(event) {
+            if (event.target.id === 'createAgentModal') {
+                closeCreateAgentModal();
+            }
+        }
+
+        async function validateGithubToken() {
+            const token = document.getElementById('newAgentGithubToken').value;
+            const statusEl = document.getElementById('tokenValidationStatus');
+            const usernameEl = document.getElementById('newAgentGithubUsername');
+            
+            if (!token) {
+                statusEl.innerHTML = '<span style="color: #ef4444;">❌ Please enter a token</span>';
+                return;
+            }
+            
+            statusEl.innerHTML = '<span style="color: #60a5fa;">🔄 Validating token...</span>';
+            
+            try {
+                const response = await fetch('/api/github/validate-token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ github_token: token })
+                });
+                
+                const data = await response.json();
+                
+                if (data.valid) {
+                    statusEl.innerHTML = `<span style="color: #22c55e;">✅ Valid token for @${data.username}</span>`;
+                    usernameEl.value = data.username;
+                } else {
+                    statusEl.innerHTML = `<span style="color: #ef4444;">❌ ${data.error}</span>`;
+                    usernameEl.value = '';
+                }
+            } catch (error) {
+                statusEl.innerHTML = `<span style="color: #ef4444;">❌ Validation failed: ${error.message}</span>`;
+                usernameEl.value = '';
+            }
+        }
+
+        async function updateNewAgentModels() {
+            const provider = document.getElementById('newAgentProvider').value;
+            const modelSelect = document.getElementById('newAgentModel');
+            
+            modelSelect.innerHTML = '<option value="">Loading models...</option>';
+            modelSelect.disabled = true;
+            
+            try {
+                const response = await fetch(`/api/llm/providers/${provider}/models`);
+                const data = await response.json();
+                
+                if (data.models && data.models.length > 0) {
+                    modelSelect.innerHTML = data.models.map(model => 
+                        `<option value="${model}">${model}</option>`
+                    ).join('');
+                } else {
+                    modelSelect.innerHTML = '<option value="">No models available</option>';
+                }
+            } catch (err) {
+                console.error('Could not load models:', err);
+                modelSelect.innerHTML = '<option value="">Error loading models</option>';
+            } finally {
+                modelSelect.disabled = false;
+            }
+        }
+
+        async function createNewAgent() {
+            const agentId = document.getElementById('newAgentId').value.trim();
+            const agentName = document.getElementById('newAgentName').value.trim();
+            const githubToken = document.getElementById('newAgentGithubToken').value.trim();
+            const githubUsername = document.getElementById('newAgentGithubUsername').value.trim();
+            const provider = document.getElementById('newAgentProvider').value;
+            const model = document.getElementById('newAgentModel').value;
+            
+            // Validation
+            if (!agentId || !agentName || !githubToken || !provider || !model) {
+                alert('Please fill in all required fields (*)');
+                return;
+            }
+            
+            if (!githubUsername) {
+                alert('Please validate the GitHub token first to detect the username');
+                return;
+            }
+            
+            if (!/^[a-z0-9-]+$/.test(agentId)) {
+                alert('Agent ID must contain only lowercase letters, numbers, and hyphens');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/config/agents', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        agent_id: agentId,
+                        name: agentName,
+                        model: model,  // Legacy field
+                        model_provider: provider,
+                        model_name: model,
+                        github_token: githubToken,
+                        enabled: true,
+                        max_concurrent_tasks: 1,
+                        polling_interval: 60,
+                        capabilities: ['code_generation', 'code_review', 'issue_management', 'pr_management', 'documentation'],
+                        local_shell_enabled: true,
+                        shell_working_dir: '/opt/agent-forge',
+                        shell_timeout: 300,
+                        shell_permissions: 'developer',
+                        temperature: 0.7,
+                        max_tokens: 4096
+                    })
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Failed to create agent');
+                }
+                
+                alert(`✅ Agent "${agentName}" created successfully!\n\nYou can now find it in the dashboard and configure it further via the settings button.`);
+                closeCreateAgentModal();
+                
+                // Refresh page to show new agent
+                location.reload();
+            } catch (error) {
+                console.error('Failed to create agent:', error);
+                alert(`❌ Failed to create agent: ${error.message}`);
             }
         }
 
