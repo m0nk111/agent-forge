@@ -165,15 +165,9 @@ class PollingService:
             try:
                 from engine.runners.monitor_service import get_monitor, AgentStatus
                 self.monitor = get_monitor()
-                self.monitor.register_agent(
-                    agent_id="polling-service",
-                    agent_name="GitHub Polling Service"
-                )
-                self.monitor.update_agent_status(
-                    agent_id="polling-service",
-                    status=AgentStatus.IDLE,
-                    current_task="Initialized"
-                )
+                
+                # Polling service is a SERVICE, not an agent - do not register as agent
+                # Services register via service_manager, agents register via their own init
                 
                 # Add custom logging handler to forward all logs to monitor
                 monitor_handler = MonitorLogHandler(self.monitor, "polling-service")
