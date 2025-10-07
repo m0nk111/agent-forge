@@ -179,11 +179,29 @@ class ServiceManager:
             )
             
             # Add or update agent configuration
-            try:
+            existing = config_mgr.get_agent("qwen-main-agent")
+            if existing:
+                # Update existing agent
+                config_mgr.update_agent("qwen-main-agent", {
+                    "name": "Qwen Code Agent",
+                    "model": "qwen2.5-coder:7b",
+                    "model_provider": "local",
+                    "model_name": "qwen2.5-coder:7b",
+                    "enabled": True,
+                    "max_concurrent_tasks": 1,
+                    "polling_interval": 60,
+                    "capabilities": ["code_generation", "code_review", "issue_management", "pr_management", "documentation"],
+                    "api_base_url": self.config.qwen_base_url,
+                    "local_shell_enabled": True,
+                    "shell_working_dir": "/opt/agent-forge",
+                    "shell_timeout": 300,
+                    "shell_permissions": "developer"
+                })
+                logger.info("✅ Qwen agent configuration updated in ConfigManager")
+            else:
+                # Add new agent
                 config_mgr.add_agent(agent_config)
                 logger.info("✅ Qwen agent registered in ConfigManager")
-            except Exception as e:
-                logger.warning(f"Could not register agent in ConfigManager: {e}")
             
             logger.info("✅ Code agent initialized and registered with monitor")
             
