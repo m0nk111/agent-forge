@@ -4,10 +4,10 @@
 trusted_agents:
   - username: m0nk111-bot
     role: bot
-    description: Main bot account for GitHub automation
+    description: Bot account for automated GitHub operations (posting, organizing, triage)
     trusted: true
   
   - username: m0nk111-qwen-agent
     role: developer
-    description: Qwen-based code generation agent
+    description: Qwen-based code generation and development agent
     trusted: true

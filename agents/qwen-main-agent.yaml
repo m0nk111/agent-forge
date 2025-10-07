@@ -2,6 +2,7 @@
 
 agent_id: qwen-main-agent
 name: Qwen Main Agent
+role: coordinator  # Primary role: task coordination and planning
 model: qwen2.5-coder:7b
 enabled: true
 max_concurrent_tasks: 1

@@ -26,6 +26,8 @@ class AgentConfig:
     max_concurrent_tasks: int = 1
     polling_interval: int = 60  # seconds
     capabilities: List[str] = None
+    # Agent role for task assignment
+    role: str = "developer"  # coordinator, developer, reviewer, tester, documenter, bot, researcher
     github_token: Optional[str] = None
     api_base_url: Optional[str] = None
     custom_settings: Dict[str, Any] = None

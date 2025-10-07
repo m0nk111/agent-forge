@@ -2,6 +2,7 @@
 
 agent_id: m0nk111-qwen-agent
 name: M0nk111 Qwen Agent
+role: developer  # Primary role: code generation and development
 model: qwen2.5-coder:7b
 enabled: true
 max_concurrent_tasks: 1
