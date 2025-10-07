@@ -9,6 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Production deployment tools** - Complete deployment checklist and automation
+  - New file: `docs/DEPLOYMENT_CHECKLIST.md` - Comprehensive pre-deployment checklist (300+ lines)
+  - New script: `scripts/quick-deploy.sh` - Automated deployment verification (one-command deploy)
+  - Checklist sections: Code Quality, Configuration, Documentation, Security, Services, Testing, Git, Deployment
+  - Pre-production checks: Security hardening, performance tuning, monitoring, backup & recovery
+  - Post-deployment verification: Service status, port availability, health checks, log monitoring
+  - Rollback procedure: Step-by-step instructions for emergency rollback
+  - Deployment notes template: Structured deployment documentation format
+
+- **Complete installation documentation** - Full setup guide for new users
+  - New file: `docs/INSTALLATION.md` - 340+ line comprehensive installation guide
+  - Sections: Prerequisites, Quick Install, Detailed Setup (7 subsections), Verification (4 tests), Troubleshooting, Next Steps
+  - Testing procedures: Auth service, agent service, dashboard, token loading
+  - Troubleshooting guides: Auth issues, CORS problems, token loading, Ollama connectivity
+  - Quick install: 9-step command sequence for rapid setup
+  - Detailed setup: Python environment, Ollama, agent config, GitHub tokens, systemd services, passwordless sudo
+
+- **Updated README with security documentation**
+  - New section: "Security & Authentication" in README.md (50 lines)
+  - Dashboard authentication instructions (SSH/PAM login, 24h JWT sessions)
+  - Token security model explanation (secrets/ directory, 0600 permissions)
+  - Setup instructions for new users
+  - Links to comprehensive security documentation
+
 - **SSH/PAM authentication system** - Simpler dashboard security using system credentials
   - New file: `api/auth_routes.py` - SSH authentication via PAM (replaces OAuth)
   - Endpoints: `/auth/login`, `/auth/logout`, `/auth/user`, `/auth/status`, `/health`

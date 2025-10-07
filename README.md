@@ -54,7 +54,54 @@ python3 agents/polling_service.py --repos owner/repo --interval 300
 python3 agents/code_agent.py --config configs/caramba_personality_ai.yaml --phase 1
 ```
 
-## 📊 Monitoring & Dashboard
+## � Security & Authentication
+
+### Dashboard Authentication
+
+Agent-Forge uses **SSH/PAM authentication** for dashboard security:
+
+- **Login**: Use your system SSH credentials (same as terminal login)
+- **Session**: 24-hour JWT tokens with HttpOnly cookies
+- **Port**: Authentication service runs on port 7996
+- **Setup**: Automatically starts via systemd service
+
+**First Time Setup:**
+
+```bash
+# Auth service is automatically enabled (systemd)
+sudo systemctl status agent-forge-auth
+
+# Dashboard redirects to login if not authenticated
+# Login with your system username/password
+```
+
+### Token Security
+
+GitHub tokens are stored securely outside git:
+
+```bash
+# Tokens stored in secrets/ directory (0600 permissions)
+secrets/agents/{agent-id}.token
+
+# Never committed to git (blocked by .gitignore)
+# Automatically loaded by ConfigManager
+```
+
+**To add a new agent token:**
+
+```bash
+# Create token file
+echo "ghp_YOUR_NEW_TOKEN" > secrets/agents/my-agent.token
+chmod 600 secrets/agents/my-agent.token
+
+# Update config to reference it
+# config/agents.yaml:
+#   github_token: null  # Token loaded from secrets/
+```
+
+See [docs/TOKEN_SECURITY.md](docs/TOKEN_SECURITY.md) for complete security guide.
+
+## �📊 Monitoring & Dashboard
 
 Agent-Forge includes a real-time monitoring dashboard for tracking agent activity, logs, and progress.
 
