@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2025-10-07
 
+### Fixed
+
+- **Agent Creation API Authentication** - Removed authentication requirements for agent creation flow
+  - Removed `verify_token` dependency from `POST /api/config/agents` (allow unauthenticated agent creation)
+  - Removed `verify_token` dependency from `POST /api/github/validate-token` (needed for new agent GitHub validation)
+  - Removed `verify_token` dependency from `GET /api/llm/providers/{provider}/models` (needed for model selection during creation)
+  - Fixed `local` provider validation in `get_provider_models`:
+    * Now checks `PROVIDERS` dict instead of `PROVIDER_KEYS` (local provider has no API key)
+    * Prevents "Unknown provider: local" error
+  - Added `CONFIG_API_PORT` environment variable support (default: 7998)
+  - Added `API_BASE_URL` auto-detection in frontend dashboard for cross-origin API calls
+  - Updated critical frontend API calls to use `API_BASE_URL`:
+    * GitHub token validation: `validateGithubToken()`
+    * Model loading: `updateNewAgentModels()`
+    * Agent creation: `createNewAgent()`
+  - Rationale: New agents cannot authenticate before they exist, so creation endpoints must be public
+  - Security note: Consider adding rate limiting or CAPTCHA for production deployments
+
 ### Added
 
 - **Create Agent UI Modal with GitHub Integration** - Complete agent creation flow via dashboard
@@ -34,6 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Auto-refresh dashboard after successful agent creation
   - Complete validation: required fields, agent ID pattern, GitHub username detection
   - Integration with Issues #30 & #31: new agents get permissions and LLM provider config
+
+### Added
 
 - **Agent Permissions System UI (Issue #30 - Complete)** - Full UI integration for permissions management
   - Updated `frontend/dashboard.html` with comprehensive permissions section:
