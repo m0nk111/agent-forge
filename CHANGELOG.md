@@ -9,20 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Config directory restructuring** - Organized configs by category with consistent naming
-  - **Directory structure**: `config/agents/`, `config/services/`, root for system configs
-  - **Agent configs**: `agents/bot.yaml`, `agents/coordinator.yaml`, `agents/qwen-main.yaml`
-  - **Service configs**: `services/polling.yaml`
-  - **System configs**: `system.yaml`, `repositories.yaml`, `trusted_agents.yaml`, `instruction_rules.yaml`
-  - **Consistent naming**: Removed `_config` suffix, use hyphen-case (bot.yaml, qwen-main.yaml)
-  - **Rationale**: Clearer organization, all agents in one place, easier to find and maintain
-  - **Production synced**: /opt/agent-forge/config restructured identically
+- **Complete config directory reorganization** - Hierarchical structure by purpose
+  - **Directory structure**:
+    * `config/agents/` - GitHub agent accounts (m0nk111-bot.yaml, m0nk111-qwen-agent.yaml)
+    * `config/services/` - Local orchestrators (coordinator.yaml, polling.yaml)
+    * `config/system/` - Core system configs (system.yaml, repositories.yaml, trusted_agents.yaml)
+    * `config/rules/` - Policies and rules (instruction_rules.yaml, review_criteria.yaml, security_audit.yaml)
+    * `config/development/` - Test and dev configs (test_task.yaml)
+  - **Naming convention**: Agent files named by GitHub username (most unique identifier)
+  - **Clear separation**: Agents = GitHub accounts with credentials, Services = local orchestrators
+  - **Benefits**: Easy to find configs by purpose, scalable structure, clean organization
+  - **Production synced**: /opt/agent-forge/config matches development structure
 
 - **Agent configuration refactoring** - Moved to per-agent config files
   - Removed monolithic `config/agents.yaml` (backed up to backups/)
   - Created dedicated config files for each agent
   - Benefits: Cleaner separation, easier maintenance, more flexible per-agent settings
-  - Trusted agents: Separate `trusted_agents.yaml` for GitHub account credentials
   - Architecture: Each agent has its own config file with full settings
 
 - **API-level service/agent separation** - Clean architectural separation of infrastructure and agents
