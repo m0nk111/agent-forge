@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2025-10-07
 
+### Removed
+
+- **Cleaned up agents/ directory** - Removed obsolete config files and corrupt backup
+  - Deleted agents/m0nk111-bot.yaml (moved to config/agents/)
+  - Deleted agents/m0nk111-qwen-agent.yaml (moved to config/agents/)
+  - Deleted agents/qwen-main-agent.yaml (superseded by m0nk111-qwen-agent.yaml)
+  - Deleted agents/polling_service.py.corrupt_backup
+  - Removed entire agents/ directory (Python modules moved to engine/runners/)
+  - All agent configs now in config/agents/, all Python modules in engine/
+
 ### Added
 
 - **Config loader refactoring for hierarchical structure** - Updated ConfigManager to support new directory layout
