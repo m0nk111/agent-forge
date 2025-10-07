@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Code agent runtime startup** - Replaced hardcoded agent lookup with dynamic discovery
+  - service_manager.py: Changed from hardcoded "qwen-main-agent" to finding first enabled developer agent
+  - Fixes code_agent health status remaining False after agent rename
+  - Makes system more flexible for multiple developer agents
+  - Code agent now starts successfully with m0nk111-qwen-agent
+
 - **Dashboard working directory fix** - Fixed HTTP server cwd to project root
   - service_manager.py: Updated cwd from `parent.parent` to `parent.parent.parent` for engine/core/
   - HTTP server now runs in /opt/agent-forge/ instead of /opt/agent-forge/engine/

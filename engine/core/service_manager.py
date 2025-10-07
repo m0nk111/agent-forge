@@ -148,16 +148,18 @@ class ServiceManager:
             
             # Load agent configuration
             config_manager = get_config_manager()
-            agent_config = config_manager.get_agent("qwen-main-agent")
+            
+            # Find first enabled developer agent
+            all_agents = config_manager.get_agents()
+            agent_config = None
+            for agent in all_agents:
+                if agent.enabled and agent.role == "developer":
+                    agent_config = agent
+                    break
             
             if not agent_config:
-                logger.error("❌ qwen-main-agent not found in config/agents.yaml")
-                logger.error("Please add the agent via dashboard or manually configure it")
-                self.health_status['code_agent'] = False
-                return
-            
-            if not agent_config.enabled:
-                logger.warning("⚠️ qwen-main-agent is disabled in config")
+                logger.error("❌ No enabled developer agent found in config/agents/")
+                logger.error("Please add an agent with role='developer' via dashboard or config file")
                 self.health_status['code_agent'] = False
                 return
             
