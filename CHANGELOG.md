@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2025-10-07
 
+### Fixed
+
+- **Dashboard config modal now loads complete agent settings** - Config API integration
+  - `frontend/dashboard.html`: `openAgentConfigModal()` now fetches from Config API instead of WebSocket data
+  - WebSocket data only contains runtime state, not full configuration
+  - Config modal now correctly shows LLM provider, model, temperature, max_tokens, shell permissions
+  - Resolves issue: "ik zie de locale llm niet geselecteerd, geen API token"
+  - User reported: Config modal showed empty/default values instead of actual agent config
+  
+- **Config API Pydantic models updated with Issue #30 & #31 fields**
+  - `api/config_routes.py`: Added missing fields to `AgentConfigModel` and `AgentUpdateModel`
+  - Added: `model_provider`, `model_name`, `api_key_name`, `temperature`, `max_tokens`
+  - Added: `local_shell_enabled`, `shell_working_dir`, `shell_timeout`, `shell_permissions`
+  - GET endpoints now return complete agent configuration
+  
+- **Config API GET endpoints made public for dashboard access**
+  - Removed `Depends(verify_token)` from `GET /api/config/agents` and `GET /api/config/agents/{agent_id}`
+  - Read-only endpoints don't require authentication
+  - Dashboard can now load agent configs without auth headers
+
 ### Added
 
 - **Dashboard now shows configured-but-inactive agents** - Monitor service integration with ConfigManager

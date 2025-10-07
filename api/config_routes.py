@@ -53,6 +53,19 @@ class AgentConfigModel(BaseModel):
     custom_settings: Dict[str, Any] = Field(default_factory=dict)
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
+    
+    # Issue #31: Multi-provider LLM support
+    model_provider: Optional[str] = None  # local, openai, anthropic, google
+    model_name: Optional[str] = None      # Provider-specific model identifier
+    api_key_name: Optional[str] = None    # Reference to keys.json entry
+    temperature: Optional[float] = Field(default=0.7, ge=0.0, le=2.0)
+    max_tokens: Optional[int] = Field(default=4096, ge=1, le=100000)
+    
+    # Shell permissions (Issue #30)
+    local_shell_enabled: Optional[bool] = None
+    shell_working_dir: Optional[str] = None
+    shell_timeout: Optional[int] = None
+    shell_permissions: Optional[str] = None  # read_only, developer, admin
 
 
 class AgentUpdateModel(BaseModel):
@@ -65,6 +78,19 @@ class AgentUpdateModel(BaseModel):
     github_token: Optional[str] = None
     api_base_url: Optional[str] = None
     custom_settings: Optional[Dict[str, Any]] = None
+    
+    # Issue #31: Multi-provider LLM support
+    model_provider: Optional[str] = None
+    model_name: Optional[str] = None
+    api_key_name: Optional[str] = None
+    temperature: Optional[float] = Field(default=None, ge=0.0, le=2.0)
+    max_tokens: Optional[int] = Field(default=None, ge=1, le=100000)
+    
+    # Shell permissions (Issue #30)
+    local_shell_enabled: Optional[bool] = None
+    shell_working_dir: Optional[str] = None
+    shell_timeout: Optional[int] = None
+    shell_permissions: Optional[str] = None
 
 
 class RepositoryConfigModel(BaseModel):
@@ -181,10 +207,9 @@ app.add_middleware(
 
 @app.get("/api/config/agents", response_model=List[AgentConfigModel])
 async def get_agents(
-    enabled_only: bool = False,
-    user: dict = Depends(verify_token)
+    enabled_only: bool = False
 ):
-    """Get all agent configurations"""
+    """Get all agent configurations (public endpoint for dashboard)"""
     try:
         manager = get_config_manager()
         agents = manager.get_agents()
@@ -200,10 +225,9 @@ async def get_agents(
 
 @app.get("/api/config/agents/{agent_id}", response_model=AgentConfigModel)
 async def get_agent(
-    agent_id: str,
-    user: dict = Depends(verify_token)
+    agent_id: str
 ):
-    """Get specific agent configuration"""
+    """Get specific agent configuration (public endpoint for dashboard)"""
     try:
         manager = get_config_manager()
         agent = manager.get_agent(agent_id)

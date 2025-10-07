@@ -1823,34 +1823,48 @@
             }
         }
 
-        function openAgentConfigModal(agentId) {
+        async function openAgentConfigModal(agentId) {
             currentConfigAgentId = agentId;
-            const agent = agents.get(agentId);
             
-            if (!agent) {
-                console.error('Agent not found:', agentId);
-                return;
+            // Fetch full agent config from Config API instead of using WebSocket data
+            let agentConfig;
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/config/agents/${agentId}`);
+                if (!response.ok) {
+                    throw new Error(`Failed to load agent config: ${response.status}`);
+                }
+                agentConfig = await response.json();
+            } catch (error) {
+                console.error('Failed to load agent config:', error);
+                // Fallback to WebSocket data if API fails
+                agentConfig = agents.get(agentId);
+                if (!agentConfig) {
+                    console.error('Agent not found:', agentId);
+                    alert('❌ Failed to load agent configuration');
+                    return;
+                }
             }
 
             // Load agent data into form
-            document.getElementById('agentNameInput').value = agent.name || agent.agent_id;
-            document.getElementById('agentModelInput').value = agent.model || '';
-            document.getElementById('agentApiTokenInput').value = agent.api_token || '';
-            document.getElementById('agentGithubTokenInput').value = agent.github_token || '';
-            document.getElementById('agentTemperatureInput').value = agent.temperature || 0.7;
-            document.getElementById('agentMaxTokensInput').value = agent.max_tokens || 4096;
-            document.getElementById('agentRateLimitInput').value = agent.rate_limit || 20;
-            document.getElementById('agentInstructionsInput').value = agent.custom_instructions || '';
+            document.getElementById('agentNameInput').value = agentConfig.name || agentConfig.agent_id;
+            document.getElementById('agentModelInput').value = agentConfig.model || '';
+            document.getElementById('agentApiTokenInput').value = agentConfig.api_token || '';
+            document.getElementById('agentGithubTokenInput').value = agentConfig.github_token || '';
+            document.getElementById('agentTemperatureInput').value = agentConfig.temperature || 0.7;
+            document.getElementById('agentMaxTokensInput').value = agentConfig.max_tokens || 4096;
+            document.getElementById('agentRateLimitInput').value = agentConfig.rate_limit || 20;
+            document.getElementById('agentInstructionsInput').value = agentConfig.custom_instructions || '';
             
             // Load LLM provider (Issue #31)
-            document.getElementById('agentProviderInput').value = agent.model_provider || 'local';
-            updateProviderModels();
+            document.getElementById('agentProviderInput').value = agentConfig.model_provider || 'local';
+            await updateProviderModels();
+            // Wait for models to load before setting selected model
             setTimeout(() => {
-                document.getElementById('agentProviderModelInput').value = agent.model_name || '';
-            }, 100);
+                document.getElementById('agentProviderModelInput').value = agentConfig.model_name || '';
+            }, 200);
             
             // Load capabilities
-            const caps = agent.capabilities || {};
+            const caps = agentConfig.capabilities || {};
             document.getElementById('capCodeGeneration').checked = caps.code_generation !== false;
             document.getElementById('capCodeReview').checked = caps.code_review || false;
             document.getElementById('capIssueManagement').checked = caps.issue_management !== false;
