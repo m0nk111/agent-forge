@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Directory refactor (Issue #69)** - Restructured codebase for better scalability
+  - New structure: `engine/` package with subpackages (runners, core, operations, validation)
+  - Moved all agent code from `agents/` to `engine/` with logical organization
+  - Individual agent configs: `agents/*.yaml` files (one file per agent, hot-reload ready)
+  - New trust list: `config/trusted_agents.yaml` separate from agent configs
+  - ConfigManager enhancement: Load agents from individual YAML files in `agents/` directory
+  - Import updates: All imports changed from `agents.*` to `engine.*` (55 files updated)
+  - Script updates: `scripts/start-service.sh` uses `engine.core.service_manager`
+  - Benefits: Hot-reload support, scalable to 100+ agents, clean separation of data vs code
+
 - **Production deployment tools** - Complete deployment checklist and automation
   - New file: `docs/DEPLOYMENT_CHECKLIST.md` - Comprehensive pre-deployment checklist (300+ lines)
   - New script: `scripts/quick-deploy.sh` - Automated deployment verification (one-command deploy)
