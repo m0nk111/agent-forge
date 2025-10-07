@@ -2,7 +2,8 @@
 # Launch Agent-Forge Dashboard Server
 # This script starts a simple HTTP server for the dashboard on all network interfaces
 
-cd "$(dirname "$0")"
+# Go to project root (one level up from scripts/)
+cd "$(dirname "$0")/.."
 
 PORT=8897
 FRONTEND_DIR="frontend"

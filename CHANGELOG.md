@@ -9,7 +9,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Role system integration fixes** - Complete integration of role-based permissions and UI
+- **Dashboard UI/UX improvements** - Separated infrastructure services from agents
+  - New Services section: Infrastructure services (polling, monitoring, web_ui, code_agent) now displayed separately
+  - Visual distinction: Purple border for services, blue border for agents
+  - Compact service cards: Show service name, type, and health status (green/red dot)
+  - Service status monitoring: Auto-updates when WebSocket connects
+  - Layout reorganization: Left column now shows Services (top) and Agents (bottom)
+  - Service labels: "GitHub Polling", "Monitoring API", "Web Dashboard", "Code Agent Runtime"
+
+- **Authentication improvements** - Enhanced login debugging and user experience
+  - Debug logging: Added console logging for auth API URL, request, and response
+  - Better error messages: More specific connection error messages (includes port number)
+  - Login flow tracking: Track authentication attempts step-by-step in console
+
+- **Systemd service fixes** - Bot token integration and polling service activation
+  - Bot token: Added BOT_GITHUB_TOKEN environment variable to systemd service
+  - Polling service: Now starts successfully with bot credentials
+  - Health monitoring: All 4 services (polling, monitoring, web_ui, code_agent) report healthy
+  - Service file location: `/etc/systemd/system/agent-forge.service`
+
+### Fixed
+
+- **Dashboard launch script** - Fixed working directory issue
+  - Path fix: `launch_dashboard.sh` now uses `cd "$(dirname "$0")/.."` to reach project root
+  - Resolved 404 errors when accessing dashboard files
+
+- **WebSocket handler** - Started monitoring service on port 7997
+  - Service activation: WebSocket handler now runs via systemd service_manager
+  - Port management: Properly handles port conflicts and cleanup
+
+**Role system integration fixes** - Complete integration of role-based permissions and UI
   - Legacy config cleanup: Moved `config/agents.yaml` to `config/backups/agents.yaml.legacy` (avoid confusion)
   - Permission presets: Added 7 role-specific permission presets to `permissions.py`
     * COORDINATOR: Read-only files/terminal, full GitHub coordination, config access (10 permissions)
