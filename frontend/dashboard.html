@@ -1848,14 +1848,7 @@
         }
 
         // LLM Provider Management (Issue #31)
-        const providerModels = {
-            'local': ['qwen2.5-coder:32b', 'qwen2.5-coder:14b', 'qwen2.5-coder:7b', 'llama3', 'mistral', 'codellama'],
-            'openai': ['gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'],
-            'anthropic': ['claude-3-5-sonnet-20241022', 'claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307'],
-            'google': ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-pro']
-        };
-
-        function updateProviderModels() {
+        async function updateProviderModels() {
             const provider = document.getElementById('agentProviderInput').value;
             const modelSelect = document.getElementById('agentProviderModelInput');
             const keyGroup = document.getElementById('providerKeyGroup');
@@ -1867,23 +1860,28 @@
                 keyGroup.style.display = 'block';
             }
             
-            // Update models list
-            const models = providerModels[provider] || [];
-            modelSelect.innerHTML = models.map(model => 
-                `<option value="${model}">${model}</option>`
-            ).join('');
+            // Show loading state
+            modelSelect.innerHTML = '<option value="">Loading models...</option>';
+            modelSelect.disabled = true;
             
-            // Try to load models from API
-            fetch(`/api/llm/providers/${provider}/models`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.models && data.models.length > 0) {
-                        modelSelect.innerHTML = data.models.map(model => 
-                            `<option value="${model}">${model}</option>`
-                        ).join('');
-                    }
-                })
-                .catch(err => console.warn('Could not load models from API:', err));
+            try {
+                // Load models from API (dynamic, only shows installed/available models)
+                const response = await fetch(`/api/llm/providers/${provider}/models`);
+                const data = await response.json();
+                
+                if (data.models && data.models.length > 0) {
+                    modelSelect.innerHTML = data.models.map(model => 
+                        `<option value="${model}">${model}</option>`
+                    ).join('');
+                } else {
+                    modelSelect.innerHTML = '<option value="">No models available</option>';
+                }
+            } catch (err) {
+                console.error('Could not load models from API:', err);
+                modelSelect.innerHTML = '<option value="">Error loading models</option>';
+            } finally {
+                modelSelect.disabled = false;
+            }
         }
 
         async function testProviderConnection() {
