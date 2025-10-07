@@ -106,7 +106,22 @@ class ConfigManager:
     Stores configuration in YAML files with backup support.
     """
     
-    def __init__(self, config_dir: str = "/home/flip/agent-forge/config"):
+    def __init__(self, config_dir: str = None):
+        # Auto-detect config directory based on current working directory
+        if config_dir is None:
+            # Try to find the project root by looking for a marker file
+            current_dir = Path.cwd()
+            # Look for config directory in current dir or parent dirs
+            for parent in [current_dir] + list(current_dir.parents):
+                potential_config = parent / "config"
+                if potential_config.exists() and (potential_config / "agents.yaml").exists():
+                    config_dir = str(potential_config)
+                    break
+            
+            # Fallback to relative path if not found
+            if config_dir is None:
+                config_dir = str(Path(__file__).parent.parent / "config")
+        
         self.config_dir = Path(config_dir)
         self.agents_file = self.config_dir / "agents.yaml"
         self.repos_file = self.config_dir / "repositories.yaml"
