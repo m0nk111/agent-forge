@@ -104,6 +104,7 @@ class ConfigManager:
     """
     Manages configuration for Agent-Forge system.
     Stores configuration in YAML files with backup support.
+    Loads sensitive tokens from secrets/ directory.
     """
     
     def __init__(self, config_dir: str = None):
@@ -128,14 +129,19 @@ class ConfigManager:
         self.system_file = self.config_dir / "system.yaml"
         self.backup_dir = self.config_dir / "backups"
         
+        # Secrets directory for tokens
+        self.secrets_dir = self.config_dir.parent / "secrets" / "agents"
+        
         # Create directories if they don't exist
         self.config_dir.mkdir(parents=True, exist_ok=True)
         self.backup_dir.mkdir(parents=True, exist_ok=True)
+        self.secrets_dir.mkdir(parents=True, exist_ok=True)
         
         # Initialize empty configs if files don't exist
         self._initialize_configs()
         
         logger.info(f"ConfigManager initialized: {self.config_dir}")
+        logger.info(f"Secrets directory: {self.secrets_dir}")
     
     def _initialize_configs(self):
         """Initialize configuration files with defaults if they don't exist"""
@@ -194,11 +200,26 @@ class ConfigManager:
         return agents
     
     def get_agent(self, agent_id: str) -> Optional[AgentConfig]:
-        """Get specific agent configuration"""
+        """Get specific agent configuration with token loaded from secrets"""
         agents = self.get_agents()
         for agent in agents:
             if agent.agent_id == agent_id:
+                # Load token from secrets if not in config
+                if not agent.github_token:
+                    agent.github_token = self._load_token(agent_id)
                 return agent
+        return None
+    
+    def _load_token(self, agent_id: str) -> Optional[str]:
+        """Load GitHub token from secrets directory"""
+        token_file = self.secrets_dir / f"{agent_id}.token"
+        if token_file.exists():
+            try:
+                token = token_file.read_text().strip()
+                logger.debug(f"🔑 Loaded token for {agent_id} from secrets")
+                return token
+            except Exception as e:
+                logger.error(f"Failed to load token for {agent_id}: {e}")
         return None
     
     def add_agent(self, agent: AgentConfig) -> bool:

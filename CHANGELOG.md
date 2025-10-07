@@ -9,25 +9,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Google OAuth authentication infrastructure** - Secure dashboard login
-  - New file: `api/auth_routes.py` - OAuth 2.0 flow implementation
-  - Endpoints: `/auth/login`, `/auth/callback`, `/auth/logout`, `/auth/user`, `/auth/status`
-  - Session management with httponly cookies (24-hour expiry)
-  - Email whitelist for access control
-  - CSRF protection with state parameter
-  - **100% GRATIS** - No costs for OAuth usage (up to 10,000 requests/day)
+- **SSH/PAM authentication system** - Simpler dashboard security using system credentials
+  - New file: `api/auth_routes.py` - SSH authentication via PAM (replaces OAuth)
+  - Endpoints: `/auth/login`, `/auth/logout`, `/auth/user`, `/auth/status`, `/health`
+  - Session management with JWT tokens (24-hour expiry, HttpOnly cookies)
+  - No external dependencies - works offline with system users
+  - 5-minute setup vs 30-minute OAuth setup
   
-- **OAuth setup documentation** - Complete guide for Google Cloud configuration
-  - New file: `docs/GOOGLE_OAUTH_SETUP.md`
-  - Step-by-step instructions for Google Cloud Console setup
-  - Security best practices and cost breakdown
-  - Alternative authentication options comparison
+- **Token security system** - Protected GitHub tokens outside git
+  - New directory: `secrets/agents/` for sensitive tokens (0600 permissions)
+  - ConfigManager enhancement: Automatic token loading from secrets directory
+  - Updated `.gitignore`: Blocks `secrets/`, `*.token`, `*.key` files
+  - Migration: Tokens removed from `config/agents.yaml`, stored in individual files
+  - Protection: Tokens never committed to git, isolated per agent
+
+- **Dashboard authentication integration**
+  - Login page: Modern UI matching dashboard theme (slate/blue gradient)
+  - Auth check on page load: Automatic redirect to login if not authenticated
+  - Dynamic API URLs: Works with any IP address (not hardcoded localhost)
+  - User display: Shows authenticated username with logout button
+  - CORS configuration: Supports multiple dashboard IPs (192.168.1.26, 192.168.1.30)
+
+### Changed
+
+- **OAuth system archived** - Replaced by simpler SSH authentication
+  - File renamed: `api/auth_routes.py` → `api/auth_routes_oauth.py.backup`
+  - Reason: OAuth too complex for local development/testing
+  - Preserved for future reference if public deployment needed
   
-- **Environment configuration template**
-  - New file: `.env.template` - OAuth credentials template
-  - Gitignored `.env` for local credentials storage
-  - Auto-generated session secrets
-  
+- **Login page styling** - Updated to match dashboard aesthetics
+  - Background: Purple/violet gradient → Dark slate/blue gradient (#0f172a → #1e293b)
+  - Container: White → Dark transparent with backdrop blur
+  - Inputs: Light borders → Blue accent borders with dark background
+  - Button: Purple gradient → Blue gradient (#3b82f6 → #2563eb)
+  - Text colors: Dark → Light slate (#e2e8f0, #94a3b8)
 - **Auth service startup script**
   - New file: `scripts/start-auth-service.sh`
   - Validates OAuth configuration

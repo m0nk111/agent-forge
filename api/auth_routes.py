@@ -1,279 +1,304 @@
+#!/usr/bin/env python3
 """
-Google OAuth authentication routes for Agent-Forge dashboard.
-
-Provides secure authentication using Google OAuth 2.0.
-Sessions are stored in-memory (consider Redis for production).
+SSH-based Authentication for Agent-Forge Dashboard
+Uses PAM to validate against system SSH credentials
 """
 
 import os
-import secrets
+import jwt
+import simplepam
 import logging
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
-from urllib.parse import urlencode
-
-import httpx
-from fastapi import FastAPI, Request, Response, HTTPException, Depends, Cookie
-from fastapi.responses import RedirectResponse, JSONResponse
-from starlette.middleware.sessions import SessionMiddleware
+from typing import Optional
+from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
-# OAuth Configuration
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
-GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
-GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8897/auth/callback")
-SESSION_SECRET = os.getenv("SESSION_SECRET", secrets.token_hex(32))
-ALLOWED_EMAILS_STR = os.getenv("ALLOWED_EMAILS", "")
-ALLOWED_EMAILS = [email.strip() for email in ALLOWED_EMAILS_STR.split(",") if email.strip()]
+app = FastAPI(title="Agent-Forge SSH Auth")
 
-# Google OAuth endpoints
-GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
-GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
-GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo"
+# CORS for dashboard
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:8897",
+        "http://192.168.1.26:8897",
+        "http://192.168.1.30:8897",  # Current IP
+        "http://ai-kvm1:8897"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# Session storage (in-memory, use Redis for production)
-sessions: Dict[str, Dict[str, Any]] = {}
+# JWT Configuration
+JWT_SECRET = os.getenv("SESSION_SECRET", "change-me-in-production-" + os.urandom(16).hex())
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRY_HOURS = 24
 
-
-def create_app() -> FastAPI:
-    """Create FastAPI app with auth routes."""
-    app = FastAPI(title="Agent-Forge Auth API")
-    
-    # Add session middleware
-    app.add_middleware(
-        SessionMiddleware,
-        secret_key=SESSION_SECRET,
-        max_age=86400,  # 24 hours
-        same_site="lax",
-        https_only=False  # Set to True if using HTTPS
-    )
-    
-    return app
+# Session storage (in-memory)
+active_sessions = {}  # {token: {"username": str, "expires": datetime}}
 
 
-app = create_app()
+class LoginRequest(BaseModel):
+    """Login request model"""
+    username: str
+    password: str
 
 
-async def get_current_user(request: Request) -> Optional[Dict[str, Any]]:
+class LoginResponse(BaseModel):
+    """Login response model"""
+    success: bool
+    token: Optional[str] = None
+    username: Optional[str] = None
+    expires: Optional[str] = None
+    error: Optional[str] = None
+
+
+def authenticate_user(username: str, password: str) -> bool:
     """
-    Get current authenticated user from session.
+    Authenticate user against PAM (system SSH credentials)
+    
+    Args:
+        username: System username
+        password: User password
     
     Returns:
-        User dict with email, name, picture if authenticated, None otherwise
+        True if authentication successful, False otherwise
     """
-    session_id = request.cookies.get("session_id")
-    if not session_id:
-        return None
-    
-    session = sessions.get(session_id)
-    if not session:
-        return None
-    
-    # Check session expiry
-    if datetime.now() > session.get("expires_at", datetime.min):
-        del sessions[session_id]
-        return None
-    
-    return session.get("user")
+    try:
+        authenticated = simplepam.authenticate(username, password)
+        
+        if authenticated:
+            logger.info(f"✅ Authentication successful for user: {username}")
+            return True
+        else:
+            logger.warning(f"❌ Authentication failed for user: {username}")
+            return False
+    except Exception as e:
+        logger.error(f"❌ PAM authentication error: {e}")
+        return False
 
 
-async def require_auth(request: Request) -> Dict[str, Any]:
+def create_session_token(username: str) -> tuple[str, datetime]:
     """
-    Dependency to require authentication.
+    Create JWT session token
     
-    Raises:
-        HTTPException: 401 if not authenticated
+    Args:
+        username: Authenticated username
     
     Returns:
-        User dict
+        Tuple of (token, expiry_datetime)
     """
-    user = await get_current_user(request)
-    if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return user
-
-
-@app.get("/auth/login")
-async def login(request: Request):
-    """
-    Redirect to Google OAuth login page.
+    expiry = datetime.utcnow() + timedelta(hours=JWT_EXPIRY_HOURS)
     
-    Query params:
-        redirect_to: URL to redirect after successful login (optional)
-    """
-    # Generate random state for CSRF protection
-    state = secrets.token_urlsafe(32)
-    request.session["oauth_state"] = state
-    
-    # Store redirect destination
-    redirect_to = request.query_params.get("redirect_to", "/dashboard.html")
-    request.session["redirect_to"] = redirect_to
-    
-    # Build Google OAuth URL
-    params = {
-        "client_id": GOOGLE_CLIENT_ID,
-        "redirect_uri": GOOGLE_REDIRECT_URI,
-        "response_type": "code",
-        "scope": "openid email profile",
-        "state": state,
-        "access_type": "online",
-        "prompt": "select_account"
+    payload = {
+        "username": username,
+        "exp": expiry,
+        "iat": datetime.utcnow()
     }
     
-    auth_url = f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
-    return RedirectResponse(auth_url)
+    token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    
+    return token, expiry
 
 
-@app.get("/auth/callback")
-async def callback(request: Request):
+def verify_session_token(token: str) -> Optional[str]:
     """
-    OAuth callback endpoint.
+    Verify JWT session token
     
-    Google redirects here after user authentication.
-    Exchanges code for token and creates session.
+    Args:
+        token: JWT token
+    
+    Returns:
+        Username if valid, None otherwise
     """
-    # Verify state (CSRF protection)
-    state = request.query_params.get("state")
-    session_state = request.session.get("oauth_state")
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        username = payload.get("username")
+        
+        # Check if still in active sessions
+        if token in active_sessions:
+            return username
+        else:
+            logger.warning(f"⚠️ Token not in active sessions: {username}")
+            return None
+    except jwt.ExpiredSignatureError:
+        logger.warning("⚠️ Token expired")
+        return None
+    except jwt.InvalidTokenError as e:
+        logger.warning(f"⚠️ Invalid token: {e}")
+        return None
+
+
+@app.post("/auth/login", response_model=LoginResponse)
+async def login(request: LoginRequest, response: Response):
+    """
+    Login with SSH credentials
     
-    if not state or state != session_state:
-        raise HTTPException(status_code=400, detail="Invalid state parameter")
+    POST /auth/login
+    Body: {"username": "flip", "password": "secret"}
     
-    # Get authorization code
-    code = request.query_params.get("code")
-    if not code:
-        error = request.query_params.get("error", "unknown_error")
-        raise HTTPException(status_code=400, detail=f"OAuth error: {error}")
+    Returns:
+        Session token in cookie + JSON response
+    """
+    logger.info(f"🔐 Login attempt for user: {request.username}")
     
-    # Exchange code for access token
-    async with httpx.AsyncClient() as client:
-        token_response = await client.post(
-            GOOGLE_TOKEN_URL,
-            data={
-                "client_id": GOOGLE_CLIENT_ID,
-                "client_secret": GOOGLE_CLIENT_SECRET,
-                "code": code,
-                "grant_type": "authorization_code",
-                "redirect_uri": GOOGLE_REDIRECT_URI
-            }
+    # Authenticate via PAM
+    if not authenticate_user(request.username, request.password):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid username or password"
         )
-        
-        if token_response.status_code != 200:
-            logger.error(f"Token exchange failed: {token_response.text}")
-            raise HTTPException(status_code=400, detail="Failed to obtain access token")
-        
-        token_data = token_response.json()
-        access_token = token_data.get("access_token")
-        
-        # Get user info
-        userinfo_response = await client.get(
-            GOOGLE_USERINFO_URL,
-            headers={"Authorization": f"Bearer {access_token}"}
-        )
-        
-        if userinfo_response.status_code != 200:
-            logger.error(f"Userinfo request failed: {userinfo_response.text}")
-            raise HTTPException(status_code=400, detail="Failed to get user info")
-        
-        user_data = userinfo_response.json()
     
-    # Check if user email is allowed
-    user_email = user_data.get("email")
-    if ALLOWED_EMAILS and user_email not in ALLOWED_EMAILS:
-        logger.warning(f"Access denied for email: {user_email}")
-        raise HTTPException(status_code=403, detail="Access denied. Email not in allowed list.")
+    # Create session token
+    token, expiry = create_session_token(request.username)
     
-    # Create session
-    session_id = secrets.token_urlsafe(32)
-    sessions[session_id] = {
-        "user": {
-            "email": user_email,
-            "name": user_data.get("name"),
-            "picture": user_data.get("picture"),
-            "verified_email": user_data.get("verified_email", False)
-        },
-        "created_at": datetime.now(),
-        "expires_at": datetime.now() + timedelta(hours=24)
+    # Store in active sessions
+    active_sessions[token] = {
+        "username": request.username,
+        "expires": expiry
     }
     
-    logger.info(f"✅ User logged in: {user_email}")
-    
-    # Redirect to original destination
-    redirect_to = request.session.get("redirect_to", "/dashboard.html")
-    response = RedirectResponse(redirect_to)
+    # Set HttpOnly cookie
     response.set_cookie(
-        key="session_id",
-        value=session_id,
-        max_age=86400,  # 24 hours
+        key="session_token",
+        value=token,
         httponly=True,
-        samesite="lax"
+        secure=False,  # Set True if using HTTPS
+        samesite="lax",
+        max_age=JWT_EXPIRY_HOURS * 3600
     )
     
-    return response
-
-
-@app.get("/auth/logout")
-async def logout(request: Request):
-    """Logout current user and destroy session."""
-    session_id = request.cookies.get("session_id")
-    if session_id and session_id in sessions:
-        user_email = sessions[session_id].get("user", {}).get("email")
-        del sessions[session_id]
-        logger.info(f"🚪 User logged out: {user_email}")
+    logger.info(f"✅ Login successful for user: {request.username}")
     
-    response = RedirectResponse("/")
-    response.delete_cookie("session_id")
-    return response
-
-
-@app.get("/auth/user")
-async def get_user(user: Dict[str, Any] = Depends(require_auth)):
-    """
-    Get current authenticated user info.
-    
-    Returns:
-        User object with email, name, picture
-    """
-    return user
+    return LoginResponse(
+        success=True,
+        token=token,
+        username=request.username,
+        expires=expiry.isoformat()
+    )
 
 
 @app.get("/auth/status")
 async def auth_status(request: Request):
     """
-    Check authentication status.
+    Check authentication status
+    
+    GET /auth/status
+    Cookie: session_token
     
     Returns:
-        {authenticated: bool, user: {...} | null}
+        Current user info if authenticated
     """
-    user = await get_current_user(request)
+    # Get token from cookie
+    token = request.cookies.get("session_token")
+    
+    if not token:
+        return JSONResponse(
+            status_code=401,
+            content={"authenticated": False, "error": "No session token"}
+        )
+    
+    # Verify token
+    username = verify_session_token(token)
+    
+    if not username:
+        return JSONResponse(
+            status_code=401,
+            content={"authenticated": False, "error": "Invalid or expired token"}
+        )
+    
+    session = active_sessions.get(token, {})
+    expires = session.get("expires", "")
+    
     return {
-        "authenticated": user is not None,
-        "user": user
+        "authenticated": True,
+        "username": username,
+        "expires": expires.isoformat() if isinstance(expires, datetime) else ""
+    }
+
+
+@app.post("/auth/logout")
+async def logout(request: Request, response: Response):
+    """
+    Logout and destroy session
+    
+    POST /auth/logout
+    Cookie: session_token
+    """
+    # Get token from cookie
+    token = request.cookies.get("session_token")
+    
+    if token and token in active_sessions:
+        username = active_sessions[token]["username"]
+        del active_sessions[token]
+        logger.info(f"🔓 Logout successful for user: {username}")
+    
+    # Clear cookie
+    response.delete_cookie(key="session_token")
+    
+    return {"success": True, "message": "Logged out successfully"}
+
+
+@app.get("/auth/user")
+async def get_user(request: Request):
+    """
+    Get current authenticated user
+    
+    GET /auth/user
+    Cookie: session_token
+    """
+    token = request.cookies.get("session_token")
+    
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    username = verify_session_token(token)
+    
+    if not username:
+        raise HTTPException(status_code=401, detail="Invalid or expired session")
+    
+    return {
+        "username": username,
+        "authenticated": True
     }
 
 
 @app.get("/health")
 async def health():
-    """Health check endpoint."""
+    """
+    Health check endpoint
+    
+    GET /health
+    """
     return {
         "status": "healthy",
-        "oauth_configured": bool(GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET),
-        "allowed_emails_count": len(ALLOWED_EMAILS)
+        "auth_type": "ssh_pam",
+        "active_sessions": len(active_sessions)
     }
 
 
 if __name__ == "__main__":
     import uvicorn
     
-    # Check configuration
-    if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
-        logger.warning("⚠️  Google OAuth not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET env vars.")
+    # Generate session secret if not set
+    if "change-me-in-production" in JWT_SECRET:
+        logger.warning("⚠️ Using generated JWT secret. Set SESSION_SECRET environment variable for production!")
     
-    if not ALLOWED_EMAILS:
-        logger.warning("⚠️  No email whitelist configured. Set ALLOWED_EMAILS env var (comma-separated).")
+    logger.info("🚀 Starting SSH Auth API on port 7996...")
+    logger.info("🔐 Authentication: PAM (system SSH credentials)")
+    logger.info(f"🔑 Active sessions: {len(active_sessions)}")
     
-    logger.info("🔐 Starting Auth API on http://0.0.0.0:7999")
-    logger.info(f"📧 Allowed emails: {ALLOWED_EMAILS}")
-    
-    uvicorn.run(app, host="0.0.0.0", port=7999, log_level="info")
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=7996,  # Changed from 7999
+        log_level="info"
+    )

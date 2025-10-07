@@ -9,6 +9,11 @@ env/
 ENV/
 .venv
 
+# Security - Tokens and secrets
+secrets/
+*.token
+*.key
+
 # Testing
 .coverage
 .pytest_cache/

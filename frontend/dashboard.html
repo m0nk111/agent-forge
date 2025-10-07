@@ -75,6 +75,40 @@
             font-size: 11px;
         }
 
+        .auth-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 12px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: rgba(34, 197, 94, 0.1);
+            border-radius: 6px;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: #86efac;
+        }
+
+        .logout-btn {
+            padding: 6px 12px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 6px;
+            color: #fca5a5;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .logout-btn:hover {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: rgba(239, 68, 68, 0.5);
+        }
+
         .status-indicator {
             width: 8px;
             height: 8px;
@@ -905,9 +939,16 @@
                 <span>🤖</span>
                 Agent-Forge Dashboard
             </h1>
-            <div class="connection-status">
-                <div class="status-indicator" id="connection-indicator"></div>
-                <span id="connection-text">Connecting...</span>
+            <div class="auth-info">
+                <div class="user-info" id="user-info" style="display: none;">
+                    <span>👤</span>
+                    <span id="username">Loading...</span>
+                </div>
+                <button class="logout-btn" id="logout-btn" style="display: none;" onclick="logout()">Logout</button>
+                <div class="connection-status">
+                    <div class="status-indicator" id="connection-indicator"></div>
+                    <span id="connection-text">Connecting...</span>
+                </div>
             </div>
         </header>
 
@@ -958,7 +999,8 @@
     <script>
         // ==================== AUTHENTICATION ====================
         
-        const AUTH_API_URL = 'http://localhost:7999'; // Auth service
+        // Use same host as dashboard for auth service
+        const AUTH_API_URL = `${window.location.protocol}//${window.location.hostname}:7996`;
         let isAuthEnabled = false;
         let currentUser = null;
 
@@ -980,10 +1022,12 @@
                 }
                 
                 const healthData = await healthResponse.json();
-                isAuthEnabled = healthData.oauth_configured || false;
+                
+                // SSH auth is always enabled if service is running
+                isAuthEnabled = (healthData.auth_type === 'ssh_pam');
                 
                 if (!isAuthEnabled) {
-                    console.log('🔓 OAuth not configured - running in open mode');
+                    console.log('🔓 SSH Auth not configured - running in open mode');
                     return true; // Allow access
                 }
                 
@@ -992,8 +1036,9 @@
                     credentials: 'include'
                 });
                 
-                if (!statusResponse.ok) {
-                    console.log('❌ Auth check failed');
+                // If 401 or any non-200 status, not authenticated
+                if (statusResponse.status === 401 || !statusResponse.ok) {
+                    console.log('🔐 Not authenticated (status: ' + statusResponse.status + ') - redirecting to login');
                     redirectToLogin();
                     return false;
                 }
@@ -1006,8 +1051,8 @@
                     return false;
                 }
                 
-                currentUser = statusData.user;
-                console.log('✅ Authenticated as:', currentUser.email);
+                currentUser = { username: statusData.user };
+                console.log('✅ Authenticated as:', currentUser.username);
                 updateAuthUI();
                 return true;
                 
@@ -1019,11 +1064,10 @@
         }
 
         /**
-         * Redirect to OAuth login page.
+         * Redirect to SSH login page.
          */
         function redirectToLogin() {
-            const currentUrl = window.location.href;
-            window.location.href = `${AUTH_API_URL}/auth/login?redirect_to=${encodeURIComponent(currentUrl)}`;
+            window.location.href = '/login.html';
         }
 
         /**
@@ -1044,24 +1088,17 @@
          * Update UI with user info.
          */
         function updateAuthUI() {
-            if (!currentUser) return;
+            if (!currentUser || !currentUser.username) return;
             
-            // Add user info to header (if not already present)
-            const header = document.querySelector('header');
-            const existingUserInfo = document.getElementById('user-info');
+            // Show user info and logout button
+            const userInfoEl = document.getElementById('user-info');
+            const usernameEl = document.getElementById('username');
+            const logoutBtn = document.getElementById('logout-btn');
             
-            if (!existingUserInfo) {
-                const userInfo = document.createElement('div');
-                userInfo.id = 'user-info';
-                userInfo.style.cssText = 'display: flex; align-items: center; gap: 8px; font-size: 12px;';
-                userInfo.innerHTML = `
-                    ${currentUser.picture ? `<img src="${currentUser.picture}" alt="User" style="width: 24px; height: 24px; border-radius: 50%;">` : ''}
-                    <span style="color: #94a3b8;">${currentUser.email}</span>
-                    <button onclick="logout()" style="padding: 4px 8px; background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #fca5a5; border-radius: 4px; cursor: pointer; font-size: 11px;">
-                        Logout
-                    </button>
-                `;
-                header.appendChild(userInfo);
+            if (userInfoEl && usernameEl && logoutBtn) {
+                usernameEl.textContent = currentUser.username;
+                userInfoEl.style.display = 'flex';
+                logoutBtn.style.display = 'block';
             }
         }
 
