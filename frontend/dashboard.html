@@ -1407,7 +1407,10 @@
 
         function renderAgents() {
             const grid = document.getElementById('agents-grid');
-            const agentArray = Array.from(agents.values());
+            // Filter out infrastructure services (polling-service is not a real agent)
+            const agentArray = Array.from(agents.values()).filter(agent => 
+                agent.agent_id !== 'polling-service'
+            );
             
             if (agentArray.length === 0) {
                 grid.innerHTML = `
