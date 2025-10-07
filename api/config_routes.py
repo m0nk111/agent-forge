@@ -207,6 +207,65 @@ app.add_middleware(
 
 # ==================== AGENT ENDPOINTS ====================
 
+@app.get("/api/config/agent-roles")
+async def get_agent_roles():
+    """Get list of available agent roles for dropdowns"""
+    try:
+        from engine.core.config_manager import AgentRole
+        return {
+            "roles": AgentRole.list_roles(),
+            "descriptions": {
+                "coordinator": "Orchestrates tasks and manages agent assignments",
+                "developer": "Writes code, implements features, fixes bugs",
+                "reviewer": "Reviews code, provides feedback on PRs",
+                "tester": "Writes and runs tests, validates functionality",
+                "documenter": "Creates and maintains documentation",
+                "bot": "Automated GitHub operations (comments, labels, assignments)",
+                "researcher": "Researches solutions, gathers information"
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get roles: {str(e)}")
+
+
+@app.get("/api/config/permission-presets")
+async def get_permission_presets():
+    """Get list of available permission presets for dropdowns"""
+    return {
+        "presets": ["read_only", "developer", "admin", "custom"],
+        "descriptions": {
+            "read_only": "Read-only access to files and terminal output",
+            "developer": "Full file/terminal access, no PR merge permission",
+            "admin": "Full access including PR merge and config changes",
+            "custom": "Custom permission configuration"
+        }
+    }
+
+
+@app.get("/api/config/llm-providers")
+async def get_llm_providers():
+    """Get list of available LLM providers for dropdowns"""
+    return {
+        "providers": ["local", "openai", "anthropic", "google", "groq", "replicate"],
+        "descriptions": {
+            "local": "Local Ollama instance (qwen, llama, etc.)",
+            "openai": "OpenAI GPT models (requires API key)",
+            "anthropic": "Anthropic Claude models (requires API key)",
+            "google": "Google Gemini models (requires API key)",
+            "groq": "Groq LLM API (requires API key)",
+            "replicate": "Replicate models (requires API key)"
+        },
+        "default_models": {
+            "local": "qwen2.5-coder:7b",
+            "openai": "gpt-4",
+            "anthropic": "claude-3-5-sonnet-20241022",
+            "google": "gemini-pro",
+            "groq": "llama-3.1-70b-versatile",
+            "replicate": "meta/llama-2-70b-chat"
+        }
+    }
+
+
 @app.get("/api/config/agents", response_model=List[AgentConfigModel])
 async def get_agents(
     enabled_only: bool = False

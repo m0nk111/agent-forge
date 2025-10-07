@@ -11,9 +11,26 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict
 from datetime import datetime
 from pathlib import Path
+from enum import Enum
 import shutil
 
 logger = logging.getLogger(__name__)
+
+
+class AgentRole(str, Enum):
+    """Standardized agent roles for task assignment"""
+    COORDINATOR = "coordinator"
+    DEVELOPER = "developer"
+    REVIEWER = "reviewer"
+    TESTER = "tester"
+    DOCUMENTER = "documenter"
+    BOT = "bot"
+    RESEARCHER = "researcher"
+    
+    @classmethod
+    def list_roles(cls) -> List[str]:
+        """Return list of all role names"""
+        return [role.value for role in cls]
 
 
 @dataclass

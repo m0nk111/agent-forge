@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2025-10-07
 
+### Added
+
+- **Agent role standardization and API** - Formalized agent roles with Enum and config API endpoints
+  - config_manager.py: Added AgentRole enum with 7 standardized roles (coordinator, developer, reviewer, tester, documenter, bot, researcher)
+  - api/config_routes.py: New endpoints for dropdown options in config UI:
+    * GET /api/config/agent-roles - Returns all roles with descriptions
+    * GET /api/config/permission-presets - Returns permission presets (read_only, developer, admin, custom)
+    * GET /api/config/llm-providers - Returns LLM providers with default models
+  - Enables proper dropdown selection in add/edit agent panels
+  - All roles are single-word strings for consistency
+
 ### Fixed
 
 - **GitHub token loading and authentication** - Fixed token loading from secrets directory
