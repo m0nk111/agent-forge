@@ -9,6 +9,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Role system integration fixes** - Complete integration of role-based permissions and UI
+  - Legacy config cleanup: Moved `config/agents.yaml` to `config/backups/agents.yaml.legacy` (avoid confusion)
+  - Permission presets: Added 7 role-specific permission presets to `permissions.py`
+    * COORDINATOR: Read-only files/terminal, full GitHub coordination, config access (10 permissions)
+    * DEVELOPER: Full file/terminal access, no PR merge (13 permissions)
+    * REVIEWER: Read-only, can create issues/PRs with feedback (7 permissions)
+    * TESTER: File write (tests only), terminal execute, no merge (9 permissions)
+    * DOCUMENTER: File write (docs only), no terminal execute (8 permissions)
+    * BOT: Read-only files/terminal, issue management, NO merge (8 permissions)
+    * RESEARCHER: Read-only, full API access for research (8 permissions)
+  - Helper function: `get_preset_for_role()` maps agent role → permission preset
+  - UI updates: Config UI now shows/edits role field with dropdown and badge
+  - CSS updates: Added `.badge-info` and `.form-help` styles for role display
+  - API updates: `config_routes.py` models support role field (AgentConfigModel, AgentUpdateModel)
+  - Bot token setup: Created `secrets/agents/m0nk111-bot.token.example` with setup instructions
+  - README update: Bot token setup documentation in Security section
+  - Testing: Validated all 3 agents load with roles, permissions map correctly per role
+  - Verified: BOT role has NO file write, NO terminal execute, NO merge permissions
+
+- **Role-based agent system** - Enhanced agent configuration with specialized roles
+  - New `role` field in AgentConfig: coordinator, developer, reviewer, tester, documenter, bot, researcher
+  - New agent: `m0nk111-bot` with bot role for automated operations (posting, organizing, triage)
+  - Bot agent features: 3 concurrent tasks, 30s polling, no shell access, lower temperature (0.3)
+  - Bot capabilities: issue_management, posting, organization, notifications, automation
+  - Updated existing agents with roles: m0nk111-qwen-agent (developer), qwen-main-agent (coordinator)
+  - New documentation: `docs/AGENT_ROLES.md` - Complete guide to agent roles and usage (400+ lines)
+  - Role-based task assignment in CoordinatorAgent using AgentRole enum
+  - Benefits: Clear responsibilities, efficient task matching, security through role permissions
+
 - **Directory refactor (Issue #69)** - Restructured codebase for better scalability
   - New structure: `engine/` package with subpackages (runners, core, operations, validation)
   - Moved all agent code from `agents/` to `engine/` with logical organization

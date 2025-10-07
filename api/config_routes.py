@@ -44,6 +44,7 @@ class AgentConfigModel(BaseModel):
     agent_id: str
     name: str
     model: str
+    role: str = "developer"  # coordinator, developer, reviewer, tester, documenter, bot, researcher
     enabled: bool = True
     max_concurrent_tasks: int = Field(default=1, ge=1, le=10)
     polling_interval: int = Field(default=60, ge=10, le=3600)
@@ -71,6 +72,7 @@ class AgentConfigModel(BaseModel):
 class AgentUpdateModel(BaseModel):
     name: Optional[str] = None
     model: Optional[str] = None
+    role: Optional[str] = None  # coordinator, developer, reviewer, tester, documenter, bot, researcher
     enabled: Optional[bool] = None
     max_concurrent_tasks: Optional[int] = Field(default=None, ge=1, le=10)
     polling_interval: Optional[int] = Field(default=None, ge=10, le=3600)

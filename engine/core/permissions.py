@@ -241,15 +241,25 @@ PERMISSION_METADATA: Dict[Permission, PermissionMetadata] = {
 
 
 class PermissionPreset(Enum):
-    """Pre-defined permission sets for common roles"""
+    """Pre-defined permission sets for common roles and agent types"""
+    # Generic presets
     READ_ONLY = "read_only"
     DEVELOPER = "developer"
     ADMIN = "admin"
     CUSTOM = "custom"
+    
+    # Agent role presets (match AgentRole enum in coordinator_agent.py)
+    COORDINATOR = "coordinator"
+    REVIEWER = "reviewer"
+    TESTER = "tester"
+    DOCUMENTER = "documenter"
+    BOT = "bot"
+    RESEARCHER = "researcher"
 
 
 # Permission preset definitions
 PERMISSION_PRESETS: Dict[PermissionPreset, Set[Permission]] = {
+    # Generic presets
     PermissionPreset.READ_ONLY: {
         Permission.FILE_READ,
         Permission.TERMINAL_READ,
@@ -283,7 +293,168 @@ PERMISSION_PRESETS: Dict[PermissionPreset, Set[Permission]] = {
     },
     
     PermissionPreset.ADMIN: set(Permission),  # All permissions
+    
+    # Agent role-specific presets
+    PermissionPreset.COORDINATOR: {
+        # File System - Read only (no code changes)
+        Permission.FILE_READ,
+        
+        # Terminal - Read only
+        Permission.TERMINAL_READ,
+        
+        # GitHub - Full coordination access
+        Permission.GITHUB_READ,
+        Permission.GITHUB_CREATE_ISSUE,
+        Permission.GITHUB_ASSIGN,
+        Permission.GITHUB_CLOSE_ISSUE,
+        
+        # API
+        Permission.API_LLM,
+        Permission.API_WEBHOOK,
+        
+        # System
+        Permission.SYSTEM_LOGS,
+        Permission.SYSTEM_CONFIG,  # Coordinators can modify config
+    },
+    
+    PermissionPreset.REVIEWER: {
+        # File System - Read only
+        Permission.FILE_READ,
+        
+        # Terminal - Read only
+        Permission.TERMINAL_READ,
+        
+        # GitHub - Review permissions
+        Permission.GITHUB_READ,
+        Permission.GITHUB_CREATE_ISSUE,  # Can create issues for problems found
+        Permission.GITHUB_CREATE_PR,  # Can create PRs with review feedback
+        
+        # API
+        Permission.API_LLM,
+        
+        # System
+        Permission.SYSTEM_LOGS,
+    },
+    
+    PermissionPreset.TESTER: {
+        # File System - Write for test files only (checked by validator)
+        Permission.FILE_READ,
+        Permission.FILE_WRITE,
+        
+        # Terminal - Full testing access
+        Permission.TERMINAL_READ,
+        Permission.TERMINAL_EXECUTE,  # Run tests
+        Permission.TERMINAL_INSTALL,  # Install test dependencies
+        
+        # GitHub
+        Permission.GITHUB_READ,
+        Permission.GITHUB_CREATE_ISSUE,  # Report test failures
+        
+        # API
+        Permission.API_LLM,
+        
+        # System
+        Permission.SYSTEM_LOGS,
+    },
+    
+    PermissionPreset.DOCUMENTER: {
+        # File System - Write for docs only (checked by validator)
+        Permission.FILE_READ,
+        Permission.FILE_WRITE,
+        
+        # Terminal - Read only
+        Permission.TERMINAL_READ,
+        
+        # GitHub
+        Permission.GITHUB_READ,
+        Permission.GITHUB_CREATE_ISSUE,
+        Permission.GITHUB_CREATE_PR,  # Can create PRs with doc updates
+        
+        # API
+        Permission.API_LLM,
+        
+        # System
+        Permission.SYSTEM_LOGS,
+    },
+    
+    PermissionPreset.BOT: {
+        # File System - READ ONLY (bots cannot modify code)
+        Permission.FILE_READ,
+        
+        # Terminal - READ ONLY (no shell access for bots)
+        Permission.TERMINAL_READ,
+        
+        # GitHub - Automation permissions
+        Permission.GITHUB_READ,
+        Permission.GITHUB_CREATE_ISSUE,
+        Permission.GITHUB_ASSIGN,
+        Permission.GITHUB_CLOSE_ISSUE,
+        # NOTE: NO MERGE_PR - bots should not merge PRs automatically
+        
+        # API
+        Permission.API_WEBHOOK,  # For notifications
+        
+        # System
+        Permission.SYSTEM_LOGS,
+    },
+    
+    PermissionPreset.RESEARCHER: {
+        # File System - Read only
+        Permission.FILE_READ,
+        
+        # Terminal - Read only
+        Permission.TERMINAL_READ,
+        
+        # GitHub
+        Permission.GITHUB_READ,
+        Permission.GITHUB_CREATE_ISSUE,  # Can create issues with research findings
+        
+        # API - Full external access for research
+        Permission.API_EXTERNAL,
+        Permission.API_LLM,
+        Permission.API_WEBHOOK,
+        
+        # System
+        Permission.SYSTEM_LOGS,
+    },
 }
+
+
+def get_preset_for_role(role: str) -> PermissionPreset:
+    """
+    Map agent role to permission preset.
+    
+    Args:
+        role: Agent role (coordinator, developer, reviewer, tester, documenter, bot, researcher)
+    
+    Returns:
+        Corresponding PermissionPreset
+    
+    Example:
+        >>> get_preset_for_role("bot")
+        PermissionPreset.BOT
+        >>> get_preset_for_role("developer")
+        PermissionPreset.DEVELOPER
+    """
+    role_lower = role.lower()
+    
+    # Direct mapping for agent roles
+    role_to_preset = {
+        "coordinator": PermissionPreset.COORDINATOR,
+        "developer": PermissionPreset.DEVELOPER,
+        "reviewer": PermissionPreset.REVIEWER,
+        "tester": PermissionPreset.TESTER,
+        "documenter": PermissionPreset.DOCUMENTER,
+        "bot": PermissionPreset.BOT,
+        "researcher": PermissionPreset.RESEARCHER,
+    }
+    
+    preset = role_to_preset.get(role_lower, PermissionPreset.DEVELOPER)
+    
+    if role_lower not in role_to_preset:
+        logger.warning(f"⚠️ Unknown agent role '{role}', defaulting to DEVELOPER preset")
+    
+    return preset
 
 
 @dataclass

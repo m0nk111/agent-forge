@@ -1,6 +1,35 @@
 # Agent-Forge 🤖
 
-**Multi-agent orchestration platform for GitHub automation with role-based LLM assignment, real-time monitoring, and intelligent task distribution**
+**Multi-agent orchestration platform for GitHub automation with role-ba**To add a new agent token:**
+
+```bash
+# Create token file
+echo "ghp_YOUR_NEW_TOKEN" > secrets/agents/my-agent.token
+chmod 600 secrets/agents/my-agent.token
+
+# Update config to reference it
+# config/agents.yaml:
+#   github_token: null  # Token loaded from secrets/
+```
+
+**Bot Account Setup (m0nk111-bot):**
+
+The bot agent requires a separate GitHub token:
+
+```bash
+# 1. Create token for bot account (see secrets/agents/m0nk111-bot.token.example)
+echo "ghp_BOT_TOKEN_HERE" > secrets/agents/m0nk111-bot.token
+chmod 600 secrets/agents/m0nk111-bot.token
+
+# 2. Bot account should have "Triage" role on repositories (not "Write")
+# 3. Bot agent has read-only permissions and cannot modify code
+# 4. Restart services to load the token
+systemctl restart agent-forge
+```
+
+See [docs/TOKEN_SECURITY.md](docs/TOKEN_SECURITY.md) for complete security guide and [docs/AGENT_ROLES.md](docs/AGENT_ROLES.md) for bot role details.
+
+## 📊 Monitoring & Dashboardent, real-time monitoring, and intelligent task distribution**
 
 Agent-Forge is an intelligent multi-agent system that automates GitHub workflows using specialized AI agents powered by various LLMs (OpenAI, Anthropic, Google, local models). Each agent has a specific role (coder, reviewer, coordinator, polling) and can be assigned different LLMs based on the task requirements. Features include autonomous issue detection, automated code reviews, real-time WebSocket monitoring, and comprehensive logging.
 
