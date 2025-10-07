@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **GitHub token loading and authentication** - Fixed token loading from secrets directory
+  - config_manager.py: Enhanced token loading with better error messages for permission issues
+  - service_manager.py: Load agent via get_agent() instead of get_agents() to trigger token loading
+  - config/agents/*.yaml: Added flat `github_token: null` field for config_manager compatibility
+  - secrets/agents/*.token: Fixed file ownership to agent-forge:agent-forge (was flip:flip)
+  - Code agent now authenticates successfully with GitHub API
+  - Resolved "Permission denied" error when reading token files
+
+- **Repository monitoring configuration** - Added m0nk111/agent-forge to monitored repositories
+  - config/system/repositories.yaml: Added agent-forge repo with auto_assign to m0nk111-qwen-agent
+  - Polling service now monitors for new issues and pull requests
+  - Agent labels: agent-task, bug, feature
+
 - **Code agent runtime startup** - Replaced hardcoded agent lookup with dynamic discovery
   - service_manager.py: Changed from hardcoded "qwen-main-agent" to finding first enabled developer agent
   - Fixes code_agent health status remaining False after agent rename

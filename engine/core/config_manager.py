@@ -280,7 +280,10 @@ class ConfigManager:
                 logger.debug(f"🔑 Loaded token for {agent_id} from secrets")
                 return token
             except Exception as e:
-                logger.error(f"Failed to load token for {agent_id}: {e}")
+                logger.error(f"❌ Failed to load token for {agent_id}: {e}")
+                logger.error(f"   Check file permissions: {token_file}")
+        else:
+            logger.warning(f"⚠️ Token file not found: {token_file}")
         return None
     
     def add_agent(self, agent: AgentConfig) -> bool:

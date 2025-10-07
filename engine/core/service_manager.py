@@ -154,7 +154,8 @@ class ServiceManager:
             agent_config = None
             for agent in all_agents:
                 if agent.enabled and agent.role == "developer":
-                    agent_config = agent
+                    # Reload agent to get token from secrets
+                    agent_config = config_manager.get_agent(agent.agent_id)
                     break
             
             if not agent_config:
@@ -166,6 +167,13 @@ class ServiceManager:
             logger.info(f"📋 Loaded config for {agent_config.agent_id}")
             logger.info(f"   Model: {agent_config.model_provider}/{agent_config.model_name}")
             logger.info(f"   Shell: {agent_config.shell_permissions if agent_config.local_shell_enabled else 'disabled'}")
+            
+            # Set GitHub token as environment variable if available
+            if agent_config.github_token:
+                os.environ['GITHUB_TOKEN'] = agent_config.github_token
+                logger.info(f"   GitHub: Authenticated as {agent_config.agent_id}")
+            else:
+                logger.warning(f"   GitHub: No token found - GitHub operations will fail")
             
             # Create agent instance from config
             agent = CodeAgent(
