@@ -29,6 +29,11 @@ class AgentConfig:
     github_token: Optional[str] = None
     api_base_url: Optional[str] = None
     custom_settings: Dict[str, Any] = None
+    # Shell access configuration (Issue #64)
+    local_shell_enabled: bool = False
+    shell_working_dir: Optional[str] = None
+    shell_timeout: int = 300  # 5 minutes default
+    shell_permissions: Optional[str] = "developer"  # Permission preset: read_only, developer, admin
     created_at: str = None
     updated_at: str = None
     

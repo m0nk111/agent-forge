@@ -5,6 +5,59 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2025-10-07
+
+### Added
+
+- **Local Shell Access for Agent Testing (Issue #64)** - Enable agents to run tests on co-located repositories
+  - Created `agents/permissions.py` (450 lines) - Granular permission system:
+    * `Permission` enum with 20+ permissions across 5 categories (FILE_SYSTEM, TERMINAL, GITHUB, API, SYSTEM)
+    * `PermissionMetadata` with danger warnings (🚨 CRITICAL for TERMINAL_EXECUTE, GITHUB_MERGE_PR, SYSTEM_RESTART)
+    * `PermissionPreset` enum: READ_ONLY (safest), DEVELOPER (testing enabled), ADMIN (unrestricted)
+    * `AgentPermissions` class with has_permission(), grant_permission(), get_dangerous_permissions()
+    * `PermissionValidator` for operation authorization checks
+    * DEVELOPER preset includes TERMINAL_EXECUTE for pytest/npm test/cargo test
+  - Created `agents/shell_runner.py` (400 lines) - Safe shell command execution:
+    * `ShellSafetyConfig`: 300s default timeout, blocked commands (rm -rf /, sudo, shutdown, fork bombs), blocked patterns (pipe to bash, writing to /dev/sd), allowed commands whitelist (pytest, npm, pip, git)
+    * `CommandResult` dataclass: tracks command, status (SUCCESS/FAILURE/TIMEOUT/BLOCKED/ERROR), exit_code, stdout/stderr, execution_time
+    * `ShellRunner.run_command()`: Validates working directory, checks blocked commands/patterns, enforces timeout, kills on timeout, truncates large output (10MB limit)
+    * `ShellRunner.run_test_suite()`: Auto-detects test framework (pytest, npm, cargo, go, make) and runs with 600s timeout
+    * `ShellRunner.kill_all_processes()`: Emergency process cleanup
+    * Statistics tracking: success/failure/timeout/blocked counts, success rate calculation
+  - Extended `agents/config_manager.py` `AgentConfig` dataclass:
+    * `local_shell_enabled: bool` - Toggle shell access per agent
+    * `shell_working_dir: Optional[str]` - Restrict execution directory
+    * `shell_timeout: int` - Per-agent timeout (300s default)
+    * `shell_permissions: str` - Permission preset ("read_only", "developer", "admin")
+  - Created `docs/LOCAL_SHELL_ACCESS.md` (500+ lines) - Comprehensive documentation:
+    * Security warnings and threat model
+    * Architecture overview (Permission → ShellRunner → Audit)
+    * Permission level comparison (Read-Only/Developer/Admin)
+    * Configuration guide (YAML, Python API, Dashboard UI)
+    * Safety guardrails (blocked commands, timeouts, working directory restrictions)
+    * Usage examples (pytest, npm test, cargo test, build scripts)
+    * Security best practices (least privilege, audit monitoring)
+    * Troubleshooting guide (blocked commands, timeouts, permission errors)
+    * Advanced topics (custom safety config, background processes, environment variables)
+  - Feature capabilities:
+    * Enable agents to validate code changes with pytest, npm test before committing
+    * Auto-detect test framework from project structure (pytest.ini, package.json, Cargo.toml, go.mod, Makefile)
+    * Block dangerous commands (rm -rf /, sudo, shutdown, piping to bash/sh)
+    * Enforce timeouts to prevent infinite loops (default 5min, max 30min)
+    * Restrict execution to allowed directories (/home/flip/agent-forge, /tmp/agent-*)
+    * Log all commands with timestamp, agent_id, exit_code, execution_time
+    * Track command history and statistics (success rate, failure analysis)
+  - Security model:
+    * Default: Locked down (READ_ONLY preset, no shell access)
+    * Opt-in: DEVELOPER preset enables TERMINAL_EXECUTE for testing
+    * Dangerous: ADMIN preset grants full access with explicit warnings
+    * Multi-layer safety: permission check → command validation → working directory check → timeout enforcement
+  - Testing workflow integration:
+    * Agent generates code → writes files → runs tests → fixes failures → creates PR
+    * Validation before PR creation reduces broken commits
+    * Automated testing enables fully autonomous development loop
+  - Status: Core implementation complete, pending API endpoints, UI integration, audit logging
+
 ## [Unreleased] - 2025-10-06
 
 ### Added
