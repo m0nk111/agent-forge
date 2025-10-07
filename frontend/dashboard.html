@@ -918,9 +918,6 @@
                 <div class="section-header">
                     <h2 class="section-title">Active Agents</h2>
                     <div style="display: flex; align-items: center; gap: 12px;">
-                        <button onclick="openCreateAgentModal()" class="btn btn-primary" style="font-size: 14px; background: #22c55e; padding: 10px 20px;">
-                            ➕ Create New Agent
-                        </button>
                         <div class="view-toggle">
                             <button onclick="setViewMode('list')" id="list-view-btn" class="active">📋 List</button>
                             <button onclick="setViewMode('grid')" id="grid-view-btn">⊞ Grid</button>
@@ -1281,23 +1278,11 @@
             <span>🤖 Agent-Forge v1.0</span>
             <span>•</span>
             <span id="footer-status">WebSocket: Connecting...</span>
-            <span>•</span>
-            <a href="unified_dashboard.html" style="
-                display: inline-block;
-                padding: 6px 12px;
-                background: linear-gradient(135deg, #10b981, #059669);
-                color: white !important;
-                font-weight: 700;
-                font-size: 12px;
-                border-radius: 6px;
-                text-decoration: none !important;
-                box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
-                transition: all 0.3s ease;
-            " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16, 185, 129, 0.5)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(16, 185, 129, 0.3)';">
-                🚀 NEW Unified Dashboard
-            </a>
         </div>
         <div class="footer-right">
+            <button class="config-btn" onclick="openCreateAgentModal()" style="margin-right: 12px; background: #22c55e; color: #0f172a;">
+                ➕ Create Agent
+            </button>
             <button class="config-btn" onclick="openConfigModal()">
                 ⚙️ Config
             </button>
