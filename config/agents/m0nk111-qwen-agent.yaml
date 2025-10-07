@@ -1,10 +1,10 @@
-# Qwen Main Agent Configuration
+# M0nk111 Qwen Agent Configuration
 # Primary code generation and development agent
 
 agent:
   # Agent identification
-  agent_id: qwen-main-agent
-  name: Qwen Main Agent
+  agent_id: m0nk111-qwen-agent
+  name: M0nk111 Qwen Agent
   role: developer
   
   # Model configuration
@@ -40,8 +40,8 @@ agent:
     
   # GitHub integration
   github:
-    token: null  # Auto-loaded from secrets/agents/qwen-main-agent.token
-    username: null  # Derived from token
+    token: null  # Auto-loaded from secrets/agents/m0nk111-qwen-agent.token
+    username: m0nk111-qwen-agent
     
   # Custom settings
   custom_settings: {}
