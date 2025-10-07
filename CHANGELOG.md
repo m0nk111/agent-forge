@@ -680,3 +680,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Monitoring dashboard
 - Polling service
 - Bot operations
+
+### Fixed
+
+- **Agent configuration cleanup** - Removed duplicate offline agent
+  - Removed `m0nk111-qwen-agent` from config (was duplicate, never started by service_manager)
+  - Only `qwen-main-agent` remains as active code agent
+  - Restored agents.yaml from backup (was empty: `agents: []`)
+  - Trusted agents: m0nk111-bot configured for GitHub automation
+  - Production config synced: /opt/agent-forge/config/agents.yaml
+  - Service restarted: offline agent no longer appears in dashboard
+
