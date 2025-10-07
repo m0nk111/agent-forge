@@ -956,6 +956,117 @@
     </div>
 
     <script>
+        // ==================== AUTHENTICATION ====================
+        
+        const AUTH_API_URL = 'http://localhost:7999'; // Auth service
+        let isAuthEnabled = false;
+        let currentUser = null;
+
+        /**
+         * Check if authentication is enabled and user is logged in.
+         * Called on page load.
+         */
+        async function checkAuth() {
+            try {
+                // Check if auth service is available
+                const healthResponse = await fetch(`${AUTH_API_URL}/health`, {
+                    credentials: 'include' // Include cookies
+                });
+                
+                if (!healthResponse.ok) {
+                    console.log('🔓 Auth service not available - running in open mode');
+                    isAuthEnabled = false;
+                    return true; // Allow access
+                }
+                
+                const healthData = await healthResponse.json();
+                isAuthEnabled = healthData.oauth_configured || false;
+                
+                if (!isAuthEnabled) {
+                    console.log('🔓 OAuth not configured - running in open mode');
+                    return true; // Allow access
+                }
+                
+                // Check if user is authenticated
+                const statusResponse = await fetch(`${AUTH_API_URL}/auth/status`, {
+                    credentials: 'include'
+                });
+                
+                if (!statusResponse.ok) {
+                    console.log('❌ Auth check failed');
+                    redirectToLogin();
+                    return false;
+                }
+                
+                const statusData = await statusResponse.json();
+                
+                if (!statusData.authenticated) {
+                    console.log('🔐 Not authenticated - redirecting to login');
+                    redirectToLogin();
+                    return false;
+                }
+                
+                currentUser = statusData.user;
+                console.log('✅ Authenticated as:', currentUser.email);
+                updateAuthUI();
+                return true;
+                
+            } catch (error) {
+                console.log('⚠️ Auth service unreachable - running in open mode');
+                isAuthEnabled = false;
+                return true; // Allow access if auth service is down
+            }
+        }
+
+        /**
+         * Redirect to OAuth login page.
+         */
+        function redirectToLogin() {
+            const currentUrl = window.location.href;
+            window.location.href = `${AUTH_API_URL}/auth/login?redirect_to=${encodeURIComponent(currentUrl)}`;
+        }
+
+        /**
+         * Logout current user.
+         */
+        async function logout() {
+            try {
+                await fetch(`${AUTH_API_URL}/auth/logout`, {
+                    credentials: 'include'
+                });
+                window.location.reload();
+            } catch (error) {
+                console.error('Logout failed:', error);
+            }
+        }
+
+        /**
+         * Update UI with user info.
+         */
+        function updateAuthUI() {
+            if (!currentUser) return;
+            
+            // Add user info to header (if not already present)
+            const header = document.querySelector('header');
+            const existingUserInfo = document.getElementById('user-info');
+            
+            if (!existingUserInfo) {
+                const userInfo = document.createElement('div');
+                userInfo.id = 'user-info';
+                userInfo.style.cssText = 'display: flex; align-items: center; gap: 8px; font-size: 12px;';
+                userInfo.innerHTML = `
+                    ${currentUser.picture ? `<img src="${currentUser.picture}" alt="User" style="width: 24px; height: 24px; border-radius: 50%;">` : ''}
+                    <span style="color: #94a3b8;">${currentUser.email}</span>
+                    <button onclick="logout()" style="padding: 4px 8px; background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #fca5a5; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                        Logout
+                    </button>
+                `;
+                header.appendChild(userInfo);
+            }
+        }
+
+        // ==================== WEBSOCKET & APP LOGIC ====================
+        
         // Auto-detect WebSocket URL based on current host
         // This allows the dashboard to work on localhost and LAN
         function getDefaultWsUrl() {
@@ -998,8 +1109,16 @@
         }
 
         // Initialize view mode on load
-        window.addEventListener('DOMContentLoaded', () => {
+        window.addEventListener('DOMContentLoaded', async () => {
+            // Check authentication first
+            const isAuthenticated = await checkAuth();
+            if (!isAuthenticated) {
+                return; // Will redirect to login
+            }
+            
+            // Continue with normal initialization
             setViewMode(viewMode);
+            connect(); // Start WebSocket connection
         });
 
         // Initialize WebSocket connection
@@ -1269,8 +1388,8 @@
             return div.innerHTML;
         }
 
-        // Initialize connection on page load
-        connect();
+        // Connection initialized by DOMContentLoaded event after auth check
+        // connect(); // Removed - now called after auth check
     </script>
 
     <footer>
