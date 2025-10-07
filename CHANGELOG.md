@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Security Audit System for External PRs (Issue #62)** - Mandatory security scanning for non-trusted contributors
+  - Created `agents/security_auditor.py` (517 lines) with comprehensive scanning:
+    * `SecurityIssue` dataclass: severity, category, description, file, line, recommendation, CWE ID
+    * `AuditResult` dataclass: passed status, issues list, score (0-100), severity counts
+    * 6 audit methods: secrets scanning, dependency checks, injection detection, malware patterns, license validation, code quality
+  - Integrated security auditor into `agents/pr_reviewer.py`:
+    * Loads trusted agents from `config/agents.yaml`
+    * Non-trusted PR authors trigger mandatory security audit before review
+    * PRs blocked on critical/high severity issues (cannot merge)
+    * Trusted agents (m0nk111-bot, m0nk111-qwen-agent) bypass audit
+    * Error handling: audit failures block PRs from untrusted authors for safety
+    * Detailed security block message with issue breakdown, recommendations, CWE links
+  - Updated `config/agents.yaml`: Added trusted_agents section with bot and qwen-agent accounts
+  - Added security dependencies to `requirements.txt`: bandit>=1.7.5, safety>=3.0.0
+  - Leverages existing `config/security_audit.yaml` (212 lines) with:
+    * Severity thresholds (block on critical/high, warn on medium)
+    * Blocked patterns (eval, exec, SQL injection, XSS, hardcoded secrets)
+    * Tool configurations (bandit, safety, semgrep, npm audit)
+    * License compliance rules (MIT/Apache/BSD allowed, AGPL/proprietary forbidden)
+    * Performance settings (5min timeout, 1MB max file size, 100 files/PR limit)
+
 - **Agent Configuration Modal** - Per-agent configuration interface integrated into default dashboard
   - Added gear icon (⚙️) button to each agent card
   - Full-featured modal with 8 configuration sections:

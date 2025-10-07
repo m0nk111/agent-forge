@@ -1,0 +1,211 @@
+---
+# Security Audit Configuration
+# Controls behavior of the security audit system for non-agent PRs
+
+# Enable/disable security audit
+audit_enabled: true
+
+# Trusted agent accounts that bypass security audit
+# These are verified bot/agent accounts that create PRs programmatically
+trusted_agents:
+  - m0nk111-bot
+  - m0nk111-qwen-agent
+  - dependabot[bot]
+  - github-actions[bot]
+
+# Audit severity thresholds
+# Determine which severity levels block PR merges
+block_on_critical: true   # Block if any CRITICAL issues found
+block_on_high: true        # Block if any HIGH issues found
+warn_on_medium: true       # Warn but don't block on MEDIUM issues
+warn_on_low: false         # Don't warn on LOW issues
+
+# Minimum security score (0-100) to pass audit
+# PRs below this score will be blocked
+minimum_security_score: 70
+
+# Audit tools configuration
+tools:
+  # Secrets scanning
+  secrets:
+    enabled: true
+    patterns:
+      - api_keys
+      - passwords
+      - private_keys
+      - tokens
+      - connection_strings
+    
+  # Dependency vulnerability checking
+  dependencies:
+    enabled: true
+    python_safety: true      # Use safety for Python
+    npm_audit: true          # Use npm audit for Node.js
+    bundler_audit: false     # Use bundler-audit for Ruby
+    
+  # Static code analysis
+  static_analysis:
+    enabled: true
+    bandit: true             # Python security linter
+    semgrep: false           # Multi-language analysis (requires setup)
+    eslint: false            # JavaScript linting
+    
+  # Malware/malicious pattern detection
+  malware:
+    enabled: true
+    custom_patterns: true
+    suspicious_network: true
+    obfuscation_detection: true
+
+# Blocked code patterns (regex patterns that trigger CRITICAL issues)
+blocked_patterns:
+  # Code execution risks
+  - pattern: "eval\\s*\\("
+    severity: critical
+    message: "eval() usage detected - severe code injection risk"
+    cwe: "CWE-95"
+  
+  - pattern: "exec\\s*\\("
+    severity: critical
+    message: "exec() usage detected - code injection risk"
+    cwe: "CWE-95"
+  
+  - pattern: "subprocess\\.(call|run|Popen)\\s*\\([^)]*shell\\s*=\\s*True"
+    severity: high
+    message: "shell=True can lead to command injection"
+    cwe: "CWE-78"
+  
+  - pattern: "os\\.system\\s*\\("
+    severity: high
+    message: "os.system() usage - command injection risk"
+    cwe: "CWE-78"
+  
+  # SQL Injection
+  - pattern: "execute\\s*\\(\\s*['\"].*%s.*['\"]"
+    severity: high
+    message: "Potential SQL injection via string formatting"
+    cwe: "CWE-89"
+  
+  - pattern: "cursor\\.execute\\s*\\(\\s*f['\"]"
+    severity: high
+    message: "Potential SQL injection via f-string"
+    cwe: "CWE-89"
+  
+  # Hardcoded secrets
+  - pattern: "password\\s*=\\s*['\"][^'\"]{8,}['\"]"
+    severity: critical
+    message: "Hardcoded password detected"
+    cwe: "CWE-798"
+  
+  - pattern: "api[_-]?key\\s*=\\s*['\"][^'\"]{20,}['\"]"
+    severity: critical
+    message: "Hardcoded API key detected"
+    cwe: "CWE-798"
+  
+  # XSS risks
+  - pattern: "innerHTML\\s*="
+    severity: medium
+    message: "XSS risk via innerHTML assignment"
+    cwe: "CWE-79"
+  
+  - pattern: "document\\.write\\s*\\("
+    severity: medium
+    message: "XSS risk via document.write"
+    cwe: "CWE-79"
+
+# File patterns to exclude from audit
+# These files are never scanned (performance + false positives)
+exclude_patterns:
+  - "node_modules/**"
+  - "venv/**"
+  - ".venv/**"
+  - "__pycache__/**"
+  - "*.pyc"
+  - ".git/**"
+  - "*.min.js"
+  - "*.min.css"
+  - "dist/**"
+  - "build/**"
+  - "*.lock"
+  - "*.sum"
+
+# File patterns that trigger extra scrutiny
+# Changes to these files get more aggressive scanning
+sensitive_files:
+  - "**/.env*"
+  - "**/secrets/**"
+  - "**/config/**"
+  - "**/credentials/**"
+  - "**/*.pem"
+  - "**/*.key"
+  - "**/*.p12"
+  - "**/docker-compose*.yml"
+  - "**/Dockerfile*"
+
+# License compliance settings
+license_compliance:
+  enabled: true
+  # Allowed licenses (PRs with other licenses trigger warnings)
+  allowed_licenses:
+    - MIT
+    - Apache-2.0
+    - BSD-2-Clause
+    - BSD-3-Clause
+    - ISC
+    - GPL-3.0
+    - LGPL-3.0
+  
+  # Forbidden licenses (trigger blocking issues)
+  forbidden_licenses:
+    - AGPL-3.0
+    - Commercial
+    - Proprietary
+
+# Audit logging
+logging:
+  enabled: true
+  log_level: INFO
+  log_file: logs/security_audit.log
+  log_passed_audits: true      # Log even when audit passes
+  log_details: true             # Log detailed issue information
+
+# Notification settings
+notifications:
+  # Post audit results as PR comment
+  post_comment: true
+  
+  # Tag specific users on critical issues
+  mention_on_critical:
+    - "@m0nk111"
+  
+  # Create GitHub issue for repeated violations
+  create_issue_on_repeat: true
+  repeat_threshold: 3  # Number of failed audits before creating issue
+
+# Performance settings
+performance:
+  # Maximum file size to scan (bytes)
+  max_file_size: 1048576  # 1MB
+  
+  # Timeout for each audit (seconds)
+  audit_timeout: 300  # 5 minutes
+  
+  # Maximum number of files to scan per PR
+  max_files_per_pr: 100
+
+# Integration settings
+integrations:
+  # GitHub Actions integration
+  github_actions:
+    enabled: true
+    workflow_file: ".github/workflows/security-audit.yml"
+  
+  # Webhook integration
+  webhook:
+    enabled: false
+    url: ""
+    
+  # External security services
+  external_services:
+    snyk: false
+    sonarqube: false

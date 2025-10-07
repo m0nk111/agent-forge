@@ -1,1 +1,18 @@
+# Agent Configuration
+# Defines trusted agents and their roles
+
+# Trusted agent accounts that bypass security audits
+# These are known bot/agent accounts that are part of the system
+trusted_agents:
+  - username: m0nk111-bot
+    role: bot
+    description: "Main bot account for GitHub automation"
+    trusted: true
+  
+  - username: m0nk111-qwen-agent
+    role: developer
+    description: "Qwen-based code generation agent"
+    trusted: true
+
+# Agent registry (populated at runtime by service_manager)
 agents: []

@@ -3,6 +3,7 @@ PR Reviewer Module
 
 Automatically review pull requests created by other agents or contributors.
 Provides comprehensive code reviews with feedback, suggestions, and approval/change requests.
+Includes mandatory security audits for PRs from non-trusted accounts.
 """
 
 import asyncio
@@ -15,6 +16,14 @@ import logging
 import yaml
 
 logger = logging.getLogger(__name__)
+
+# Import security auditor for external PR scanning
+try:
+    from agents.security_auditor import SecurityAuditor
+    SECURITY_AUDITOR_AVAILABLE = True
+except ImportError:
+    logger.warning("⚠️ SecurityAuditor not available - external PRs will not be scanned")
+    SECURITY_AUDITOR_AVAILABLE = False
 
 
 @dataclass
@@ -103,6 +112,63 @@ class PRReviewer:
         if pr_data.get('user', {}).get('login') == self.github_username:
             logger.info(f"⏭️  Skipping own PR: {pr_key}")
             return True, "", []
+        
+        # Load trusted agents list
+        try:
+            with open('config/agents.yaml', 'r') as f:
+                agents_config = yaml.safe_load(f)
+                trusted_agents = [
+                    agent['username'] 
+                    for agent in agents_config.get('trusted_agents', [])
+                    if agent.get('trusted', False)
+                ]
+        except Exception as e:
+            logger.error(f"❌ Failed to load trusted agents: {e}")
+            trusted_agents = []
+        
+        # Check if PR author is trusted - if not, run mandatory security audit
+        pr_author = pr_data.get('user', {}).get('login', '')
+        is_trusted = pr_author in trusted_agents
+        
+        if not is_trusted and SECURITY_AUDITOR_AVAILABLE:
+            logger.warning(f"🔐 PR from non-trusted author '{pr_author}' - running mandatory security audit")
+            
+            try:
+                from agents.security_auditor import SecurityAuditor
+                auditor = SecurityAuditor()
+                audit_result = await auditor.audit_pr(repo, pr_number, files)
+                
+                if not audit_result.passed:
+                    # Security audit failed - block PR
+                    critical_issues = [
+                        issue for issue in audit_result.issues
+                        if issue.severity in ['critical', 'high']
+                    ]
+                    
+                    # Format security block message
+                    summary = self._format_security_block_message(audit_result, critical_issues)
+                    
+                    logger.error(f"🚨 Security audit FAILED for {pr_key}: {len(critical_issues)} critical/high issues")
+                    return False, summary, []
+                else:
+                    logger.info(f"✅ Security audit PASSED for {pr_key}: {audit_result.score:.1f}/100")
+                    
+            except Exception as e:
+                logger.error(f"❌ Security audit error for {pr_key}: {e}")
+                # On audit error, block PR from untrusted author for safety
+                summary = (
+                    f"## 🚨 Security Audit Error\n\n"
+                    f"The mandatory security audit for this PR from non-trusted author failed to execute:\n"
+                    f"```\n{str(e)}\n```\n\n"
+                    f"**This PR cannot be merged until the security audit completes successfully.**\n\n"
+                    f"Please contact a maintainer to investigate the audit system."
+                )
+                return False, summary, []
+        elif not is_trusted and not SECURITY_AUDITOR_AVAILABLE:
+            logger.warning(f"⚠️ PR from non-trusted author '{pr_author}' but SecurityAuditor unavailable")
+            # Continue with review but log warning
+        else:
+            logger.info(f"✅ PR from trusted author '{pr_author}' - skipping security audit")
         
         # Skip if already reviewed recently
         if pr_key in self.reviewed_prs:
@@ -463,6 +529,85 @@ Format: "Line X: <suggestion>"
         # Relaxed mode
         else:
             return errors <= 1 and overall_score >= 0.5
+    
+    def _format_security_block_message(self, audit_result, critical_issues: List) -> str:
+        """
+        Format a security audit failure message for blocking PR merge.
+        
+        Args:
+            audit_result: AuditResult from SecurityAuditor
+            critical_issues: List of critical/high severity SecurityIssue objects
+            
+        Returns:
+            Formatted markdown message explaining why PR is blocked
+        """
+        from agents.security_auditor import SecurityIssue
+        
+        lines = []
+        lines.append("## 🚨 SECURITY AUDIT FAILED - PR BLOCKED\n")
+        lines.append(f"**Security Score:** {audit_result.score:.1f}/100 (threshold: 70.0)\n")
+        lines.append("This pull request from a non-trusted account has **failed mandatory security checks**.")
+        lines.append("The PR cannot be merged until all critical and high-severity issues are resolved.\n")
+        
+        # Issue summary
+        lines.append("### 📊 Issue Summary\n")
+        lines.append(f"- 🔴 **Critical:** {audit_result.critical_count}")
+        lines.append(f"- 🟠 **High:** {audit_result.high_count}")
+        lines.append(f"- 🟡 **Medium:** {audit_result.medium_count}")
+        lines.append(f"- 🔵 **Low:** {audit_result.low_count}\n")
+        
+        # Critical/high issues detail
+        if critical_issues:
+            lines.append("### 🚨 Critical & High Severity Issues\n")
+            
+            # Group by category
+            by_category = {}
+            for issue in critical_issues:
+                cat = issue.category
+                if cat not in by_category:
+                    by_category[cat] = []
+                by_category[cat].append(issue)
+            
+            for category, issues in sorted(by_category.items()):
+                emoji = {
+                    'secrets': '🔑',
+                    'injection': '💉',
+                    'malware': '🦠',
+                    'dependency': '📦',
+                    'license': '⚖️',
+                    'code_quality': '🔍'
+                }.get(category, '⚠️')
+                
+                lines.append(f"#### {emoji} {category.upper()}\n")
+                
+                for issue in issues[:5]:  # Show max 5 per category
+                    severity_emoji = '🔴' if issue.severity == 'critical' else '🟠'
+                    lines.append(f"**{severity_emoji} {issue.severity.upper()}** - `{issue.file}`")
+                    if issue.line:
+                        lines.append(f"  - Line {issue.line}")
+                    lines.append(f"  - {issue.description}")
+                    if issue.recommendation:
+                        lines.append(f"  - ✅ **Fix:** {issue.recommendation}")
+                    if issue.cwe_id:
+                        lines.append(f"  - 🔗 [CWE-{issue.cwe_id}](https://cwe.mitre.org/data/definitions/{issue.cwe_id}.html)")
+                    lines.append("")
+                
+                if len(issues) > 5:
+                    lines.append(f"*... and {len(issues) - 5} more {category} issues*\n")
+        
+        # Instructions
+        lines.append("### 🔧 Next Steps\n")
+        lines.append("1. **Review and fix** all critical and high severity issues listed above")
+        lines.append("2. **Test your changes** thoroughly to ensure fixes don't break functionality")
+        lines.append("3. **Push updated code** - the security audit will automatically re-run")
+        lines.append("4. **Contact a maintainer** if you believe any issues are false positives\n")
+        
+        # Footer
+        lines.append("---")
+        lines.append(f"*🤖 Automated Security Audit by {self.github_username} • Agent Forge Security System v1.0*")
+        lines.append(f"*Audit configuration: `config/security_audit.yaml` • Trusted agents: `config/agents.yaml`*")
+        
+        return "\n".join(lines)
     
     def _generate_review_summary(
         self,
