@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- **Root directory cleanup per project rules** - Moved documentation and test files to proper locations
+  - Moved CONTRIBUTING.md → docs/
+  - Moved OAUTH_ACTIVATIE.md → docs/
+  - Moved REFACTOR_PLAN.md → docs/
+  - Moved SESSION_SUMMARY_2025-10-07.md → docs/
+  - Moved SSH_AUTH_IMPLEMENTATION.md → docs/
+  - Moved TOKEN_SECURITY_QUICKSTART.md → docs/
+  - Removed duplicate test_integration_validator.py (already in tests/)
+  - Root now only contains: README.md, CHANGELOG.md, LICENSE, ARCHITECTURE.md, config files
+  - Follows project convention: "Only README.md, CHANGELOG.md, LICENSE, ARCHITECTURE.md, and configuration files allowed in root"
+
 - **Cleaned up agents/ directory** - Removed obsolete config files and corrupt backup
   - Deleted agents/m0nk111-bot.yaml (moved to config/agents/)
   - Deleted agents/m0nk111-qwen-agent.yaml (moved to config/agents/)
