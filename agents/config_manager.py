@@ -34,6 +34,12 @@ class AgentConfig:
     shell_working_dir: Optional[str] = None
     shell_timeout: int = 300  # 5 minutes default
     shell_permissions: Optional[str] = "developer"  # Permission preset: read_only, developer, admin
+    # LLM provider configuration (Issue #31)
+    model_provider: str = "local"  # openai, anthropic, google, local
+    model_name: str = "qwen2.5-coder"  # Specific model name
+    api_key_name: Optional[str] = None  # Reference to key in keys.json (e.g., "OPENAI_API_KEY")
+    temperature: float = 0.7  # Temperature for generation (0.0-2.0)
+    max_tokens: int = 4096  # Maximum tokens to generate
     created_at: str = None
     updated_at: str = None
     

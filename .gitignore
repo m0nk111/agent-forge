@@ -34,3 +34,9 @@ Thumbs.db
 # Project specific
 caramba/
 test_projects/
+
+# Security - API Keys (Issue #31)
+keys.json
+*.key
+*.pem
+.env

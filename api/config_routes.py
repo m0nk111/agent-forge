@@ -23,6 +23,15 @@ from agents.config_manager import (
     RepositoryConfig,
     SystemConfig
 )
+from agents.permissions import (
+    Permission,
+    PermissionPreset,
+    AgentPermissions,
+    PermissionValidator,
+    PERMISSION_METADATA
+)
+from agents.key_manager import get_key_manager, PROVIDER_KEYS
+from agents.llm_providers import get_provider, PROVIDERS
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +106,31 @@ class SystemConfigModel(BaseModel):
     slack_webhook: Optional[str] = None
     custom_settings: Dict[str, Any] = Field(default_factory=dict)
     updated_at: Optional[str] = None
+
+
+class PermissionsModel(BaseModel):
+    """Agent permissions configuration"""
+    preset: str = Field(default="developer", pattern="^(read_only|developer|admin|custom)$")
+    permissions: Dict[str, bool] = Field(default_factory=dict)
+
+
+class PermissionsUpdateModel(BaseModel):
+    """Update agent permissions"""
+    preset: Optional[str] = Field(default=None, pattern="^(read_only|developer|admin|custom)$")
+    grant: Optional[List[str]] = None  # Permissions to grant
+    revoke: Optional[List[str]] = None  # Permissions to revoke
+
+
+class LLMKeyModel(BaseModel):
+    """LLM provider API key"""
+    provider: str
+    key_value: str
+
+
+class LLMTestModel(BaseModel):
+    """Test LLM provider connection"""
+    provider: str
+    api_key: Optional[str] = None  # If None, uses stored key
 
 
 class SystemUpdateModel(BaseModel):
@@ -409,6 +443,372 @@ async def update_system_config(
         raise
     except Exception as e:
         logger.error(f"Failed to update system config: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== PERMISSIONS ENDPOINTS ====================
+
+@app.get("/api/config/agents/{agent_id}/permissions", response_model=PermissionsModel)
+async def get_agent_permissions(
+    agent_id: str,
+    user: dict = Depends(verify_token)
+):
+    """Get agent permissions configuration (Issue #30)"""
+    try:
+        manager = get_config_manager()
+        agent = manager.get_agent(agent_id)
+        
+        if not agent:
+            raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+        
+        # Create AgentPermissions from config
+        preset_str = getattr(agent, 'shell_permissions', 'developer')
+        try:
+            preset = PermissionPreset[preset_str.upper()]
+        except KeyError:
+            preset = PermissionPreset.DEVELOPER
+        
+        perms = AgentPermissions(agent_id=agent_id, preset=preset)
+        
+        return PermissionsModel(
+            preset=preset.value.lower(),
+            permissions=perms.to_dict()
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get agent permissions: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.patch("/api/config/agents/{agent_id}/permissions", response_model=PermissionsModel)
+async def update_agent_permissions(
+    agent_id: str,
+    updates: PermissionsUpdateModel,
+    user: dict = Depends(verify_token)
+):
+    """Update agent permissions (Issue #30)"""
+    try:
+        manager = get_config_manager()
+        agent = manager.get_agent(agent_id)
+        
+        if not agent:
+            raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+        
+        # Get current permissions
+        preset_str = getattr(agent, 'shell_permissions', 'developer')
+        try:
+            preset = PermissionPreset[preset_str.upper()]
+        except KeyError:
+            preset = PermissionPreset.DEVELOPER
+        
+        perms = AgentPermissions(agent_id=agent_id, preset=preset)
+        
+        # Apply preset change if specified
+        if updates.preset:
+            try:
+                new_preset = PermissionPreset[updates.preset.upper()]
+                perms.set_preset(new_preset)
+                preset = new_preset
+            except KeyError:
+                raise HTTPException(status_code=400, detail=f"Invalid preset: {updates.preset}")
+        
+        # Grant permissions
+        if updates.grant:
+            for perm_str in updates.grant:
+                try:
+                    perm = Permission[perm_str.upper()]
+                    perms.grant_permission(perm)
+                except KeyError:
+                    raise HTTPException(status_code=400, detail=f"Invalid permission: {perm_str}")
+        
+        # Revoke permissions
+        if updates.revoke:
+            for perm_str in updates.revoke:
+                try:
+                    perm = Permission[perm_str.upper()]
+                    perms.revoke_permission(perm)
+                except KeyError:
+                    raise HTTPException(status_code=400, detail=f"Invalid permission: {perm_str}")
+        
+        # Save to config
+        update_dict = {
+            'shell_permissions': perms.preset.value.lower()
+        }
+        
+        if not manager.update_agent(agent_id, update_dict):
+            raise HTTPException(status_code=500, detail="Failed to update agent permissions")
+        
+        logger.info(f"✅ Updated permissions for agent {agent_id}: preset={perms.preset.value}")
+        
+        return PermissionsModel(
+            preset=perms.preset.value.lower(),
+            permissions=perms.to_dict()
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update agent permissions: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/permissions/metadata")
+async def get_permissions_metadata(
+    user: dict = Depends(verify_token)
+):
+    """Get all permissions metadata with descriptions and warnings (Issue #30)"""
+    try:
+        metadata = {}
+        for perm, meta in PERMISSION_METADATA.items():
+            metadata[perm.value] = {
+                "description": meta.description,
+                "is_dangerous": meta.is_dangerous,
+                "warning_message": meta.warning_message,
+                "category": perm.name.split('_')[0].lower(),
+                "required_for": meta.required_for
+            }
+        
+        return {
+            "permissions": metadata,
+            "presets": {
+                "read_only": {
+                    "description": "Read-only access (safest)",
+                    "emoji": "🔵",
+                    "permissions": [p.value for p in AgentPermissions("", PermissionPreset.READ_ONLY).get_permissions()]
+                },
+                "developer": {
+                    "description": "Development and testing (recommended)",
+                    "emoji": "🟢",
+                    "permissions": [p.value for p in AgentPermissions("", PermissionPreset.DEVELOPER).get_permissions()]
+                },
+                "admin": {
+                    "description": "Full access (use with caution)",
+                    "emoji": "🔴",
+                    "permissions": [p.value for p in AgentPermissions("", PermissionPreset.ADMIN).get_permissions()]
+                }
+            }
+        }
+    except Exception as e:
+        logger.error(f"Failed to get permissions metadata: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== LLM PROVIDER ENDPOINTS ====================
+
+@app.get("/api/llm/providers")
+async def list_llm_providers(
+    user: dict = Depends(verify_token)
+):
+    """List all LLM providers and their configuration status (Issue #31)"""
+    try:
+        key_manager = get_key_manager()
+        providers_info = []
+        
+        for provider_name, provider_class in PROVIDERS.items():
+            # Get provider config
+            provider_config = None
+            for config in PROVIDER_KEYS.values():
+                if config.provider == provider_name:
+                    provider_config = config
+                    break
+            
+            if not provider_config:
+                continue
+            
+            # Check if configured
+            key = key_manager.get_key(provider_config.key_name)
+            
+            # Get available models
+            models = []
+            if key:
+                try:
+                    provider_instance = get_provider(provider_name, key)
+                    if provider_instance:
+                        models = provider_instance.get_available_models()
+                except:
+                    pass
+            
+            providers_info.append({
+                "provider": provider_name,
+                "display_name": provider_name.title(),
+                "configured": key is not None,
+                "masked_key": key_manager.mask_key(key) if key else None,
+                "models": models,
+                "description": provider_config.description
+            })
+        
+        return {"providers": providers_info}
+    
+    except Exception as e:
+        logger.error(f"Failed to list LLM providers: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/llm/providers/{provider}/models")
+async def get_provider_models(
+    provider: str,
+    user: dict = Depends(verify_token)
+):
+    """Get available models for a provider (Issue #31)"""
+    try:
+        key_manager = get_key_manager()
+        
+        # Get API key
+        provider_config = None
+        for config in PROVIDER_KEYS.values():
+            if config.provider == provider:
+                provider_config = config
+                break
+        
+        if not provider_config:
+            raise HTTPException(status_code=404, detail=f"Unknown provider: {provider}")
+        
+        key = key_manager.get_key(provider_config.key_name)
+        
+        if not key and provider != "local":
+            return {"models": [], "error": "API key not configured"}
+        
+        # Get provider instance
+        provider_instance = get_provider(provider, key or "")
+        
+        if not provider_instance:
+            raise HTTPException(status_code=500, detail=f"Failed to initialize provider: {provider}")
+        
+        models = provider_instance.get_available_models()
+        
+        return {
+            "provider": provider,
+            "models": models,
+            "count": len(models)
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get models for {provider}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/llm/test-connection")
+async def test_llm_connection(
+    test_data: LLMTestModel,
+    user: dict = Depends(verify_token)
+):
+    """Test LLM provider API key (Issue #31)"""
+    try:
+        key_manager = get_key_manager()
+        
+        # Test connection
+        success, message = key_manager.test_key(test_data.provider, test_data.api_key)
+        
+        return {
+            "success": success,
+            "message": message,
+            "provider": test_data.provider
+        }
+    
+    except Exception as e:
+        logger.error(f"Failed to test connection: {e}")
+        return {
+            "success": False,
+            "message": f"Test failed: {str(e)}",
+            "provider": test_data.provider
+        }
+
+
+@app.get("/api/llm/keys")
+async def list_llm_keys(
+    user: dict = Depends(verify_token)
+):
+    """List all configured API keys (masked) (Issue #31)"""
+    try:
+        key_manager = get_key_manager()
+        providers = key_manager.list_configured_providers()
+        
+        return {"keys": providers}
+    
+    except Exception as e:
+        logger.error(f"Failed to list keys: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.patch("/api/llm/keys/{provider}")
+async def update_llm_key(
+    provider: str,
+    key_data: LLMKeyModel,
+    user: dict = Depends(verify_token)
+):
+    """Update API key for a provider (Issue #31)"""
+    try:
+        key_manager = get_key_manager()
+        
+        # Find provider config
+        provider_config = None
+        for config in PROVIDER_KEYS.values():
+            if config.provider == provider:
+                provider_config = config
+                break
+        
+        if not provider_config:
+            raise HTTPException(status_code=404, detail=f"Unknown provider: {provider}")
+        
+        # Validate key format
+        valid, message = key_manager.validate_key_format(provider, key_data.key_value)
+        if not valid:
+            raise HTTPException(status_code=400, detail=message)
+        
+        # Store key
+        if not key_manager.set_key(provider_config.key_name, key_data.key_value):
+            raise HTTPException(status_code=500, detail="Failed to store API key")
+        
+        # Test connection
+        success, test_message = key_manager.test_key(provider)
+        
+        return {
+            "success": True,
+            "message": f"API key stored for {provider}",
+            "masked_key": key_manager.mask_key(key_data.key_value),
+            "connection_test": {
+                "success": success,
+                "message": test_message
+            }
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update key for {provider}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/llm/keys/{provider}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_llm_key(
+    provider: str,
+    user: dict = Depends(verify_token)
+):
+    """Delete API key for a provider (Issue #31)"""
+    try:
+        key_manager = get_key_manager()
+        
+        # Find provider config
+        provider_config = None
+        for config in PROVIDER_KEYS.values():
+            if config.provider == provider:
+                provider_config = config
+                break
+        
+        if not provider_config:
+            raise HTTPException(status_code=404, detail=f"Unknown provider: {provider}")
+        
+        if not key_manager.delete_key(provider_config.key_name):
+            raise HTTPException(status_code=404, detail=f"No key found for {provider}")
+        
+        return None
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete key for {provider}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

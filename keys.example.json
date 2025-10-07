@@ -1,0 +1,28 @@
+{
+  "_comment": "API Keys for LLM Providers - Copy to keys.json and add your keys",
+  "_security": "IMPORTANT: Never commit keys.json to git! Only commit keys.example.json",
+  "_permissions": "Run: chmod 600 keys.json",
+  
+  "OPENAI_API_KEY": "",
+  "OPENAI_ORG_ID": "",
+  
+  "ANTHROPIC_API_KEY": "",
+  
+  "GEMINI_API_KEY": "",
+  
+  "GROQ_API_KEY": "",
+  
+  "REPLICATE_API_KEY": "",
+  
+  "QWEN_API_KEY": "",
+  
+  "XAI_API_KEY": "",
+  
+  "MISTRAL_API_KEY": "",
+  
+  "DEEPSEEK_API_KEY": "",
+  
+  "OPENROUTER_API_KEY": "",
+  
+  "HUGGINGFACE_API_KEY": ""
+}

@@ -9,6 +9,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Agent Permissions System API (Issue #30)** - Complete permissions management with API endpoints
+  - Added permissions endpoints to `api/config_routes.py`:
+    * `GET /api/config/agents/{id}/permissions` - Get agent permissions configuration
+    * `PATCH /api/config/agents/{id}/permissions` - Update permissions (preset, grant, revoke)
+    * `GET /api/permissions/metadata` - Get all permissions metadata with descriptions and warnings
+  - API models:
+    * `PermissionsModel`: preset (read_only/developer/admin), permissions dict
+    * `PermissionsUpdateModel`: preset change, grant list, revoke list
+  - Permission management features:
+    * Set permission preset (READ_ONLY, DEVELOPER, ADMIN, CUSTOM)
+    * Grant individual permissions
+    * Revoke individual permissions
+    * Get permissions metadata with danger warnings
+    * List presets with emoji indicators (🔵🟢🔴)
+  - Integration with existing permission framework from Issue #64
+  - Status: API complete, UI integration pending
+
+- **Multi-Provider LLM Support (Issue #31)** - Enable OpenAI, Anthropic, Google, and local LLMs
+  - Created `agents/llm_providers.py` (500+ lines) - Unified LLM provider interface:
+    * `LLMProvider` base class with chat_completion(), test_connection(), get_available_models()
+    * `OpenAIProvider`: GPT-4, GPT-4 Turbo, GPT-3.5 support with org ID
+    * `AnthropicProvider`: Claude 3.5 Sonnet, Claude 3 Opus/Haiku support
+    * `GoogleProvider`: Gemini Pro, Gemini 1.5 Pro/Flash support
+    * `LocalProvider`: Ollama, LM Studio support (no API key required)
+    * `LLMMessage` and `LLMResponse` dataclasses for unified interface
+    * Timeout handling (60s chat, 120s local)
+    * Usage tracking (prompt_tokens, completion_tokens, total_tokens)
+  - Created `agents/key_manager.py` (400+ lines) - Secure API key management:
+    * `KeyManager` class with JSON file storage (keys.json)
+    * Secure file permissions (0600 - owner read/write only)
+    * Key masking for display (sk-...abc123)
+    * Environment variable fallback
+    * Provider key validation (format checking)
+    * Connection testing per provider
+    * 12 supported providers: OpenAI, Anthropic, Google, Groq, Replicate, Qwen, xAI, Mistral, DeepSeek, OpenRouter, Hugging Face, local
+  - Extended `agents/config_manager.py` `AgentConfig` dataclass:
+    * `model_provider: str` - Provider selection (openai, anthropic, google, local)
+    * `model_name: str` - Specific model (gpt-4, claude-3-opus, gemini-pro, etc.)
+    * `api_key_name: Optional[str]` - Reference to keys.json key name
+    * `temperature: float` - Generation temperature (0.0-2.0, default 0.7)
+    * `max_tokens: int` - Maximum tokens to generate (default 4096)
+  - Added LLM API endpoints to `api/config_routes.py`:
+    * `GET /api/llm/providers` - List all providers with configuration status
+    * `GET /api/llm/providers/{provider}/models` - Get available models for provider
+    * `POST /api/llm/test-connection` - Test API key validity
+    * `GET /api/llm/keys` - List configured keys (masked)
+    * `PATCH /api/llm/keys/{provider}` - Update API key with validation and connection test
+    * `DELETE /api/llm/keys/{provider}` - Delete API key
+  - Created `keys.example.json` - Template for API keys with all supported providers
+  - Updated `.gitignore` - Exclude keys.json, *.key, *.pem, .env for security
+  - Security features:
+    * Keys never committed to git (keys.json gitignored)
+    * File permissions enforced (chmod 600)
+    * Key format validation before storage
+    * Masked display in API responses (only last 6 chars visible)
+    * Connection testing before accepting keys
+    * Environment variable fallback for CI/CD
+  - Feature capabilities:
+    * Switch between commercial LLMs (OpenAI GPT-4, Anthropic Claude, Google Gemini)
+    * Use local LLMs via Ollama/LM Studio (no API key needed)
+    * Per-agent model configuration
+    * Temperature and max_tokens tuning per agent
+    * Multiple API key management
+    * Test connections before deployment
+  - Status: Backend complete, UI integration pending
+
 - **Local Shell Access for Agent Testing (Issue #64)** - Enable agents to run tests on co-located repositories
   - Created `agents/permissions.py` (450 lines) - Granular permission system:
     * `Permission` enum with 20+ permissions across 5 categories (FILE_SYSTEM, TERMINAL, GITHUB, API, SYSTEM)
