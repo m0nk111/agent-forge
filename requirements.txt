@@ -4,6 +4,9 @@ systemd-python>=235  # For systemd notify/watchdog support
 websockets>=12.0  # For monitoring dashboard
 fastapi>=0.104.0  # For WebSocket server and REST API
 uvicorn[standard]>=0.24.0  # ASGI server for FastAPI
+httpx>=0.25.0  # Async HTTP client for OAuth
+python-multipart>=0.0.6  # Form data parsing
+itsdangerous>=2.1.0  # Session security
 
 # Security audit dependencies (Issue #62)
 bandit>=1.7.5  # Python security linting

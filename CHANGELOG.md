@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2025-10-07
 
+### Added
+
+- **Google OAuth authentication infrastructure** - Secure dashboard login
+  - New file: `api/auth_routes.py` - OAuth 2.0 flow implementation
+  - Endpoints: `/auth/login`, `/auth/callback`, `/auth/logout`, `/auth/user`, `/auth/status`
+  - Session management with httponly cookies (24-hour expiry)
+  - Email whitelist for access control
+  - CSRF protection with state parameter
+  - **100% GRATIS** - No costs for OAuth usage (up to 10,000 requests/day)
+  
+- **OAuth setup documentation** - Complete guide for Google Cloud configuration
+  - New file: `docs/GOOGLE_OAUTH_SETUP.md`
+  - Step-by-step instructions for Google Cloud Console setup
+  - Security best practices and cost breakdown
+  - Alternative authentication options comparison
+  
+- **Environment configuration template**
+  - New file: `.env.template` - OAuth credentials template
+  - Gitignored `.env` for local credentials storage
+  - Auto-generated session secrets
+  
+- **Auth service startup script**
+  - New file: `scripts/start-auth-service.sh`
+  - Validates OAuth configuration
+  - Generates session secrets
+  - Starts auth API on port 7999
+
+- **Complete passwordless sudo for user flip**
+  - Added `/etc/sudoers.d/flip-nopasswd` with `flip ALL=(ALL) NOPASSWD: ALL`
+  - No more password prompts for ANY sudo command
+  - Resolves user request: "ik wil voor alle sudo commands geen passwd intikken"
+
 ### Changed
 
 - **Config API PATCH endpoints made public for dashboard self-service**
