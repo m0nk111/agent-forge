@@ -321,8 +321,36 @@ class AgentMonitor:
         return self.agents.get(agent_id)
     
     def get_all_agents(self) -> List[AgentState]:
-        """Get all agent states."""
-        return list(self.agents.values())
+        """Get all agent states (active + configured)."""
+        from agents.config_manager import get_config_manager
+        
+        # Start with active agents
+        all_agents = list(self.agents.values())
+        active_ids = {agent.agent_id for agent in all_agents}
+        
+        # Add configured agents that aren't active
+        try:
+            config_manager = get_config_manager()
+            configured_agents = config_manager.get_agents()
+            
+            for agent_config in configured_agents:
+                if agent_config.agent_id not in active_ids:
+                    # Create inactive agent state
+                    inactive_state = AgentState(
+                        agent_id=agent_config.agent_id,
+                        agent_name=agent_config.name or agent_config.agent_id,
+                        status=AgentStatus.OFFLINE,
+                        current_task="Agent configured but not running",
+                        progress=0.0,
+                        last_update=time.time()
+                    )
+                    all_agents.append(inactive_state)
+        except Exception as e:
+            # Log error but don't fail - return active agents only
+            import logging
+            logging.error(f"❌ Failed to load configured agents: {e}")
+        
+        return all_agents
     
     def get_agent_logs(
         self,

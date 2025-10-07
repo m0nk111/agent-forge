@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Dashboard now shows configured-but-inactive agents** - Monitor service integration with ConfigManager
+  - `agents/monitor_service.py`: Extended `get_all_agents()` to include config-only agents
+  - Agents from `config/agents.yaml` without active instances now appear with status "OFFLINE"
+  - Current task shows "Agent configured but not running" for inactive agents
+  - Enables visibility of all configured agents without requiring them to be running
+  - No service restart needed - dashboard automatically shows config changes on WebSocket reconnect
+  - Example: `m0nk111-qwen-agent` now visible in dashboard despite not being started
+
 - **New Agent: m0nk111-qwen-agent** - Second production agent configuration
   - Agent ID: `m0nk111-qwen-agent` (matches GitHub username from trusted_agents)
   - Model: Local Ollama `qwen2.5-coder:7b`
