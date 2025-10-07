@@ -9,6 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Create Agent UI Modal with GitHub Integration** - Complete agent creation flow via dashboard
+  - New "Create Agent ➕" button in dashboard header (green styling, positioned between view toggle and agent count)
+  - Complete Create Agent modal form with fields:
+    * Agent ID (required, validated: lowercase, numbers, hyphens only)
+    * Agent Name (required, display name)
+    * GitHub Token (required, password field with validation button)
+    * GitHub Username (auto-detected readonly field)
+    * LLM Provider dropdown (local, openai, anthropic, google)
+    * Model dropdown (dynamic loading based on provider)
+  - GitHub token validation with auto-username detection:
+    * New backend endpoint: `POST /api/github/validate-token`
+    * Accepts `github_token` in request body
+    * Calls GitHub API: `GET https://api.github.com/user` with Bearer token
+    * Returns: `{is_valid: bool, username: str, name: str, email: str, avatar_url: str}`
+    * Error handling for 401 (invalid token), 403 (rate limit), 500 (network error)
+    * 10 second timeout for API calls
+  - JavaScript functions implemented:
+    * `openCreateAgentModal()` - Show modal, reset form, load default models
+    * `closeCreateAgentModal()` - Hide modal, restore body overflow
+    * `validateGithubToken()` - Validate token and auto-populate username field
+    * `updateNewAgentModels()` - Dynamic model loading from `/api/llm/providers/{provider}/models`
+    * `createNewAgent()` - Create agent via `POST /api/config/agents` with full validation
+  - Auto-refresh dashboard after successful agent creation
+  - Complete validation: required fields, agent ID pattern, GitHub username detection
+  - Integration with Issues #30 & #31: new agents get permissions and LLM provider config
+
 - **Agent Permissions System UI (Issue #30 - Complete)** - Full UI integration for permissions management
   - Updated `frontend/dashboard.html` with comprehensive permissions section:
     * Permission preset selector (READ_ONLY 🔵, DEVELOPER 🟢, ADMIN 🔴, CUSTOM ⚙️)
