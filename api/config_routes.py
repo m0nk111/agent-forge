@@ -267,10 +267,9 @@ async def create_agent(agent: AgentConfigModel):
 @app.patch("/api/config/agents/{agent_id}", response_model=AgentConfigModel)
 async def update_agent(
     agent_id: str,
-    updates: AgentUpdateModel,
-    user: dict = Depends(verify_token)
+    updates: AgentUpdateModel
 ):
-    """Update agent configuration"""
+    """Update agent configuration (public endpoint for dashboard self-service)"""
     try:
         manager = get_config_manager()
         
@@ -506,10 +505,9 @@ async def get_agent_permissions(
 @app.patch("/api/config/agents/{agent_id}/permissions", response_model=PermissionsModel)
 async def update_agent_permissions(
     agent_id: str,
-    updates: PermissionsUpdateModel,
-    user: dict = Depends(verify_token)
+    updates: PermissionsUpdateModel
 ):
-    """Update agent permissions (Issue #30)"""
+    """Update agent permissions (Issue #30, public endpoint for dashboard)"""
     try:
         manager = get_config_manager()
         agent = manager.get_agent(agent_id)

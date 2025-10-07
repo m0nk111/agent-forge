@@ -20,7 +20,7 @@ agents:
   - issue_management
   - pr_management
   - documentation
-  github_token: null  # Add your GitHub Personal Access Token via dashboard
+  github_token: null
   api_base_url: null
   custom_settings: {}
   local_shell_enabled: true
@@ -46,7 +46,7 @@ agents:
   - issue_management
   - pr_management
   - documentation
-  github_token: null  # To be configured via dashboard
+  github_token: null  # Token stored in secrets/agents/m0nk111-qwen-agent.token
   api_base_url: null
   custom_settings: {}
   local_shell_enabled: true
@@ -59,4 +59,4 @@ agents:
   temperature: 0.7
   max_tokens: 4096
   created_at: '2025-10-07T14:30:00'
-  updated_at: '2025-10-07T14:30:00'
+  updated_at: '2025-10-07T17:14:41.881790'

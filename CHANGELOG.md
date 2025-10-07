@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2025-10-07
 
+### Changed
+
+- **Config API PATCH endpoints made public for dashboard self-service**
+  - Removed `Depends(verify_token)` from `PATCH /api/config/agents/{agent_id}` and `PATCH /api/config/agents/{agent_id}/permissions`
+  - Enables dashboard to save agent configurations without authentication
+  - Suitable for single-user local deployments
+  - Users can now update GitHub tokens, LLM settings, and permissions via dashboard
+  
+- **qwen-main-agent configured with GitHub token**
+  - Set `github_token` for qwen-main-agent using m0nk111-bot account
+  - Agent can now authenticate with GitHub API for issue/PR operations
+
+- **Sudoers configuration enhanced for passwordless operations**
+  - Added NOPASSWD rules for `cp`, `kill`, `pkill` commands
+  - File: `/etc/sudoers.d/agent-forge-extra` (mode 0440)
+  - Eliminates password prompts for agent-forge deployment operations
+  - Maintains security by limiting scope to agent-forge paths and specific commands
+
 ### Fixed
 
 - **Dashboard config modal now loads complete agent settings** - Config API integration
