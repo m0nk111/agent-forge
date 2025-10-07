@@ -139,30 +139,45 @@ class ServiceManager:
             raise
     
     async def _start_code_agent(self):
-        """Start code agent."""
+        """Start code agent from configuration."""
         try:
             from agents.code_agent import CodeAgent
-            from agents.config_manager import get_config_manager, AgentConfig
+            from agents.config_manager import get_config_manager
             
-            logger.info("Starting code agent...")
+            logger.info("Starting code agent from configuration...")
             
-            # Create agent instance
+            # Load agent configuration
+            config_manager = get_config_manager()
+            agent_config = config_manager.get_agent("qwen-main-agent")
+            
+            if not agent_config:
+                logger.error("❌ qwen-main-agent not found in config/agents.yaml")
+                logger.error("Please add the agent via dashboard or manually configure it")
+                self.health_status['code_agent'] = False
+                return
+            
+            if not agent_config.enabled:
+                logger.warning("⚠️ qwen-main-agent is disabled in config")
+                self.health_status['code_agent'] = False
+                return
+            
+            logger.info(f"📋 Loaded config for {agent_config.agent_id}")
+            logger.info(f"   Model: {agent_config.model_provider}/{agent_config.model_name}")
+            logger.info(f"   Shell: {agent_config.shell_permissions if agent_config.local_shell_enabled else 'disabled'}")
+            
+            # Create agent instance from config
             agent = CodeAgent(
-                model=self.config.qwen_model,
-                ollama_url=self.config.qwen_base_url,
-                project_root="/opt/agent-forge",
+                model=agent_config.model_name,
+                ollama_url=agent_config.api_base_url or self.config.qwen_base_url,
+                project_root=agent_config.shell_working_dir or "/opt/agent-forge",
                 enable_monitoring=True,
-                agent_id="qwen-main-agent"
+                agent_id=agent_config.agent_id
             )
             
             self.services['code_agent'] = agent
             self.health_status['code_agent'] = True
             
-            logger.info("✅ Code agent initialized and registered with monitor")
-            
-            # Note: Agent configuration is managed via the dashboard UI or API endpoints.
-            # The agent will appear in the dashboard and can be configured there.
-            # See Issue #30 (Permissions API) and Issue #31 (LLM Provider Support)
+            logger.info(f"✅ {agent_config.name} initialized from config")
             
             # Keep agent alive (it handles issues via polling service callbacks)
             while self.running:

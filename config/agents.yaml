@@ -8,19 +8,23 @@ trusted_agents:
   description: Qwen-based code generation agent
   trusted: true
 agents:
-- agent_id: test-agent-123
-  name: Test Agent
+- agent_id: qwen-main-agent
+  name: Qwen Main Agent
   model: qwen2.5-coder:7b
   enabled: true
   max_concurrent_tasks: 1
   polling_interval: 60
   capabilities:
   - code_generation
-  github_token: null
+  - code_review
+  - issue_management
+  - pr_management
+  - documentation
+  github_token: null  # To be configured via dashboard
   api_base_url: null
   custom_settings: {}
-  local_shell_enabled: false
-  shell_working_dir: null
+  local_shell_enabled: true
+  shell_working_dir: /opt/agent-forge
   shell_timeout: 300
   shell_permissions: developer
   model_provider: local
@@ -28,5 +32,5 @@ agents:
   api_key_name: null
   temperature: 0.7
   max_tokens: 4096
-  created_at: '2025-10-07T13:19:29.899023'
-  updated_at: '2025-10-07T13:19:29.899038'
+  created_at: '2025-10-07T14:30:00'
+  updated_at: '2025-10-07T14:30:00'
