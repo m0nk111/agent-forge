@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 class AgentConfig:
     """Configuration for a single agent"""
     agent_id: str
-    name: str
-    model: str
+    name: Optional[str] = None  # Optional for bots
+    model: Optional[str] = None  # Optional for bots
     enabled: bool = True
     max_concurrent_tasks: int = 1
     polling_interval: int = 60  # seconds
@@ -42,8 +42,8 @@ class AgentConfig:
     api_key_name: Optional[str] = None  # Reference to key in keys.json (e.g., "OPENAI_API_KEY")
     temperature: float = 0.7  # Temperature for generation (0.0-2.0)
     max_tokens: int = 4096  # Maximum tokens to generate
-    created_at: str = None
-    updated_at: str = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
     
     def __post_init__(self):
         if self.capabilities is None:
@@ -53,6 +53,12 @@ class AgentConfig:
         if self.created_at is None:
             self.created_at = datetime.now().isoformat()
         self.updated_at = datetime.now().isoformat()
+        # Auto-fill name from agent_id if not set (for bots)
+        if self.name is None:
+            self.name = self.agent_id.replace('-', ' ').title()
+        # Model not required for bots (role == "bot")
+        if self.model is None and self.role != "bot":
+            self.model = "qwen2.5-coder"  # Default model
 
 
 @dataclass
@@ -126,11 +132,18 @@ class ConfigManager:
                 config_dir = str(Path(__file__).parent.parent.parent / "config")
         
         self.config_dir = Path(config_dir)
-        self.agents_dir = self.config_dir.parent / "agents"  # NEW: Individual agent configs
+        
+        # NEW: Hierarchical config structure by purpose
+        self.agents_dir = self.config_dir / "agents"  # GitHub account configs
+        self.services_dir = self.config_dir / "services"  # Local orchestrator configs
+        self.system_dir = self.config_dir / "system"  # Core system configs
+        self.rules_dir = self.config_dir / "rules"  # Policies and validation rules
+        
+        # Individual config files in subdirectories
         self.agents_file = self.config_dir / "agents.yaml"  # LEGACY: Fallback
-        self.trusted_file = self.config_dir / "trusted_agents.yaml"  # NEW: Trust list
-        self.repos_file = self.config_dir / "repositories.yaml"
-        self.system_file = self.config_dir / "system.yaml"
+        self.trusted_file = self.system_dir / "trusted_agents.yaml"  # Trust list
+        self.repos_file = self.system_dir / "repositories.yaml"  # Monitored repos
+        self.system_file = self.system_dir / "system.yaml"  # System settings
         self.backup_dir = self.config_dir / "backups"
         
         # Secrets directory for tokens
@@ -139,6 +152,9 @@ class ConfigManager:
         # Create directories if they don't exist
         self.config_dir.mkdir(parents=True, exist_ok=True)
         self.agents_dir.mkdir(parents=True, exist_ok=True)
+        self.services_dir.mkdir(parents=True, exist_ok=True)
+        self.system_dir.mkdir(parents=True, exist_ok=True)
+        self.rules_dir.mkdir(parents=True, exist_ok=True)
         self.backup_dir.mkdir(parents=True, exist_ok=True)
         self.secrets_dir.mkdir(parents=True, exist_ok=True)
         
@@ -147,22 +163,26 @@ class ConfigManager:
         
         logger.info(f"ConfigManager initialized: {self.config_dir}")
         logger.info(f"Agents directory: {self.agents_dir}")
+        logger.info(f"Services directory: {self.services_dir}")
+        logger.info(f"System directory: {self.system_dir}")
+        logger.info(f"Rules directory: {self.rules_dir}")
         logger.info(f"Secrets directory: {self.secrets_dir}")
     
     def _initialize_configs(self):
         """Initialize configuration files with defaults if they don't exist"""
-        if not self.agents_file.exists():
+        # Only create legacy agents.yaml if no agents/ directory exists
+        if not self.agents_file.exists() and not self.agents_dir.exists():
             self._save_yaml(self.agents_file, {"agents": []})
             logger.info("Created agents.yaml with empty configuration")
         
         if not self.repos_file.exists():
             self._save_yaml(self.repos_file, {"repositories": []})
-            logger.info("Created repositories.yaml with empty configuration")
+            logger.info("Created system/repositories.yaml with empty configuration")
         
         if not self.system_file.exists():
             default_system = asdict(SystemConfig())
             self._save_yaml(self.system_file, default_system)
-            logger.info("Created system.yaml with default configuration")
+            logger.info("Created system/system.yaml with default configuration")
     
     def _load_yaml(self, file_path: Path) -> Dict:
         """Load YAML file"""
@@ -206,7 +226,24 @@ class ConfigManager:
                 try:
                     agent_data = self._load_yaml(agent_file)
                     if agent_data:
-                        agents.append(AgentConfig(**agent_data))
+                        # Extract from root key if present (bot:, agent:, coordinator:, service:)
+                        # Support both old format with root keys and new flat format
+                        if len(agent_data) == 1 and isinstance(list(agent_data.values())[0], dict):
+                            # Old format: {bot: {agent_id: ..., ...}}
+                            agent_data = list(agent_data.values())[0]
+                        
+                        # Filter to only fields that AgentConfig supports
+                        valid_fields = {
+                            'agent_id', 'name', 'model', 'enabled', 'max_concurrent_tasks',
+                            'polling_interval', 'capabilities', 'role', 'github_token',
+                            'api_base_url', 'custom_settings', 'local_shell_enabled',
+                            'shell_working_dir', 'shell_timeout', 'shell_permissions',
+                            'model_provider', 'model_name', 'api_key_name', 'temperature',
+                            'max_tokens', 'created_at', 'updated_at'
+                        }
+                        filtered_data = {k: v for k, v in agent_data.items() if k in valid_fields}
+                        
+                        agents.append(AgentConfig(**filtered_data))
                         logger.debug(f"✅ Loaded agent from {agent_file.name}")
                 except Exception as e:
                     logger.error(f"Failed to parse {agent_file}: {e}")

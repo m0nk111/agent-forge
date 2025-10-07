@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Config loader refactoring for hierarchical structure** - Updated ConfigManager to support new directory layout
+  - ConfigManager now reads from subdirectories: agents/, services/, system/, rules/, development/
+  - Automatic extraction of config data from root keys (bot:, agent:, coordinator:, service:)
+  - Field filtering to only use AgentConfig-compatible fields
+  - Auto-generation of name/model for bots (role == "bot")
+  - Legacy agents.yaml only created if no agents/ directory exists
+  - Production synced: Updated all imports from agents.config_manager to engine.core.config_manager
+  - Fixed permissions on /opt/agent-forge/config/ and /opt/agent-forge/secrets/
+  - All agents now load correctly from config/agents/ directory
+
 - **Complete config directory reorganization** - Hierarchical structure by purpose
   - **Directory structure**:
     * `config/agents/` - GitHub agent accounts (m0nk111-bot.yaml, m0nk111-qwen-agent.yaml)
