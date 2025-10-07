@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Agent configuration refactoring** - Moved to per-agent config files
+  - Removed monolithic `config/agents.yaml` (backed up to backups/)
+  - Created dedicated `config/qwen_main_agent.yaml` for qwen-main-agent
+  - Existing configs: `bot_config.yaml` (m0nk111-bot), `coordinator_config.yaml`, `polling_config.yaml`
+  - Benefits: Cleaner separation, easier maintenance, more flexible per-agent settings
+  - Trusted agents: Separate `trusted_agents.yaml` for GitHub account credentials
+  - Architecture: Each agent has its own config file with full settings
+
 - **API-level service/agent separation** - Clean architectural separation of infrastructure and agents
   - New endpoint: `/api/services` - Returns only infrastructure services (polling-service)
   - Services API: Filters services by service_ids, separate from agent monitoring
