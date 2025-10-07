@@ -9,6 +9,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Agent Permissions System UI (Issue #30 - Complete)** - Full UI integration for permissions management
+  - Updated `frontend/dashboard.html` with comprehensive permissions section:
+    * Permission preset selector (READ_ONLY 🔵, DEVELOPER 🟢, ADMIN 🔴, CUSTOM ⚙️)
+    * 15+ categorized permission checkboxes (File System, Terminal, GitHub, API, System)
+    * Danger level indicators (⚠️ Dangerous, 🚨 CRITICAL)
+    * Auto-switch to "custom" preset when manually changing checkboxes
+  - JavaScript functions implemented:
+    * `applyPermissionPreset()` - Apply read_only/developer/admin presets
+    * `loadAgentPermissions(agentId)` - Load from `/api/config/agents/{id}/permissions`
+    * `saveAgentPermissions(agentId)` - Save via PATCH with preset and grant array
+  - Integrated into agent config modal:
+    * `openAgentConfigModal()` calls `loadAgentPermissions()` to load current settings
+    * `saveAgentConfig()` calls `saveAgentPermissions()` to persist changes
+  - Status: **COMPLETE** - Backend and UI fully integrated and tested
+
+- **Multi-Provider LLM UI (Issue #31 - Complete)** - Full UI integration for LLM provider management
+  - Updated `frontend/dashboard.html` with LLM provider section:
+    * Provider dropdown (local 🏠, openai 🟢, anthropic 🟣, google 🔵)
+    * Dynamic model dropdown (updates based on provider)
+    * API key input field (password, hidden for local provider)
+    * Test connection button with status display (✅/❌/🔄)
+  - JavaScript functions implemented:
+    * `updateProviderModels()` - Load models per provider, show/hide API key field
+    * `testProviderConnection()` - Test API key via `/api/llm/test-connection`
+  - Integrated into agent config modal:
+    * `openAgentConfigModal()` loads `model_provider` and `model_name` fields
+    * `saveAgentConfig()` saves provider settings to backend API
+  - Status: **COMPLETE** - Backend and UI fully integrated and tested
+
 - **Agent Permissions System API (Issue #30)** - Complete permissions management with API endpoints
   - Added permissions endpoints to `api/config_routes.py`:
     * `GET /api/config/agents/{id}/permissions` - Get agent permissions configuration
@@ -24,7 +53,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     * Get permissions metadata with danger warnings
     * List presets with emoji indicators (🔵🟢🔴)
   - Integration with existing permission framework from Issue #64
-  - Status: API complete, UI integration pending
 
 - **Multi-Provider LLM Support (Issue #31)** - Enable OpenAI, Anthropic, Google, and local LLMs
   - Created `agents/llm_providers.py` (500+ lines) - Unified LLM provider interface:

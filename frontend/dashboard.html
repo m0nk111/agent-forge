@@ -1589,31 +1589,135 @@
                         </div>
                     </div>
 
-                    <!-- Permissions -->
+                    <!-- LLM Provider (Issue #31) -->
+                    <div class="config-section">
+                        <h3>🤖 LLM Provider</h3>
+                        <div class="form-group">
+                            <label for="agentProviderInput">Provider</label>
+                            <select id="agentProviderInput" onchange="updateProviderModels()">
+                                <option value="local">🏠 Local (Ollama/LM Studio)</option>
+                                <option value="openai">🟢 OpenAI</option>
+                                <option value="anthropic">🟣 Anthropic</option>
+                                <option value="google">🔵 Google</option>
+                            </select>
+                            <div class="help-text">LLM provider for this agent</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="agentProviderModelInput">Model</label>
+                            <select id="agentProviderModelInput">
+                                <option value="">Loading models...</option>
+                            </select>
+                            <div class="help-text">Specific model to use</div>
+                        </div>
+                        <div class="form-group" id="providerKeyGroup" style="display: none;">
+                            <label for="agentProviderKeyInput">API Key</label>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="password" id="agentProviderKeyInput" placeholder="sk-..." style="flex: 1;">
+                                <button type="button" class="btn btn-secondary" onclick="testProviderConnection()" style="padding: 8px 16px;">
+                                    Test
+                                </button>
+                            </div>
+                            <div id="providerKeyStatus" class="help-text"></div>
+                        </div>
+                    </div>
+
+                    <!-- Permissions (Issue #30) -->
                     <div class="config-section">
                         <h3>🔒 Permissions</h3>
-                        <div class="checkbox-group">
+                        <div class="form-group">
+                            <label for="permissionPresetInput">Permission Preset</label>
+                            <select id="permissionPresetInput" onchange="applyPermissionPreset()">
+                                <option value="read_only">🔵 Read-Only (Safest)</option>
+                                <option value="developer" selected>🟢 Developer (Recommended)</option>
+                                <option value="admin">🔴 Admin (Dangerous!)</option>
+                                <option value="custom">⚙️ Custom</option>
+                            </select>
+                            <div class="help-text">Quick permission templates</div>
+                        </div>
+                        <div class="checkbox-group" id="permissionsCheckboxes">
+                            <!-- File System -->
+                            <div style="margin-top: 12px; font-weight: bold; color: #60a5fa;">📁 File System</div>
                             <div class="checkbox-item">
-                                <input type="checkbox" id="permReadFiles" checked>
-                                <label for="permReadFiles">Read Files</label>
+                                <input type="checkbox" id="perm_file_read" data-perm="file_read" checked>
+                                <label for="perm_file_read">Read Files</label>
                             </div>
                             <div class="checkbox-item">
-                                <input type="checkbox" id="permWriteFiles" checked>
-                                <label for="permWriteFiles">Write Files</label>
+                                <input type="checkbox" id="perm_file_write" data-perm="file_write" checked>
+                                <label for="perm_file_write">Write Files</label>
                             </div>
                             <div class="checkbox-item">
-                                <input type="checkbox" id="permRunCommands">
-                                <label for="permRunCommands">Run Terminal Commands</label>
+                                <input type="checkbox" id="perm_file_delete" data-perm="file_delete">
+                                <label for="perm_file_delete">Delete Files</label>
+                                <span class="help-text" style="color: #f59e0b;">⚠️ Dangerous</span>
+                            </div>
+                            
+                            <!-- Terminal -->
+                            <div style="margin-top: 12px; font-weight: bold; color: #60a5fa;">💻 Terminal</div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="perm_terminal_read" data-perm="terminal_read" checked>
+                                <label for="perm_terminal_read">View Command Output</label>
                             </div>
                             <div class="checkbox-item">
-                                <input type="checkbox" id="permCreatePRs">
-                                <label for="permCreatePRs">Create Pull Requests</label>
+                                <input type="checkbox" id="perm_terminal_execute" data-perm="terminal_execute" checked>
+                                <label for="perm_terminal_execute">Execute Commands</label>
+                                <span class="help-text" style="color: #f59e0b;">🚨 CRITICAL</span>
                             </div>
                             <div class="checkbox-item">
-                                <input type="checkbox" id="permMergePRs">
-                                <label for="permMergePRs">Merge Pull Requests</label>
+                                <input type="checkbox" id="perm_terminal_install" data-perm="terminal_install">
+                                <label for="perm_terminal_install">Install Packages</label>
+                                <span class="help-text" style="color: #f59e0b;">⚠️ Dangerous</span>
                             </div>
-                            <div class="help-text warning-text">⚠️ Warning: Some permissions can have system-wide effects</div>
+                            
+                            <!-- GitHub -->
+                            <div style="margin-top: 12px; font-weight: bold; color: #60a5fa;">🐙 GitHub</div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="perm_github_read" data-perm="github_read" checked>
+                                <label for="perm_github_read">Read Repositories</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="perm_github_create_issue" data-perm="github_create_issue" checked>
+                                <label for="perm_github_create_issue">Create Issues</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="perm_github_create_pr" data-perm="github_create_pr" checked>
+                                <label for="perm_github_create_pr">Create Pull Requests</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="perm_github_merge_pr" data-perm="github_merge_pr">
+                                <label for="perm_github_merge_pr">Merge Pull Requests</label>
+                                <span class="help-text" style="color: #ef4444;">🚨 CRITICAL</span>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="perm_github_close_issue" data-perm="github_close_issue" checked>
+                                <label for="perm_github_close_issue">Close Issues</label>
+                            </div>
+                            
+                            <!-- API -->
+                            <div style="margin-top: 12px; font-weight: bold; color: #60a5fa;">🌐 API</div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="perm_api_llm" data-perm="api_llm" checked>
+                                <label for="perm_api_llm">LLM API Access</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="perm_api_external" data-perm="api_external">
+                                <label for="perm_api_external">External APIs</label>
+                                <span class="help-text" style="color: #f59e0b;">⚠️ Dangerous</span>
+                            </div>
+                            
+                            <!-- System -->
+                            <div style="margin-top: 12px; font-weight: bold; color: #60a5fa;">⚙️ System</div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="perm_system_logs" data-perm="system_logs" checked>
+                                <label for="perm_system_logs">View Logs</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="perm_system_config" data-perm="system_config">
+                                <label for="perm_system_config">Modify Config</label>
+                                <span class="help-text" style="color: #f59e0b;">⚠️ Dangerous</span>
+                            </div>
+                        </div>
+                        <div class="help-text warning-text" style="margin-top: 8px;">
+                            ⚠️ Dangerous permissions marked with warnings. Use with caution!
                         </div>
                     </div>
 
@@ -1680,6 +1784,13 @@
             document.getElementById('agentRateLimitInput').value = agent.rate_limit || 20;
             document.getElementById('agentInstructionsInput').value = agent.custom_instructions || '';
             
+            // Load LLM provider (Issue #31)
+            document.getElementById('agentProviderInput').value = agent.model_provider || 'local';
+            updateProviderModels();
+            setTimeout(() => {
+                document.getElementById('agentProviderModelInput').value = agent.model_name || '';
+            }, 100);
+            
             // Load capabilities
             const caps = agent.capabilities || {};
             document.getElementById('capCodeGeneration').checked = caps.code_generation !== false;
@@ -1688,13 +1799,8 @@
             document.getElementById('capPRManagement').checked = caps.pr_management || false;
             document.getElementById('capDocumentation').checked = caps.documentation || false;
             
-            // Load permissions
-            const perms = agent.permissions || {};
-            document.getElementById('permReadFiles').checked = perms.read_files !== false;
-            document.getElementById('permWriteFiles').checked = perms.write_files !== false;
-            document.getElementById('permRunCommands').checked = perms.run_commands || false;
-            document.getElementById('permCreatePRs').checked = perms.create_prs || false;
-            document.getElementById('permMergePRs').checked = perms.merge_prs || false;
+            // Load permissions from API (Issue #30)
+            loadAgentPermissions(agentId);
             
             document.getElementById('agentConfigModal').classList.add('active');
             document.body.style.overflow = 'hidden';
@@ -1741,7 +1847,178 @@
             document.getElementById('permMergePRs').checked = false;
         }
 
-        function saveAgentConfig() {
+        // LLM Provider Management (Issue #31)
+        const providerModels = {
+            'local': ['qwen2.5-coder:32b', 'qwen2.5-coder:14b', 'qwen2.5-coder:7b', 'llama3', 'mistral', 'codellama'],
+            'openai': ['gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'],
+            'anthropic': ['claude-3-5-sonnet-20241022', 'claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307'],
+            'google': ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-pro']
+        };
+
+        function updateProviderModels() {
+            const provider = document.getElementById('agentProviderInput').value;
+            const modelSelect = document.getElementById('agentProviderModelInput');
+            const keyGroup = document.getElementById('providerKeyGroup');
+            
+            // Show/hide API key field
+            if (provider === 'local') {
+                keyGroup.style.display = 'none';
+            } else {
+                keyGroup.style.display = 'block';
+            }
+            
+            // Update models list
+            const models = providerModels[provider] || [];
+            modelSelect.innerHTML = models.map(model => 
+                `<option value="${model}">${model}</option>`
+            ).join('');
+            
+            // Try to load models from API
+            fetch(`/api/llm/providers/${provider}/models`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.models && data.models.length > 0) {
+                        modelSelect.innerHTML = data.models.map(model => 
+                            `<option value="${model}">${model}</option>`
+                        ).join('');
+                    }
+                })
+                .catch(err => console.warn('Could not load models from API:', err));
+        }
+
+        async function testProviderConnection() {
+            const provider = document.getElementById('agentProviderInput').value;
+            const apiKey = document.getElementById('agentProviderKeyInput').value;
+            const statusEl = document.getElementById('providerKeyStatus');
+            
+            if (provider === 'local') {
+                statusEl.textContent = '✅ Local provider - no API key needed';
+                statusEl.style.color = '#22c55e';
+                return;
+            }
+            
+            if (!apiKey) {
+                statusEl.textContent = '❌ Please enter an API key';
+                statusEl.style.color = '#ef4444';
+                return;
+            }
+            
+            statusEl.textContent = '🔄 Testing connection...';
+            statusEl.style.color = '#60a5fa';
+            
+            try {
+                const response = await fetch('/api/llm/test-connection', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ provider, api_key: apiKey })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    statusEl.textContent = '✅ ' + data.message;
+                    statusEl.style.color = '#22c55e';
+                } else {
+                    statusEl.textContent = '❌ ' + data.message;
+                    statusEl.style.color = '#ef4444';
+                }
+            } catch (error) {
+                statusEl.textContent = '❌ Connection test failed: ' + error.message;
+                statusEl.style.color = '#ef4444';
+            }
+        }
+
+        // Permission Management (Issue #30)
+        const permissionPresets = {
+            'read_only': ['file_read', 'terminal_read', 'github_read', 'system_logs'],
+            'developer': ['file_read', 'file_write', 'file_delete', 'terminal_read', 'terminal_execute', 
+                         'terminal_install', 'github_read', 'github_create_issue', 'github_create_pr', 
+                         'github_close_issue', 'api_llm', 'system_logs'],
+            'admin': 'all' // Special value for all permissions
+        };
+
+        function applyPermissionPreset() {
+            const preset = document.getElementById('permissionPresetInput').value;
+            
+            if (preset === 'custom') {
+                return; // Don't change checkboxes for custom
+            }
+            
+            // Get all permission checkboxes
+            const checkboxes = document.querySelectorAll('#permissionsCheckboxes input[type="checkbox"]');
+            
+            if (preset === 'admin') {
+                // Enable all permissions
+                checkboxes.forEach(cb => cb.checked = true);
+            } else {
+                // Apply preset
+                const enabledPerms = permissionPresets[preset] || [];
+                checkboxes.forEach(cb => {
+                    const perm = cb.getAttribute('data-perm');
+                    cb.checked = enabledPerms.includes(perm);
+                });
+            }
+        }
+
+        // Detect when user manually changes checkboxes
+        document.addEventListener('DOMContentLoaded', () => {
+            const checkboxes = document.querySelectorAll('#permissionsCheckboxes input[type="checkbox"]');
+            checkboxes.forEach(cb => {
+                cb.addEventListener('change', () => {
+                    // Switch to custom if user manually changes
+                    document.getElementById('permissionPresetInput').value = 'custom';
+                });
+            });
+        });
+
+        async function loadAgentPermissions(agentId) {
+            try {
+                const response = await fetch(`/api/config/agents/${agentId}/permissions`);
+                if (!response.ok) return;
+                
+                const data = await response.json();
+                
+                // Set preset
+                document.getElementById('permissionPresetInput').value = data.preset || 'developer';
+                
+                // Set individual permissions
+                const permissions = data.permissions || {};
+                Object.keys(permissions).forEach(perm => {
+                    const checkbox = document.getElementById(`perm_${perm}`);
+                    if (checkbox) {
+                        checkbox.checked = permissions[perm];
+                    }
+                });
+            } catch (error) {
+                console.warn('Could not load permissions from API:', error);
+            }
+        }
+
+        async function saveAgentPermissions(agentId) {
+            const preset = document.getElementById('permissionPresetInput').value;
+            
+            // Collect checked permissions
+            const checkboxes = document.querySelectorAll('#permissionsCheckboxes input[type="checkbox"]:checked');
+            const grant = Array.from(checkboxes).map(cb => cb.getAttribute('data-perm'));
+            
+            try {
+                const response = await fetch(`/api/config/agents/${agentId}/permissions`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ preset, grant })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to save permissions');
+                }
+                
+                console.log('✅ Permissions saved successfully');
+            } catch (error) {
+                console.error('❌ Failed to save permissions:', error);
+            }
+        }
+
+        async function saveAgentConfig() {
             if (!currentConfigAgentId) {
                 alert('No agent selected');
                 return;
@@ -1750,7 +2027,7 @@
             // Collect all form data
             const configData = {
                 agent_id: currentConfigAgentId,
-                agent_name: document.getElementById('agentNameInput').value,
+                name: document.getElementById('agentNameInput').value,
                 model: document.getElementById('agentModelInput').value,
                 api_token: document.getElementById('agentApiTokenInput').value,
                 github_token: document.getElementById('agentGithubTokenInput').value,
@@ -1758,50 +2035,52 @@
                 max_tokens: parseInt(document.getElementById('agentMaxTokensInput').value),
                 rate_limit: parseInt(document.getElementById('agentRateLimitInput').value),
                 custom_instructions: document.getElementById('agentInstructionsInput').value,
+                
+                // Issue #31: LLM Provider settings
+                model_provider: document.getElementById('agentProviderInput').value,
+                model_name: document.getElementById('agentProviderModelInput').value,
+                
                 capabilities: {
                     code_generation: document.getElementById('capCodeGeneration').checked,
                     code_review: document.getElementById('capCodeReview').checked,
                     issue_management: document.getElementById('capIssueManagement').checked,
                     pr_management: document.getElementById('capPRManagement').checked,
                     documentation: document.getElementById('capDocumentation').checked
-                },
-                permissions: {
-                    read_files: document.getElementById('permReadFiles').checked,
-                    write_files: document.getElementById('permWriteFiles').checked,
-                    run_commands: document.getElementById('permRunCommands').checked,
-                    create_prs: document.getElementById('permCreatePRs').checked,
-                    merge_prs: document.getElementById('permMergePRs').checked
                 }
             };
 
             // Validate required fields
-            if (!configData.agent_name || !configData.model) {
-                alert('Please fill in all required fields (Agent Name and Model)');
+            if (!configData.name) {
+                alert('Please fill in the Agent Name');
                 return;
             }
 
-            console.log('Saving agent configuration:', configData);
-
-            // TODO: Send to backend API endpoint
-            // fetch('/api/config/agents/' + currentConfigAgentId, {
-            //     method: 'PATCH',
-            //     headers: { 'Content-Type': 'application/json' },
-            //     body: JSON.stringify(configData)
-            // })
-            // .then(response => response.json())
-            // .then(data => {
-            //     alert('✅ Configuration saved successfully!');
-            //     closeAgentConfigModal();
-            //     // Refresh agent data
-            //     connect();
-            // })
-            // .catch(error => {
-            //     alert('❌ Failed to save configuration: ' + error.message);
-            // });
-
-            // For now, just close modal and show message
-            alert('✅ Configuration saved! (Backend integration pending)');
-            closeAgentConfigModal();
+            try {
+                console.log('Saving agent configuration:', configData);
+                
+                // Save main configuration
+                const response = await fetch('/api/config/agents/' + currentConfigAgentId, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(configData)
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to save agent configuration');
+                }
+                
+                // Save permissions (Issue #30)
+                await saveAgentPermissions(currentConfigAgentId);
+                
+                alert('✅ Configuration saved successfully!');
+                closeAgentConfigModal();
+                
+                // Refresh agent data
+                connect();
+            } catch (error) {
+                console.error('❌ Failed to save configuration:', error);
+                alert('❌ Failed to save configuration: ' + error.message);
+            }
         }
     </script>
 
