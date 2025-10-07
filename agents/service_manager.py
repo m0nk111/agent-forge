@@ -158,52 +158,11 @@ class ServiceManager:
             self.services['code_agent'] = agent
             self.health_status['code_agent'] = True
             
-            # Register agent in ConfigManager with new LLM provider model (Issue #31)
-            config_mgr = get_config_manager()
-            agent_config = AgentConfig(
-                agent_id="qwen-main-agent",
-                name="Qwen Code Agent",
-                model="qwen2.5-coder:7b",  # Legacy field for backward compatibility
-                model_provider="local",     # Issue #31: Provider type
-                model_name="qwen2.5-coder:7b",  # Issue #31: Specific model
-                enabled=True,
-                max_concurrent_tasks=1,
-                polling_interval=60,
-                capabilities=["code_generation", "code_review", "issue_management", "pr_management", "documentation"],
-                github_token=None,  # Uses environment variable
-                api_base_url=self.config.qwen_base_url,
-                local_shell_enabled=True,  # Issue #64: Shell access
-                shell_working_dir="/opt/agent-forge",
-                shell_timeout=300,
-                shell_permissions="developer"
-            )
-            
-            # Add or update agent configuration
-            existing = config_mgr.get_agent("qwen-main-agent")
-            if existing:
-                # Update existing agent
-                config_mgr.update_agent("qwen-main-agent", {
-                    "name": "Qwen Code Agent",
-                    "model": "qwen2.5-coder:7b",
-                    "model_provider": "local",
-                    "model_name": "qwen2.5-coder:7b",
-                    "enabled": True,
-                    "max_concurrent_tasks": 1,
-                    "polling_interval": 60,
-                    "capabilities": ["code_generation", "code_review", "issue_management", "pr_management", "documentation"],
-                    "api_base_url": self.config.qwen_base_url,
-                    "local_shell_enabled": True,
-                    "shell_working_dir": "/opt/agent-forge",
-                    "shell_timeout": 300,
-                    "shell_permissions": "developer"
-                })
-                logger.info("✅ Qwen agent configuration updated in ConfigManager")
-            else:
-                # Add new agent
-                config_mgr.add_agent(agent_config)
-                logger.info("✅ Qwen agent registered in ConfigManager")
-            
             logger.info("✅ Code agent initialized and registered with monitor")
+            
+            # Note: Agent configuration is managed via the dashboard UI or API endpoints.
+            # The agent will appear in the dashboard and can be configured there.
+            # See Issue #30 (Permissions API) and Issue #31 (LLM Provider Support)
             
             # Keep agent alive (it handles issues via polling service callbacks)
             while self.running:
