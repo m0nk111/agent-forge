@@ -1259,19 +1259,36 @@
             try {
                 ws = new WebSocket(wsUrl);
                 
-                ws.onopen = () => {
+                ws.onopen = async () => {
                     console.log('✅ Connected to monitoring server');
                     updateConnectionStatus(true);
                     clearTimeout(reconnectTimeout);
                     
-                    // Update services status (assume all healthy if WebSocket connected)
-                    servicesStatus = {
-                        polling: true,
-                        monitoring: true,
-                        web_ui: true,
-                        code_agent: true
-                    };
-                    renderServices(servicesStatus);
+                    // Fetch real services status from API
+                    try {
+                        const hostname = window.location.hostname || 'localhost';
+                        const response = await fetch(`http://${hostname}:7997/api/services`);
+                        const data = await response.json();
+                        
+                        // Map API response to servicesStatus
+                        servicesStatus = {
+                            polling: data.services['polling-service']?.healthy || false,
+                            monitoring: true, // Always true if WebSocket connected
+                            web_ui: true,     // Always true if dashboard loaded
+                            code_agent: false // TODO: Add code_agent to services API
+                        };
+                        renderServices(servicesStatus);
+                    } catch (error) {
+                        console.error('Failed to fetch services:', error);
+                        // Fallback to assuming healthy if WebSocket connected
+                        servicesStatus = {
+                            polling: true,
+                            monitoring: true,
+                            web_ui: true,
+                            code_agent: true
+                        };
+                        renderServices(servicesStatus);
+                    }
                 };
                 
                 ws.onmessage = (event) => {

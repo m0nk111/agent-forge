@@ -218,6 +218,42 @@ def setup_monitoring_routes(app: FastAPI):
             "total": len(events)
         }
     
+    @app.get("/api/services")
+    async def get_services():
+        """
+        Get infrastructure services status.
+        
+        Returns services that are NOT AI agents but part of the infrastructure.
+        Filters out actual agents and only returns service components.
+        
+        Returns:
+            Dict with service statuses
+        """
+        # Get all registered agents
+        all_agents = monitor.get_all_agents()
+        
+        # Service IDs that are infrastructure, not real agents
+        service_ids = ['polling-service']
+        
+        # Extract services
+        services = {}
+        for agent in all_agents:
+            if agent.agent_id in service_ids:
+                services[agent.agent_id] = {
+                    "name": agent.agent_name,
+                    "status": agent.status.value,
+                    "healthy": agent.status.value != "offline",
+                    "current_task": agent.current_task,
+                    "last_update": agent.last_update,
+                    "api_calls": agent.api_calls,
+                    "api_rate_limit_remaining": agent.api_rate_limit_remaining
+                }
+        
+        return {
+            "services": services,
+            "total": len(services)
+        }
+    
     print("✅ Monitoring routes registered:")
     print("   - WebSocket: ws://localhost:7997/ws/monitor")
     print("   - WebSocket: ws://localhost:7997/ws/logs/{agent_id}")
@@ -225,6 +261,7 @@ def setup_monitoring_routes(app: FastAPI):
     print("   - REST: GET /api/agents/{agent_id}/status")
     print("   - REST: GET /api/agents/{agent_id}/logs")
     print("   - REST: GET /api/activity")
+    print("   - REST: GET /api/services")
 
 
 def create_monitoring_app() -> FastAPI:

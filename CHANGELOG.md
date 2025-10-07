@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **API-level service/agent separation** - Clean architectural separation of infrastructure and agents
+  - New endpoint: `/api/services` - Returns only infrastructure services (polling-service)
+  - Services API: Filters services by service_ids, separate from agent monitoring
+  - Dashboard integration: Dashboard now fetches services from dedicated endpoint
+  - Real-time updates: Services section updates from `/api/services` on WebSocket connect
+  - Method fix: Corrected `monitor.get_agents()` → `monitor.get_all_agents()`
+  - Production sync: Websocket handler updated in both dev and production (/opt/agent-forge)
+
 - **Dashboard UI/UX improvements** - Separated infrastructure services from agents
   - New Services section: Infrastructure services (polling, monitoring, web_ui, code_agent) now displayed separately
   - Visual distinction: Purple border for services, blue border for agents
