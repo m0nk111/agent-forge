@@ -322,7 +322,7 @@ class AgentMonitor:
     
     def get_all_agents(self) -> List[AgentState]:
         """Get all agent states (active + configured)."""
-        from agents.config_manager import get_config_manager
+        from engine.core.config_manager import get_config_manager
         
         # Start with active agents
         all_agents = list(self.agents.values())

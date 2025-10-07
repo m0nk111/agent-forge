@@ -10,7 +10,7 @@ Features:
 - Issue locking to prevent duplicate work by         except Exception as e:
             logger.error(f"Error during polling cycle: {e}")
             if self.monitor:
-                from agents.monitor_service import AgentStatus
+                from engine.runners.monitor_service import AgentStatus
                 self.monitor.update_agent_status(
                     agent_id="polling-service",
                     status=AgentStatus.ERROR,
@@ -28,7 +28,7 @@ Features:
             
             # Return to idle
             if self.monitor:
-                from agents.monitor_service import AgentStatus
+                from engine.runners.monitor_service import AgentStatus
                 self.monitor.update_agent_status(
                     agent_id="polling-service",
                     status=AgentStatus.IDLE,
@@ -54,7 +54,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 
-from agents.github_api_helper import GitHubAPIHelper
+from engine.operations.github_api_helper import GitHubAPIHelper
 
 logger = logging.getLogger(__name__)
 
@@ -163,7 +163,7 @@ class PollingService:
                 logger.warning("psutil not installed, metrics will not be available")
             
             try:
-                from agents.monitor_service import get_monitor, AgentStatus
+                from engine.runners.monitor_service import get_monitor, AgentStatus
                 self.monitor = get_monitor()
                 self.monitor.register_agent(
                     agent_id="polling-service",
@@ -451,7 +451,7 @@ class PollingService:
         
         try:
             # Import here to avoid circular dependency
-            from agents.issue_handler import IssueHandler
+            from engine.operations.issue_handler import IssueHandler
             
             # Start issue handler (this would run in background/separate process in production)
             handler = IssueHandler()
@@ -489,7 +489,7 @@ class PollingService:
         
         # Update monitor status
         if self.monitor:
-            from agents.monitor_service import AgentStatus
+            from engine.runners.monitor_service import AgentStatus
             self.monitor.update_agent_status(
                 agent_id="polling-service",
                 status=AgentStatus.WORKING,
@@ -554,7 +554,7 @@ class PollingService:
             
             # Set back to IDLE
             if self.monitor:
-                from agents.monitor_service import AgentStatus
+                from engine.runners.monitor_service import AgentStatus
                 self.monitor.update_agent_status(
                     agent_id="polling-service",
                     status=AgentStatus.IDLE,

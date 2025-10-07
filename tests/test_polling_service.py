@@ -7,7 +7,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from unittest.mock import Mock, patch, AsyncMock
 
-from agents.polling_service import (
+from engine.runners.polling_service import (
     PollingService,
     PollingConfig,
     IssueState

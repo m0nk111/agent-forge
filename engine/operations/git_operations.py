@@ -39,7 +39,7 @@ class GitOperations:
         # Initialize instruction validator (optional)
         self.validator = None
         try:
-            from agents.instruction_validator import InstructionValidator
+            from engine.validation.instruction_validator import InstructionValidator
             self.validator = InstructionValidator()
         except Exception:
             # Validator is optional - continue without it

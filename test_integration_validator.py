@@ -32,7 +32,7 @@ def test_file_editor_integration():
 """)
         
         # Test FileEditor
-        from agents.file_editor import FileEditor
+        from engine.operations.file_editor import FileEditor
         editor = FileEditor(str(project_root))
         
         # Create a file in subdirectory (should pass)
@@ -71,7 +71,7 @@ def test_git_operations_integration():
     import os
     os.environ['QWEN_GITHUB_TOKEN'] = 'dummy_token_for_testing'
     
-    from agents.git_operations import GitOperations
+    from engine.operations.git_operations import GitOperations
     
     git = GitOperations()
     
@@ -131,7 +131,7 @@ def test_compliance_reporting():
 - **Rule**: Every code change must have CHANGELOG.md entry
 """)
         
-        from agents.instruction_validator import InstructionValidator
+        from engine.validation.instruction_validator import InstructionValidator
         
         validator = InstructionValidator(
             str(github_dir / "copilot-instructions.md"),
@@ -174,7 +174,7 @@ def test_auto_fix_capabilities():
     print("\n🧪 Testing Auto-Fix Capabilities")
     print("=" * 60)
     
-    from agents.instruction_validator import InstructionValidator
+    from engine.validation.instruction_validator import InstructionValidator
     
     validator = InstructionValidator()
     

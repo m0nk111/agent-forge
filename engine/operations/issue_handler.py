@@ -15,7 +15,7 @@ import re
 import os
 from typing import Dict, List, Optional
 from pathlib import Path
-from agents.monitor_service import AgentStatus
+from engine.runners.monitor_service import AgentStatus
 
 
 class IssueHandler:
@@ -43,7 +43,7 @@ class IssueHandler:
         # Initialize instruction validator (optional)
         self.validator = None
         try:
-            from agents.instruction_validator import InstructionValidator
+            from engine.validation.instruction_validator import InstructionValidator
             self.validator = InstructionValidator(project_root=str(self.project_root))
         except Exception:
             # Validator is optional - continue without it
@@ -620,8 +620,8 @@ class IssueHandler:
     def _create_pull_request(self, repo: str, issue: Dict, execution_result: Dict) -> Optional[Dict]:
         """Create PR with implemented changes."""
         try:
-            from agents.git_operations import GitOperations
-            from agents.bot_operations import BotOperations
+            from engine.operations.git_operations import GitOperations
+            from engine.operations.bot_operations import BotOperations
             
             git = GitOperations()
             bot = BotOperations()

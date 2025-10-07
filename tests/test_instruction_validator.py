@@ -13,8 +13,8 @@ from pathlib import Path
 import tempfile
 import os
 
-from agents.instruction_parser import InstructionParser, InstructionSet, Rule
-from agents.instruction_validator import (
+from engine.validation.instruction_parser import InstructionParser, InstructionSet, Rule
+from engine.validation.instruction_validator import (
     InstructionValidator,
     ValidationResult,
     ComplianceReport

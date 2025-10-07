@@ -19,7 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, List
 import json
 
-from agents.monitor_service import get_monitor, AgentStatus
+from engine.runners.monitor_service import get_monitor, AgentStatus
 
 
 def setup_monitoring_routes(app: FastAPI):

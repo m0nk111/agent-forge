@@ -6,7 +6,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import asyncio
-from agents.monitor_service import get_monitor, AgentStatus
+from engine.runners.monitor_service import get_monitor, AgentStatus
 
 
 async def main():

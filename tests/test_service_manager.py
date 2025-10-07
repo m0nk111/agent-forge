@@ -5,7 +5,7 @@ import os
 import signal
 import pytest
 from unittest.mock import Mock, patch, MagicMock
-from agents.service_manager import ServiceManager, ServiceConfig
+from engine.core.service_manager import ServiceManager, ServiceConfig
 
 
 class TestServiceConfig:

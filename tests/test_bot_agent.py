@@ -12,7 +12,7 @@ from pathlib import Path
 import subprocess
 import json
 
-from agents.bot_agent import BotAgent, BotOperation, BotMetrics
+from engine.runners.bot_agent import BotAgent, BotOperation, BotMetrics
 
 
 @pytest.fixture

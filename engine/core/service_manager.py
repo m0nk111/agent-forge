@@ -110,7 +110,7 @@ class ServiceManager:
     async def _start_polling_service(self):
         """Start autonomous polling service."""
         try:
-            from agents.polling_service import PollingService, PollingConfig
+            from engine.runners.polling_service import PollingService, PollingConfig
             
             logger.info("Starting polling service...")
             
@@ -141,8 +141,8 @@ class ServiceManager:
     async def _start_code_agent(self):
         """Start code agent from configuration."""
         try:
-            from agents.code_agent import CodeAgent
-            from agents.config_manager import get_config_manager
+            from engine.runners.code_agent import CodeAgent
+            from engine.core.config_manager import get_config_manager
             
             logger.info("Starting code agent from configuration...")
             
@@ -192,8 +192,8 @@ class ServiceManager:
     async def _start_monitoring_service(self):
         """Start real-time monitoring service with WebSocket."""
         try:
-            from agents.monitor_service import get_monitor
-            from agents.websocket_handler import create_monitoring_app
+            from engine.runners.monitor_service import get_monitor
+            from engine.operations.websocket_handler import create_monitoring_app
             import uvicorn
             
             logger.info("Starting monitoring service...")

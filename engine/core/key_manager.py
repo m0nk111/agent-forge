@@ -301,7 +301,7 @@ class KeyManager:
         
         # Import provider and test
         try:
-            from agents.llm_providers import get_provider
+            from engine.core.llm_providers import get_provider
             
             provider_instance = get_provider(provider, key)
             if not provider_instance:

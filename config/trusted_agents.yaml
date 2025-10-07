@@ -1,0 +1,13 @@
+# Trusted GitHub Accounts
+# These accounts can interact with the agent system
+
+trusted_agents:
+  - username: m0nk111-bot
+    role: bot
+    description: Main bot account for GitHub automation
+    trusted: true
+  
+  - username: m0nk111-qwen-agent
+    role: developer
+    description: Qwen-based code generation agent
+    trusted: true

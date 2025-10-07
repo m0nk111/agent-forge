@@ -17,22 +17,22 @@ from datetime import datetime
 import logging
 import requests
 
-from agents.config_manager import (
+from engine.core.config_manager import (
     get_config_manager,
     ConfigManager,
     AgentConfig,
     RepositoryConfig,
     SystemConfig
 )
-from agents.permissions import (
+from engine.core.permissions import (
     Permission,
     PermissionPreset,
     AgentPermissions,
     PermissionValidator,
     PERMISSION_METADATA
 )
-from agents.key_manager import get_key_manager, PROVIDER_KEYS
-from agents.llm_providers import get_provider, PROVIDERS
+from engine.core.key_manager import get_key_manager, PROVIDER_KEYS
+from engine.core.llm_providers import get_provider, PROVIDERS
 
 logger = logging.getLogger(__name__)
 

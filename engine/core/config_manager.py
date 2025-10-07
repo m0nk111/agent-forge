@@ -115,16 +115,18 @@ class ConfigManager:
             # Look for config directory in current dir or parent dirs
             for parent in [current_dir] + list(current_dir.parents):
                 potential_config = parent / "config"
-                if potential_config.exists() and (potential_config / "agents.yaml").exists():
+                if potential_config.exists():
                     config_dir = str(potential_config)
                     break
             
             # Fallback to relative path if not found
             if config_dir is None:
-                config_dir = str(Path(__file__).parent.parent / "config")
+                config_dir = str(Path(__file__).parent.parent.parent / "config")
         
         self.config_dir = Path(config_dir)
-        self.agents_file = self.config_dir / "agents.yaml"
+        self.agents_dir = self.config_dir.parent / "agents"  # NEW: Individual agent configs
+        self.agents_file = self.config_dir / "agents.yaml"  # LEGACY: Fallback
+        self.trusted_file = self.config_dir / "trusted_agents.yaml"  # NEW: Trust list
         self.repos_file = self.config_dir / "repositories.yaml"
         self.system_file = self.config_dir / "system.yaml"
         self.backup_dir = self.config_dir / "backups"
@@ -134,6 +136,7 @@ class ConfigManager:
         
         # Create directories if they don't exist
         self.config_dir.mkdir(parents=True, exist_ok=True)
+        self.agents_dir.mkdir(parents=True, exist_ok=True)
         self.backup_dir.mkdir(parents=True, exist_ok=True)
         self.secrets_dir.mkdir(parents=True, exist_ok=True)
         
@@ -141,6 +144,7 @@ class ConfigManager:
         self._initialize_configs()
         
         logger.info(f"ConfigManager initialized: {self.config_dir}")
+        logger.info(f"Agents directory: {self.agents_dir}")
         logger.info(f"Secrets directory: {self.secrets_dir}")
     
     def _initialize_configs(self):
@@ -189,14 +193,32 @@ class ConfigManager:
     # ==================== AGENT MANAGEMENT ====================
     
     def get_agents(self) -> List[AgentConfig]:
-        """Get all agent configurations"""
-        data = self._load_yaml(self.agents_file)
+        """Get all agent configurations from agents/ directory"""
         agents = []
-        for agent_data in data.get("agents", []):
-            try:
-                agents.append(AgentConfig(**agent_data))
-            except Exception as e:
-                logger.error(f"Failed to parse agent config: {e}")
+        
+        # Load from individual agent YAML files (NEW)
+        if self.agents_dir.exists():
+            for agent_file in self.agents_dir.glob("*.yaml"):
+                if agent_file.name == "trusted_agents.yaml":
+                    continue  # Skip trust list
+                try:
+                    agent_data = self._load_yaml(agent_file)
+                    if agent_data:
+                        agents.append(AgentConfig(**agent_data))
+                        logger.debug(f"✅ Loaded agent from {agent_file.name}")
+                except Exception as e:
+                    logger.error(f"Failed to parse {agent_file}: {e}")
+        
+        # Fallback to legacy agents.yaml if no individual files found
+        if not agents and self.agents_file.exists():
+            logger.warning("No agents found in agents/ directory, falling back to config/agents.yaml")
+            data = self._load_yaml(self.agents_file)
+            for agent_data in data.get("agents", []):
+                try:
+                    agents.append(AgentConfig(**agent_data))
+                except Exception as e:
+                    logger.error(f"Failed to parse agent config: {e}")
+        
         return agents
     
     def get_agent(self, agent_id: str) -> Optional[AgentConfig]:
@@ -223,70 +245,66 @@ class ConfigManager:
         return None
     
     def add_agent(self, agent: AgentConfig) -> bool:
-        """Add new agent configuration"""
+        """Add new agent configuration to individual YAML file"""
         try:
-            data = self._load_yaml(self.agents_file)
-            agents = data.get("agents", [])
+            agent_file = self.agents_dir / f"{agent.agent_id}.yaml"
             
             # Check if agent already exists
-            if any(a.get("agent_id") == agent.agent_id for a in agents):
+            if agent_file.exists():
                 logger.warning(f"Agent {agent.agent_id} already exists")
                 return False
             
-            # Add new agent
-            agents.append(asdict(agent))
-            data["agents"] = agents
-            self._save_yaml(self.agents_file, data)
+            # Save to individual file
+            self._save_yaml(agent_file, asdict(agent))
             
-            logger.info(f"Added agent: {agent.agent_id}")
+            logger.info(f"✅ Added agent: {agent.agent_id} → {agent_file.name}")
             return True
         except Exception as e:
             logger.error(f"Failed to add agent: {e}")
             return False
     
     def update_agent(self, agent_id: str, updates: Dict[str, Any]) -> bool:
-        """Update agent configuration"""
+        """Update agent configuration in individual YAML file"""
         try:
-            data = self._load_yaml(self.agents_file)
-            agents = data.get("agents", [])
+            agent_file = self.agents_dir / f"{agent_id}.yaml"
             
-            # Find and update agent
-            for i, agent in enumerate(agents):
-                if agent.get("agent_id") == agent_id:
-                    agent.update(updates)
-                    agent["updated_at"] = datetime.now().isoformat()
-                    agents[i] = agent
-                    data["agents"] = agents
-                    self._save_yaml(self.agents_file, data)
-                    logger.info(f"Updated agent: {agent_id}")
-                    return True
+            if not agent_file.exists():
+                logger.error(f"Agent {agent_id} not found")
+                return False
             
-            logger.warning(f"Agent {agent_id} not found")
-            return False
+            # Load current config
+            agent_data = self._load_yaml(agent_file)
+            
+            # Update fields
+            agent_data.update(updates)
+            agent_data["updated_at"] = datetime.now().isoformat()
+            
+            # Save updated config
+            self._save_yaml(agent_file, agent_data)
+            
+            logger.info(f"✅ Updated agent: {agent_id}")
+            return True
         except Exception as e:
             logger.error(f"Failed to update agent: {e}")
             return False
     
     def delete_agent(self, agent_id: str) -> bool:
-        """Delete agent configuration"""
+        """Delete agent configuration file"""
         try:
-            data = self._load_yaml(self.agents_file)
-            agents = data.get("agents", [])
+            agent_file = self.agents_dir / f"{agent_id}.yaml"
             
-            # Filter out the agent
-            new_agents = [a for a in agents if a.get("agent_id") != agent_id]
-            
-            if len(new_agents) == len(agents):
+            if not agent_file.exists():
                 logger.warning(f"Agent {agent_id} not found")
                 return False
             
-            data["agents"] = new_agents
-            self._save_yaml(self.agents_file, data)
+            # Delete the agent file
+            agent_file.unlink()
             
-            logger.info(f"Deleted agent: {agent_id}")
+            logger.info(f"✅ Deleted agent: {agent_id}")
             return True
         except Exception as e:
             logger.error(f"Failed to delete agent: {e}")
+            return False
             return False
     
     # ==================== REPOSITORY MANAGEMENT ====================

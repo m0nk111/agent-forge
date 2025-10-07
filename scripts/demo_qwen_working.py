@@ -12,7 +12,7 @@ import time
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from agents.monitor_service import get_monitor, AgentStatus
+from engine.runners.monitor_service import get_monitor, AgentStatus
 
 
 async def simulate_qwen_working():

@@ -7,7 +7,7 @@ Tests automated code review functionality.
 import pytest
 from pathlib import Path
 from datetime import datetime
-from agents.pr_reviewer import PRReviewer, ReviewComment, ReviewCriteria
+from engine.operations.pr_reviewer import PRReviewer, ReviewComment, ReviewCriteria
 
 
 @pytest.fixture

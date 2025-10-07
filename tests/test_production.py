@@ -9,12 +9,12 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from agents.file_editor import FileEditor
-from agents.terminal_operations import TerminalOperations
-from agents.test_runner import TestRunner
-from agents.codebase_search import CodebaseSearch
-from agents.error_checker import ErrorChecker
-from agents.mcp_client import MCPClient
+from engine.operations.file_editor import FileEditor
+from engine.operations.terminal_operations import TerminalOperations
+from engine.operations.test_runner import TestRunner
+from engine.operations.codebase_search import CodebaseSearch
+from engine.operations.error_checker import ErrorChecker
+from engine.operations.mcp_client import MCPClient
 
 def print_header(text):
     print(f"\n{'='*70}")

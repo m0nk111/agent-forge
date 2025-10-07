@@ -1,0 +1,39 @@
+# Qwen Main Agent Configuration
+
+agent_id: qwen-main-agent
+name: Qwen Main Agent
+model: qwen2.5-coder:7b
+enabled: true
+max_concurrent_tasks: 1
+polling_interval: 60
+
+capabilities:
+  - code_generation
+  - code_review
+  - issue_management
+  - pr_management
+  - documentation
+
+# GitHub token stored in secrets/agents/m0nk111-qwen-agent.token
+github_token: null
+
+# API Configuration
+api_base_url: null
+custom_settings: {}
+
+# Shell Configuration
+local_shell_enabled: true
+shell_working_dir: /opt/agent-forge
+shell_timeout: 300
+shell_permissions: developer
+
+# Model Configuration
+model_provider: local
+model_name: qwen2.5-coder:7b
+api_key_name: null
+temperature: 0.7
+max_tokens: 4096
+
+# Metadata
+created_at: '2025-10-07T14:30:00'
+updated_at: '2025-10-07T17:14:41'

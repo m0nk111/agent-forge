@@ -15,7 +15,7 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from agents.code_agent import CodeAgent
+from engine.runners.code_agent import CodeAgent
 
 print("╔══════════════════════════════════════════════════════════════════════╗")
 print("║     🤖 AGENT-FORGE: AUTONOMOUS GITHUB ISSUE RESOLUTION TEST 🤖      ║")

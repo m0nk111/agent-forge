@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Set
 from dataclasses import dataclass, field
 
-from agents.instruction_parser import InstructionParser, InstructionSet, Rule
+from engine.validation.instruction_parser import InstructionParser, InstructionSet, Rule
 
 
 @dataclass

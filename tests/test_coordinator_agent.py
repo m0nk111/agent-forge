@@ -10,7 +10,7 @@ from unittest.mock import Mock, patch, AsyncMock
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from agents.coordinator_agent import (
+from engine.runners.coordinator_agent import (
     CoordinatorAgent, SubTask, ExecutionPlan, TaskAssignment,
     AgentCapability, AgentRole, TaskStatus, PlanStatus
 )

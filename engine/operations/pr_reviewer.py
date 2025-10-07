@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 # Import security auditor for external PR scanning
 try:
-    from agents.security_auditor import SecurityAuditor
+    from engine.validation.security_auditor import SecurityAuditor
     SECURITY_AUDITOR_AVAILABLE = True
 except ImportError:
     logger.warning("⚠️ SecurityAuditor not available - external PRs will not be scanned")
@@ -134,7 +134,7 @@ class PRReviewer:
             logger.warning(f"🔐 PR from non-trusted author '{pr_author}' - running mandatory security audit")
             
             try:
-                from agents.security_auditor import SecurityAuditor
+                from engine.validation.security_auditor import SecurityAuditor
                 auditor = SecurityAuditor()
                 audit_result = await auditor.audit_pr(repo, pr_number, files)
                 
@@ -541,7 +541,7 @@ Format: "Line X: <suggestion>"
         Returns:
             Formatted markdown message explaining why PR is blocked
         """
-        from agents.security_auditor import SecurityIssue
+        from engine.validation.security_auditor import SecurityIssue
         
         lines = []
         lines.append("## 🚨 SECURITY AUDIT FAILED - PR BLOCKED\n")
