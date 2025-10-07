@@ -29,60 +29,16 @@ except ImportError:
     print("ERROR: PyYAML module not found. Install with: pip install pyyaml")
     sys.exit(1)
 
-# Import workspace tools (relative import for agents submodule)
-try:
-    from .workspace_tools import WorkspaceTools
-except ImportError:
-    # Fallback for direct script execution
-    from workspace_tools import WorkspaceTools
-
-# Import context manager
-try:
-    from .context_manager import ContextManager
-except ImportError:
-    from context_manager import ContextManager
-
-# Import file editor (Issue #5)
-try:
-    from .file_editor import FileEditor
-except ImportError:
-    from file_editor import FileEditor
-
-# Import terminal operations (Issue #6)
-try:
-    from .terminal_operations import TerminalOperations
-except ImportError:
-    from terminal_operations import TerminalOperations
-
-# Import test runner (Issue #10)
-try:
-    from .test_runner import TestRunner
-except ImportError:
-    from test_runner import TestRunner
-
-# Import codebase search (Issue #7)
-try:
-    from .codebase_search import CodebaseSearch
-except ImportError:
-    from codebase_search import CodebaseSearch
-
-# Import error checker (Issue #9)
-try:
-    from .error_checker import ErrorChecker
-except ImportError:
-    from error_checker import ErrorChecker
-
-# Import MCP client (Issue #12)
-try:
-    from .mcp_client import MCPClient
-except ImportError:
-    from mcp_client import MCPClient
-
-# Import issue handler (autonomous GitHub issue resolution)
-try:
-    from .issue_handler import IssueHandler
-except ImportError:
-    from issue_handler import IssueHandler
+# Import from engine modules
+from engine.operations.workspace_tools import WorkspaceTools
+from engine.core.context_manager import ContextManager
+from engine.operations.file_editor import FileEditor
+from engine.operations.terminal_operations import TerminalOperations
+from engine.operations.test_runner import TestRunner
+from engine.operations.codebase_search import CodebaseSearch
+from engine.operations.error_checker import ErrorChecker
+from engine.operations.mcp_client import MCPClient
+from engine.operations.issue_handler import IssueHandler
 
 # Colors for terminal output
 class Colors:

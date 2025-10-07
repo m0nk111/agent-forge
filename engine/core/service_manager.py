@@ -241,7 +241,7 @@ class ServiceManager:
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                cwd=Path(__file__).parent.parent
+                cwd=Path(__file__).parent.parent.parent  # Go up to project root (engine/core/ -> engine/ -> root)
             )
             
             self.services['web_ui'] = process

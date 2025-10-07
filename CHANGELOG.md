@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2025-10-07
 
+### Fixed
+
+- **Dashboard working directory fix** - Fixed HTTP server cwd to project root
+  - service_manager.py: Updated cwd from `parent.parent` to `parent.parent.parent` for engine/core/
+  - HTTP server now runs in /opt/agent-forge/ instead of /opt/agent-forge/engine/
+  - Dashboard now accessible at http://localhost:8897/dashboard.html
+  
+- **Code agent import paths** - Updated imports to new engine structure
+  - Fixed imports to use engine.operations and engine.core paths
+  - Removed old relative imports from agents/ directory
+  - All imports now use absolute paths from engine/
+
 ### Removed
 
 - **Root directory cleanup per project rules** - Moved documentation and test files to proper locations
