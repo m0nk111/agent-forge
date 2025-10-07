@@ -966,7 +966,13 @@
             return `ws://${hostname}:7997/ws/monitor`;
         }
         
+        function getDefaultApiUrl() {
+            const hostname = window.location.hostname || 'localhost';
+            return `http://${hostname}:7998`;
+        }
+        
         const WS_URL = getDefaultWsUrl();
+        const API_BASE_URL = getDefaultApiUrl();
         let ws = null;
         let reconnectTimeout = null;
         let agents = new Map();
@@ -1923,7 +1929,7 @@
             statusEl.innerHTML = '<span style="color: #60a5fa;">🔄 Validating token...</span>';
             
             try {
-                const response = await fetch('/api/github/validate-token', {
+                const response = await fetch(`${API_BASE_URL}/api/github/validate-token`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ github_token: token })
@@ -1952,7 +1958,7 @@
             modelSelect.disabled = true;
             
             try {
-                const response = await fetch(`/api/llm/providers/${provider}/models`);
+                const response = await fetch(`${API_BASE_URL}/api/llm/providers/${provider}/models`);
                 const data = await response.json();
                 
                 if (data.models && data.models.length > 0) {
@@ -1995,7 +2001,7 @@
             }
             
             try {
-                const response = await fetch('/api/config/agents', {
+                const response = await fetch(`${API_BASE_URL}/api/config/agents`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -2187,7 +2193,7 @@
 
         async function loadAgentPermissions(agentId) {
             try {
-                const response = await fetch(`/api/config/agents/${agentId}/permissions`);
+                const response = await fetch(`${API_BASE_URL}/api/config/agents/${agentId}/permissions`);
                 if (!response.ok) return;
                 
                 const data = await response.json();
@@ -2216,7 +2222,7 @@
             const grant = Array.from(checkboxes).map(cb => cb.getAttribute('data-perm'));
             
             try {
-                const response = await fetch(`/api/config/agents/${agentId}/permissions`, {
+                const response = await fetch(`${API_BASE_URL}/api/config/agents/${agentId}/permissions`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ preset, grant })

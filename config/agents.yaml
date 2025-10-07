@@ -1,18 +1,32 @@
-# Agent Configuration
-# Defines trusted agents and their roles
-
-# Trusted agent accounts that bypass security audits
-# These are known bot/agent accounts that are part of the system
 trusted_agents:
-  - username: m0nk111-bot
-    role: bot
-    description: "Main bot account for GitHub automation"
-    trusted: true
-  
-  - username: m0nk111-qwen-agent
-    role: developer
-    description: "Qwen-based code generation agent"
-    trusted: true
-
-# Agent registry (populated at runtime by service_manager)
-agents: []
+- username: m0nk111-bot
+  role: bot
+  description: Main bot account for GitHub automation
+  trusted: true
+- username: m0nk111-qwen-agent
+  role: developer
+  description: Qwen-based code generation agent
+  trusted: true
+agents:
+- agent_id: test-agent-123
+  name: Test Agent
+  model: qwen2.5-coder:7b
+  enabled: true
+  max_concurrent_tasks: 1
+  polling_interval: 60
+  capabilities:
+  - code_generation
+  github_token: null
+  api_base_url: null
+  custom_settings: {}
+  local_shell_enabled: false
+  shell_working_dir: null
+  shell_timeout: 300
+  shell_permissions: developer
+  model_provider: local
+  model_name: qwen2.5-coder:7b
+  api_key_name: null
+  temperature: 0.7
+  max_tokens: 4096
+  created_at: '2025-10-07T13:19:29.899023'
+  updated_at: '2025-10-07T13:19:29.899038'

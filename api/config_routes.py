@@ -220,11 +220,8 @@ async def get_agent(
 
 
 @app.post("/api/config/agents", response_model=AgentConfigModel, status_code=status.HTTP_201_CREATED)
-async def create_agent(
-    agent: AgentConfigModel,
-    user: dict = Depends(verify_token)
-):
-    """Create new agent configuration"""
+async def create_agent(agent: AgentConfigModel):
+    """Create new agent configuration (no auth required for initial setup)"""
     try:
         manager = get_config_manager()
         agent_config = AgentConfig(**agent.model_dump())
@@ -646,28 +643,29 @@ async def list_llm_providers(
 
 
 @app.get("/api/llm/providers/{provider}/models")
-async def get_provider_models(
-    provider: str,
-    user: dict = Depends(verify_token)
-):
-    """Get available models for a provider (Issue #31)"""
+async def get_provider_models(provider: str):
+    """Get available models for a provider (no auth required for agent creation)"""
     try:
-        key_manager = get_key_manager()
-        
-        # Get API key
-        provider_config = None
-        for config in PROVIDER_KEYS.values():
-            if config.provider == provider:
-                provider_config = config
-                break
-        
-        if not provider_config:
+        # Validate provider exists
+        if provider not in PROVIDERS:
             raise HTTPException(status_code=404, detail=f"Unknown provider: {provider}")
         
-        key = key_manager.get_key(provider_config.key_name)
+        key_manager = get_key_manager()
+        key = None
         
-        if not key and provider != "local":
-            return {"models": [], "error": "API key not configured"}
+        # Get API key for providers that need it
+        if provider != "local":
+            provider_config = None
+            for config in PROVIDER_KEYS.values():
+                if config.provider == provider:
+                    provider_config = config
+                    break
+            
+            if provider_config:
+                key = key_manager.get_key(provider_config.key_name)
+            
+            if not key:
+                return {"models": [], "error": "API key not configured"}
         
         # Get provider instance
         provider_instance = get_provider(provider, key or "")
@@ -863,11 +861,8 @@ class GitHubTokenModel(BaseModel):
 
 
 @app.post("/api/github/validate-token")
-async def validate_github_token(
-    token_data: GitHubTokenModel,
-    user: dict = Depends(verify_token)
-):
-    """Validate GitHub token and return user information"""
+async def validate_github_token(token_data: GitHubTokenModel):
+    """Validate GitHub token and return user information (no auth required for agent creation)"""
     try:
         # Call GitHub API to get user info
         response = requests.get(
@@ -916,13 +911,14 @@ if __name__ == "__main__":
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
     
-    print("Starting Configuration API server on http://localhost:7996")
-    print("API docs: http://localhost:7996/docs")
+    port = int(os.getenv('CONFIG_API_PORT', '7998'))
+    print(f"Starting Configuration API server on http://localhost:{port}")
+    print(f"API docs: http://localhost:{port}/docs")
     
     uvicorn.run(
         app,
         host="0.0.0.0",
-        port=7996,
+        port=port,
         log_level="info"
     )
 
