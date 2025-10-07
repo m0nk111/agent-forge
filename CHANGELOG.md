@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2025-10-07
 
+### Added
+
+- **New Agent: m0nk111-qwen-agent** - Second production agent configuration
+  - Agent ID: `m0nk111-qwen-agent` (matches GitHub username from trusted_agents)
+  - Model: Local Ollama `qwen2.5-coder:7b`
+  - Full capabilities: code_generation, code_review, issue_management, pr_management, documentation
+  - Developer shell permissions at `/opt/agent-forge`
+  - Temperature: 0.7, Max tokens: 4096
+  - GitHub token to be configured via dashboard UI
+  - Complements existing `qwen-main-agent` for multi-agent workflows
+
 ### Fixed
 
 - **Agent Creation API Authentication** - Removed authentication requirements for agent creation flow
