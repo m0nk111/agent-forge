@@ -61,7 +61,7 @@ class ServiceConfig:
     
     # Code Agent (formerly Qwen Agent)
     enable_agent_runtime: bool = True  # Unified agent runtime for all roles
-    qwen_model: str = "qwen2.5-coder:32b"  # Keep param name for backward compat
+    qwen_model: str = "qwen2.5-coder:7b"  # Model must exist in Ollama (check with: ollama list)
     qwen_base_url: str = "http://localhost:11434"  # Keep param name for backward compat
     
     # Health check
