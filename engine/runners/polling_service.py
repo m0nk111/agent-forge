@@ -134,14 +134,16 @@ class IssueState:
 class PollingService:
     """Service for autonomous GitHub issue polling and workflow initiation."""
     
-    def __init__(self, config: PollingConfig, enable_monitoring: bool = True):
+    def __init__(self, config: PollingConfig, agent_registry=None, enable_monitoring: bool = True):
         """Initialize polling service.
         
         Args:
             config: Polling configuration
+            agent_registry: AgentRegistry instance for getting agent instances
             enable_monitoring: Whether to register with monitor service
         """
         self.config = config
+        self.agent_registry = agent_registry
         self.state_file = Path(config.state_file)
         self.state: Dict[str, IssueState] = {}
         self.load_state()
@@ -444,12 +446,30 @@ class PollingService:
         self.save_state()
         
         try:
+            # Get agent from registry (wait if not available yet)
+            if not self.agent_registry:
+                logger.warning(f"Agent registry not available yet for workflow {issue_key}, will retry...")
+                # Don't mark as failed, just skip for now - will retry in next cycle
+                self.state[issue_key].claimed_by = None  # Release claim
+                self.state[issue_key].claimed_at = None
+                self.save_state()
+                return False
+            
+            # Get the agent by agent_id (username is the agent_id in this case)
+            agent = self.agent_registry.get_agent(self.config.github_username)
+            if not agent:
+                logger.error(f"Agent '{self.config.github_username}' not found in registry")
+                return False
+            
+            logger.info(f"✅ Using agent: {self.config.github_username} for issue {issue_key}")
+            
             # Import here to avoid circular dependency
             from engine.operations.issue_handler import IssueHandler
             
-            # Start issue handler (this would run in background/separate process in production)
-            handler = IssueHandler()
-            success = await handler.handle_issue(repo, issue_number)
+            # Start issue handler with agent instance
+            handler = IssueHandler(agent)
+            result = handler.assign_to_issue(repo, issue_number)
+            success = result.get('success', False)
             
             # Update state
             self.state[issue_key].completed = success
@@ -565,6 +585,10 @@ class PollingService:
         logger.info(f"Max concurrent issues: {self.config.max_concurrent_issues}")
         
         self.running = True
+        
+        # Initial delay to allow agent registry injection
+        logger.info("Waiting 3s for agent registry initialization...")
+        await asyncio.sleep(3)
         
         try:
             while self.running:

@@ -111,13 +111,27 @@ class ServiceManager:
         """Start autonomous polling service."""
         try:
             from engine.runners.polling_service import PollingService, PollingConfig
+            from pathlib import Path
             
             logger.info("Starting polling service...")
+            
+            # Load GitHub token for qwen-agent from secrets
+            token_file = Path("/opt/agent-forge/secrets/agents/m0nk111-qwen-agent.token")
+            github_token = None
+            if token_file.exists():
+                try:
+                    github_token = token_file.read_text().strip()
+                    logger.info("✅ Loaded GitHub token for polling service")
+                except Exception as e:
+                    logger.error(f"❌ Failed to load GitHub token: {e}")
+            else:
+                logger.warning("⚠️ GitHub token file not found, using environment variable")
+                github_token = os.getenv("BOT_GITHUB_TOKEN") or os.getenv("GITHUB_TOKEN")
             
             # Create polling config
             config = PollingConfig(
                 interval_seconds=self.config.polling_interval,
-                github_token=os.getenv("BOT_GITHUB_TOKEN") or os.getenv("GITHUB_TOKEN"),
+                github_token=github_token,
                 github_username="m0nk111-qwen-agent",
                 repositories=["m0nk111/agent-forge", "m0nk111/stepperheightcontrol"],
                 watch_labels=["agent-ready", "auto-assign"],
@@ -283,14 +297,16 @@ class ServiceManager:
             logger.info(f"Systemd watchdog enabled (interval: {interval}s)")
             
             while self.running:
+                logger.debug(f"🔄 Watchdog loop: running={self.running}, health={self.health_status}")
+                
                 # Check if all services are healthy
                 all_healthy = all(self.health_status.values())
                 
                 if all_healthy:
                     daemon.notify('WATCHDOG=1')
-                    logger.debug("Sent watchdog keepalive")
+                    logger.info("✅ Sent watchdog keepalive")
                 else:
-                    logger.warning(f"Services unhealthy: {self.health_status}")
+                    logger.warning(f"⚠️ Services unhealthy, skipping watchdog: {self.health_status}")
                     
                 await asyncio.sleep(interval)
                 
@@ -363,14 +379,12 @@ class ServiceManager:
             daemon.notify('STATUS=Starting services...')
         
         try:
-            # Start polling service
-            if self.config.enable_polling:
-                self.tasks['polling'] = asyncio.create_task(
-                    self._start_polling_service()
-                )
-                await asyncio.sleep(1)  # Let it initialize
-                
-            # Start monitoring service
+            # Start watchdog FIRST to prevent timeout during startup
+            self.tasks['watchdog'] = asyncio.create_task(
+                self._watchdog_ping()
+            )
+            
+            # Start monitoring service (needed by other services)
             if self.config.enable_monitoring:
                 self.tasks['monitoring'] = asyncio.create_task(
                     self._start_monitoring_service()
@@ -384,18 +398,26 @@ class ServiceManager:
                 )
                 await asyncio.sleep(1)
             
-            # Start agent runtime
+            # Start agent runtime BEFORE polling (polling depends on it)
             if self.config.enable_agent_runtime:
                 self.tasks['agent_runtime'] = asyncio.create_task(
                     self._start_agent_runtime()
                 )
-                await asyncio.sleep(1)
-                
-            # Start watchdog
-            self.tasks['watchdog'] = asyncio.create_task(
-                self._watchdog_ping()
-            )
+                await asyncio.sleep(2)  # Give agent runtime time to initialize
             
+            # Start polling service AFTER agent runtime is ready
+            if self.config.enable_polling:
+                self.tasks['polling'] = asyncio.create_task(
+                    self._start_polling_service()
+                )
+                await asyncio.sleep(1)  # Let it initialize
+                
+                # Inject agent_registry into polling service
+                if 'agent_runtime' in self.services:
+                    polling_service = self.services['polling']
+                    polling_service.agent_registry = self.services['agent_runtime']
+                    logger.info("✅ Agent registry injected into polling service")
+                
             # Start health checks
             self.tasks['health'] = asyncio.create_task(
                 self._health_check_loop()

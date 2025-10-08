@@ -27,8 +27,8 @@ CPUQuota=80%
 MemoryMax=4G
 TasksMax=100
 
-# Watchdog
-WatchdogSec=60
+# Watchdog - TEMPORARILY DISABLED for testing
+# WatchdogSec=120
 NotifyAccess=main
 
 # Security hardening
