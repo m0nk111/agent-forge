@@ -1,500 +1,519 @@
 # Agent-Forge 🤖
 
-**Multi-agent orchestration platform for GitHub automation with role-ba**To add a new agent token:**
+> **Multi-agent orchestration platform for autonomous GitHub automation**
 
-```bash
-# Create token file
-echo "ghp_YOUR_NEW_TOKEN" > secrets/agents/my-agent.token
-chmod 600 secrets/agents/my-agent.token
+[![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-# Update config to reference it
-# config/agents.yaml:
-#   github_token: null  # Token loaded from secrets/
-```
+Agent-Forge is an intelligent multi-agent system that automates GitHub workflows using specialized AI agents powered by various LLMs (OpenAI, Anthropic, Google, local models). Features include **unified agent runtime** with role-based lifecycle management, autonomous issue detection, automated code reviews, real-time WebSocket monitoring, and comprehensive logging.
 
-**Bot Account Setup (m0nk111-bot):**
+---
 
-The bot agent requires a separate GitHub token:
+## 📑 Table of Contents
 
-```bash
-# 1. Create token for bot account (see secrets/agents/m0nk111-bot.token.example)
-echo "ghp_BOT_TOKEN_HERE" > secrets/agents/m0nk111-bot.token
-chmod 600 secrets/agents/m0nk111-bot.token
+- [Features](#-features)
+- [Quick Start](#-quick-start)
+- [Architecture](#-architecture)
+- [Project Structure](#-project-structure)
+- [Configuration](#-configuration)
+- [Usage](#-usage)
+- [Monitoring](#-monitoring)
+- [Security](#-security)
+- [Documentation](#-documentation)
+- [Development](#-development)
+- [License](#-license)
 
-# 2. Bot account should have "Triage" role on repositories (not "Write")
-# 3. Bot agent has read-only permissions and cannot modify code
-# 4. Restart services to load the token
-systemctl restart agent-forge
-```
+---
 
-See [docs/TOKEN_SECURITY.md](docs/TOKEN_SECURITY.md) for complete security guide and [docs/AGENT_ROLES.md](docs/AGENT_ROLES.md) for bot role details.
+## ✨ Features
 
-## 📊 Monitoring & Dashboardent, real-time monitoring, and intelligent task distribution**
-
-Agent-Forge is an intelligent multi-agent system that automates GitHub workflows using specialized AI agents powered by various LLMs (OpenAI, Anthropic, Google, local models). Each agent has a specific role (coder, reviewer, coordinator, polling) and can be assigned different LLMs based on the task requirements. Features include autonomous issue detection, automated code reviews, real-time WebSocket monitoring, and comprehensive logging.
-
-## 🌟 Key Features
-
-- 🤖 **Multi-Agent Orchestration**: Specialized agents for different roles (coding, reviewing, coordinating, polling)
-- 🎯 **Role-Based LLM Assignment**: Assign different LLMs to agents based on their specialization
-- 📊 **Real-Time Monitoring**: WebSocket-powered dashboard for live agent status and logs
+### Core Capabilities
+- 🤖 **Unified Agent Runtime**: Role-based lifecycle management (always-on vs on-demand agents)
+- 🎯 **Multi-Role Support**: Coordinator, Developer, Bot, Reviewer, Tester, Documenter, Researcher
+- 📊 **Real-Time Monitoring**: WebSocket-powered dashboard with live agent status and logs
 - 🔄 **Autonomous Operation**: Automatic issue detection and task distribution
-- 🧪 **Agent Modes**: Switch between idle, test, and production modes per agent
+- ✅ **Instruction Validation**: Automatic enforcement of Copilot instructions (#63)
 - 🔍 **Code Review Automation**: AI-powered PR reviews with quality scoring
-- ✅ **Instruction Validation**: Automatic enforcement of Copilot instructions and project standards (#63)
-- 📝 **Comprehensive Logging**: Structured logging with real-time updates
+
+### Technical Features
+- 🏗️ **Industry Patterns**: LangChain supervisor model, AutoGPT sub-agents, MS Semantic Kernel lazy loading
+- 🎨 **Visual Documentation**: Complete Mermaid diagrams for architecture understanding (#67)
+- 🔒 **Security**: SSH/PAM authentication, token management, role-based permissions
 - 🌐 **LAN Access**: Dashboard accessible from any device on your network
-- 🔒 **Bot Account Support**: Dedicated bot account for GitHub operations (no email spam)
-- 🎨 **Visual Documentation**: Complete Mermaid diagrams for architecture, data flow, and component interactions (#67)
-- 🧭 **Agent Awareness**: Clear workspace identification prevents agents from confusing projects
+- 📝 **Comprehensive Logging**: Structured logging with real-time updates
+- 🧭 **Workspace Awareness**: Clear project identification prevents agent confusion
+
+---
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
+```bash
+# Required
 - Python 3.12+
-- Ollama installed and running (for local models)
-- At least one LLM model pulled (e.g., `ollama pull qwen2.5-coder:7b`)
-- GitHub personal access token (for GitHub integration)
+- Ollama (for local LLMs)
+- GitHub Personal Access Token
+
+# Recommended
+- systemd (for production deployment)
+- 16GB+ RAM for local LLMs
+```
 
 ### Installation
 
 ```bash
+# Clone repository
 git clone https://github.com/m0nk111/agent-forge.git
 cd agent-forge
+
+# Install dependencies
 pip install -r requirements.txt
+
+# Pull LLM model (example)
+ollama pull qwen2.5-coder:7b
+
+# Setup secrets
+mkdir -p secrets/agents
+echo "ghp_YOUR_GITHUB_TOKEN" > secrets/agents/m0nk111-qwen-agent.token
+chmod 600 secrets/agents/*.token
 ```
 
-### Basic Usage
+### Quick Run
 
 ```bash
-# Start the service manager (all services in one)
-python3 -m agents.service_manager --web-port 8897 --monitor-port 7997
+# Start all services
+python3 -m engine.core.service_manager
 
-# Or use individual components:
+# Or start specific services
+python3 -m engine.core.service_manager --no-polling --no-web-ui
 
-# Start monitoring dashboard
-./scripts/launch_dashboard.sh
-
-# Run autonomous polling agent
-python3 agents/polling_service.py --repos owner/repo --interval 300
-
-# Execute agent with config file
-python3 agents/code_agent.py --config configs/caramba_personality_ai.yaml --phase 1
+# Access dashboard
+open http://localhost:8897/dashboard.html
 ```
 
-## � Security & Authentication
-
-### Dashboard Authentication
-
-Agent-Forge uses **SSH/PAM authentication** for dashboard security:
-
-- **Login**: Use your system SSH credentials (same as terminal login)
-- **Session**: 24-hour JWT tokens with HttpOnly cookies
-- **Port**: Authentication service runs on port 7996
-- **Setup**: Automatically starts via systemd service
-
-**First Time Setup:**
-
-```bash
-# Auth service is automatically enabled (systemd)
-sudo systemctl status agent-forge-auth
-
-# Dashboard redirects to login if not authenticated
-# Login with your system username/password
-```
-
-### Token Security
-
-GitHub tokens are stored securely outside git:
-
-```bash
-# Tokens stored in secrets/ directory (0600 permissions)
-secrets/agents/{agent-id}.token
-
-# Never committed to git (blocked by .gitignore)
-# Automatically loaded by ConfigManager
-```
-
-**To add a new agent token:**
-
-```bash
-# Create token file
-echo "ghp_YOUR_NEW_TOKEN" > secrets/agents/my-agent.token
-chmod 600 secrets/agents/my-agent.token
-
-# Update config to reference it
-# config/agents.yaml:
-#   github_token: null  # Token loaded from secrets/
-```
-
-See [docs/TOKEN_SECURITY.md](docs/TOKEN_SECURITY.md) for complete security guide.
-
-## �📊 Monitoring & Dashboard
-
-Agent-Forge includes a real-time monitoring dashboard for tracking agent activity, logs, and progress.
-
-### Starting the Dashboard
-
-```bash
-# Start dashboard server (accessible on LAN)
-./scripts/launch_dashboard.sh
-
-# Or manually:
-python3 -m http.server 8897 --directory frontend --bind 0.0.0.0
-```
-
-### Accessing the Dashboard
-
-- **Local**: http://localhost:8897/dashboard.html
-- **LAN**: http://192.168.1.26:8897/dashboard.html (replace with your machine's IP)
-- **Auto-detection**: The dashboard automatically detects your network and connects to the WebSocket server
-
-### WebSocket Server
-
-The monitoring service runs on port 7997 and is accessible from:
-- Local: ws://localhost:7997/ws/monitor
-- LAN: ws://192.168.1.26:7997/ws/monitor
-
-### Using Monitoring with Agents
-
-Enable monitoring when running agents:
-
-```bash
-# Run agent with monitoring enabled
-python3 agents/code_agent.py --config configs/my_project.yaml --phase 1 --enable-monitoring --agent-id "my-agent"
-
-# Test monitoring integration
-python3 tests/test_qwen_monitoring.py
-```
-
-See [docs/QWEN_MONITORING.md](docs/QWEN_MONITORING.md) for detailed documentation.
+---
 
 ## 🏗️ Architecture
 
-> **📊 Visual Documentation**: See [Architecture Diagrams](docs/diagrams/architecture-overview.md) for visual system overview, data flow, and component interactions.
-
 ### Unified Agent Runtime
 
-Agent-Forge uses a **unified agent runtime** with role-based lifecycle management, following industry best practices from LangChain, AutoGPT, and Microsoft Semantic Kernel.
+Agent-Forge uses a **unified agent runtime** with role-based lifecycle management:
 
-**Key Features:**
-- **Role-Based Lifecycle**: 
-  - **Always-on agents** (coordinator, developer): Start immediately, run continuously
-  - **On-demand agents** (bot, reviewer, tester, documenter, researcher): Register but only start when triggered (lazy loading)
-- **Resource Efficient**: Only runs agents when needed, reducing memory/CPU usage
-- **Scalable**: Add new agent roles without code changes, just config updates
-- **Centralized Management**: AgentRegistry class handles all agent lifecycle operations
+**Lifecycle Strategies:**
+- **Always-on**: Coordinator, Developer (start immediately, run continuously)
+- **On-demand**: Bot, Reviewer, Tester, Documenter, Researcher (lazy loading)
 
-**Architecture Components:**
-- `engine/core/agent_registry.py`: Central lifecycle manager
-- `engine/core/service_manager.py`: Service orchestrator with agent_runtime
-- `engine/runners/code_agent.py`: Developer agent (always-on)
-- `engine/runners/bot_agent.py`: Bot agent (on-demand)
-- `engine/runners/monitor_service.py`: Real-time monitoring and health checks
-
-For complete architecture details, see [ARCHITECTURE.md](ARCHITECTURE.md).
-
-## 📰 Recent Developments
-
-### October 2025 Updates
-
-**✅ Completed:**
-- **PR #63**: Comprehensive instruction validation system with 30+ tests and 78% coverage
-  - Auto-fix commit messages and changelog entries
-  - Validation of file locations, port usage, documentation language
-  - Educational feedback explains why rules exist
-- **PR #68 / Issue #67**: Complete architecture documentation suite
-  - AGENT_ONBOARDING.md: Quick start checklist for AI agents
-  - ARCHITECTURE.md: Deep technical architecture (645 lines)
-  - PORT_REFERENCE.md: Port allocation guide (574 lines)
-  - Visual Mermaid diagrams (1389 lines total)
-  - Frontend structure clarification (dashboard.html is DEFAULT)
-- **Agent Awareness Fix**: Prominent workspace identification in copilot-instructions.md
-  - Prevents agents from confusing agent-forge with other projects (Caramba, AudioTransfer)
-  - Clear "THIS IS AGENT-FORGE" header prevents historical confusion
-- **Project Refactoring**: `qwen_agent.py` → `code_agent.py` for generic LLM support
-- **Unified Dashboard**: New modern dashboard combining monitoring + configuration (#27, #28, #65)
-
-**🐛 Known Issues:**
-- GitHub CLI incompatible with systemd services (Bug #1) - FIXED via REST API migration
-- See [docs/BUGS_TRACKING.md](docs/BUGS_TRACKING.md) for active bug tracking
+**Key Components:**
+- `AgentRegistry`: Centralized lifecycle manager
+- `ServiceManager`: Orchestrates all services and agents
+- `MonitorService`: Real-time status tracking and health checks
+- `PollingService`: Autonomous GitHub issue detection
 
 ### Agent Roles
 
-Agent-Forge supports multiple specialized agent roles:
+| Role | Lifecycle | Purpose | Best LLMs |
+|------|-----------|---------|-----------|
+| **Coordinator** | Always-on | Task orchestration, planning | Claude 3 Opus, GPT-4 Turbo |
+| **Developer** | Always-on | Code generation, bug fixes | Qwen2.5-Coder 32B, GPT-4 Turbo |
+| **Bot** | On-demand | GitHub operations (comments, labels) | GPT-3.5 Turbo, Llama 3 8B |
+| **Reviewer** | On-demand | PR reviews, code quality | Claude 3 Sonnet, GPT-4 |
+| **Tester** | On-demand | Test execution, validation | Gemini Pro, Llama 3 8B |
+| **Documenter** | On-demand | Documentation generation | GPT-4, Claude 3 |
+| **Researcher** | On-demand | Information gathering | Gemini Pro, Mixtral |
 
-1. **Coder Agent**: Implements features, fixes bugs, writes code
-   - Best LLMs: GPT-4 Turbo, Qwen2.5-Coder 32B, DeepSeek-Coder 33B
-   
-2. **Code Review Agent**: Reviews PRs, provides feedback, ensures quality
-   - Best LLMs: GPT-4 Turbo, Claude 3 Sonnet, Qwen2.5-Coder 32B
-   
-3. **Coordinator Agent**: Plans tasks, assigns work, manages project
-   - Best LLMs: Claude 3 Opus, GPT-4 Turbo, Mixtral 8x22B
-   
-4. **Polling Agent**: Monitors GitHub, detects issues, triggers workflows
-   - Best LLMs: GPT-3.5 Turbo, Gemini Pro (free), Llama 3 8B
+**See also:** [ARCHITECTURE.md](ARCHITECTURE.md) for detailed system design
 
-### Service Architecture
+---
+
+## 📁 Project Structure
 
 ```
 agent-forge/
-├── engine/              # Core engine components
-│   ├── core/
-│   │   ├── agent_registry.py       # Unified agent lifecycle manager
-│   │   ├── service_manager.py      # Central service orchestrator
-│   │   └── config_manager.py       # Configuration management
-│   ├── runners/
-│   │   ├── code_agent.py           # Developer agent (always-on)
-│   │   ├── bot_agent.py            # Bot agent (on-demand)
-│   │   ├── coordinator_agent.py    # Coordinator agent (always-on)
-│   │   └── monitor_service.py      # Real-time monitoring
-│   ├── operations/
-│   │   ├── file_editor.py          # File editing operations
-│   │   ├── terminal_operations.py  # Terminal command execution
-│   │   ├── git_operations.py       # Git operations
-│   │   └── github_api_helper.py    # GitHub API wrapper
-│   └── validation/
-│       └── instruction_validator.py # Instruction validation
-├── frontend/            # Real-time monitoring dashboard
-│   └── dashboard.html          # WebSocket-powered UI
-├── config/              # Configuration files (role-based)
-│   ├── agents/          # Agent configs (per-agent YAML)
-│   ├── services/        # Service configs (coordinator, polling)
-│   ├── system/          # System configs (repositories, trusted_agents)
-│   └── rules/           # Validation rules (instruction_rules, review_criteria)
-├── docs/                # Documentation
-└── scripts/             # Deployment and utility scripts
+├── engine/                      # Core engine components
+│   ├── core/                    # Core orchestration
+│   │   ├── agent_registry.py   # Unified agent lifecycle manager ⭐
+│   │   ├── service_manager.py  # Service orchestrator
+│   │   ├── config_manager.py   # Configuration management
+│   │   └── permissions.py      # Role-based permissions
+│   ├── runners/                 # Agent implementations
+│   │   ├── code_agent.py       # Developer agent (always-on)
+│   │   ├── bot_agent.py        # Bot agent (on-demand)
+│   │   ├── coordinator_agent.py # Coordinator agent (always-on)
+│   │   ├── monitor_service.py  # Monitoring & health checks
+│   │   └── polling_service.py  # GitHub polling service
+│   ├── operations/              # Operations modules
+│   │   ├── file_editor.py      # File editing
+│   │   ├── git_operations.py   # Git operations
+│   │   ├── github_api_helper.py # GitHub API wrapper
+│   │   └── terminal_operations.py # Terminal execution
+│   └── validation/              # Validation modules
+│       ├── instruction_validator.py # Copilot instructions
+│       └── instruction_parser.py    # Rule parsing
+│
+├── config/                      # Configuration files (YAML)
+│   ├── agents/                  # Per-agent configs
+│   │   ├── m0nk111-qwen-agent.yaml  # Developer agent config
+│   │   └── m0nk111-bot.yaml         # Bot agent config
+│   ├── services/                # Service configs
+│   │   ├── coordinator.yaml     # Coordinator config
+│   │   └── polling.yaml         # Polling config
+│   ├── system/                  # System configs
+│   │   ├── system.yaml          # Global system settings
+│   │   ├── repositories.yaml    # Monitored repositories
+│   │   └── trusted_agents.yaml  # Agent trust list
+│   └── rules/                   # Validation rules
+│       ├── instruction_rules.yaml   # Instruction validation
+│       ├── review_criteria.yaml     # PR review criteria
+│       └── security_audit.yaml      # Security rules
+│
+├── frontend/                    # Web dashboards
+│   ├── dashboard.html          # Main monitoring dashboard ⭐
+│   ├── config_ui.html          # Configuration UI
+│   └── monitoring_dashboard.html # Legacy monitoring
+│
+├── docs/                        # Documentation
+│   ├── ARCHITECTURE.md         # System architecture
+│   ├── AGENT_ONBOARDING.md     # Agent quick start
+│   ├── MONITORING_API.md       # API documentation
+│   ├── PORT_REFERENCE.md       # Port allocation guide
+│   └── diagrams/               # Architecture diagrams
+│
+├── secrets/                     # Secrets (gitignored)
+│   └── agents/                 # Agent tokens
+│       ├── m0nk111-qwen-agent.token
+│       └── m0nk111-bot.token
+│
+├── scripts/                     # Utility scripts
+│   ├── sync-to-production.sh   # Production deployment
+│   ├── start-service.sh        # Service startup
+│   └── install-service.sh      # Systemd installation
+│
+├── systemd/                     # Systemd service files
+│   └── agent-forge.service     # Main service unit
+│
+├── tests/                       # Test suite
+│   ├── test_agent_registry.py  # Registry tests
+│   ├── test_instruction_validator.py # Validation tests
+│   └── manual/                 # Manual test scripts
+│
+├── CHANGELOG.md                # Version history
+├── ARCHITECTURE.md             # Architecture documentation
+├── LICENSE                     # AGPL-3.0 license
+├── requirements.txt            # Python dependencies
+└── README.md                   # This file
+
+⭐ = Recently added/updated
 ```
 
-**Agent Lifecycle:**
-1. **Registration**: AgentRegistry loads enabled agents from config
-2. **Always-on startup**: Coordinator and developer agents start immediately
-3. **On-demand registration**: Bot, reviewer, tester agents register but don't start
-4. **Lazy loading**: On-demand agents start only when triggered by events
-5. **Health monitoring**: All agents report status to monitoring service
+---
 
-## 📚 Documentation
+## ⚙️ Configuration
 
-- [Agent Architecture](docs/ARCHITECTURE.md) - System design and components
-- [LLM Provider Setup](docs/LLM_PROVIDER_SETUP.md) - API key setup for all providers
-- [Role-LLM Matrix](docs/ROLE_LLM_MATRIX.md) - Recommended LLMs per agent role
-- [Agent Roles](docs/AGENT_ROLES.md) - Detailed role descriptions
-- [Monitoring Guide](docs/QWEN_MONITORING.md) - Dashboard and WebSocket setup
-- [Bot Usage Guide](docs/BOT_USAGE_GUIDE.md) - Bot account setup and usage
-- [Instruction Validation Guide](docs/INSTRUCTION_VALIDATION_GUIDE.md) - Enforce project standards
-- [Security Guide](docs/SECURITY.md) - Security best practices
-- [Licensing Guide](docs/LICENSING.md) - Dual-license overview and decision matrix
-- [Commercial License Terms](docs/COMMERCIAL-LICENSE.md) - Proprietary usage agreement
+### System Configuration
 
-## 🎯 Use Cases
-
-- 🎯 **Issue Implementation**: Autonomous implementation of GitHub issues
-- 🔧 **Feature Development**: Multi-phase feature additions
-- 🔍 **Code Reviews**: Automated PR reviews with quality scoring
-- 📝 **Documentation**: Auto-generate docs from code
-- 🧪 **Test Generation**: Create unit/integration tests
-- 🔄 **Refactoring**: Large-scale code improvements
-- 🐛 **Bug Fixing**: Automated debugging workflows
-- 📊 **Project Coordination**: Multi-agent task planning and distribution
-
-## 🔧 Advanced Features
-
-### Multi-LLM Support
-
-Configure different LLMs for different agents:
+**File:** `config/system/system.yaml`
 
 ```yaml
-# config/agent_config.yaml
-agents:
-  coder:
-    llm: "gpt-4-turbo"
-    fallback: "qwen2.5-coder:32b"
+service_manager:
+  enable_polling: true
+  enable_monitoring: true
+  enable_web_ui: true
+  enable_agent_runtime: true  # Unified agent runtime
   
-  reviewer:
-    llm: "claude-3-sonnet"
-    fallback: "gpt-4-turbo"
+  polling_interval: 300  # 5 minutes
+  monitoring_port: 7997
+  web_ui_port: 8897
   
-  coordinator:
-    llm: "claude-3-opus"
-    fallback: "gpt-4-turbo"
+  polling_repos:
+    - "m0nk111/agent-forge"
 ```
 
-### Autonomous Polling
+### Agent Configuration
 
-Monitor GitHub repositories for new issues automatically:
+**File:** `config/agents/{agent-id}.yaml`
+
+```yaml
+agent_id: m0nk111-qwen-agent
+name: M0nk111 Qwen Agent
+role: developer  # developer, bot, coordinator, reviewer, tester, documenter, researcher
+enabled: true
+
+# LLM Configuration
+model_provider: local  # local, openai, anthropic, google
+model_name: qwen2.5-coder:7b
+api_base_url: http://localhost:11434
+
+# GitHub Configuration
+github_token: null  # Loaded from secrets/agents/{agent-id}.token
+
+# Permissions
+local_shell_enabled: true
+shell_permissions: read_write
+file_permissions: read_write
+git_permissions: full
+github_permissions: full
+```
+
+---
+
+## 🎮 Usage
+
+### Service Manager
 
 ```bash
-python3 agents/polling_service.py \
-  --repos owner/repo1 owner/repo2 \
-  --interval 300 \
-  --labels agent-ready auto-assign \
-  --max-concurrent 3
+# Start all services
+python3 -m engine.core.service_manager
+
+# Selective services
+python3 -m engine.core.service_manager \
+  --no-polling \
+  --no-web-ui \
+  --no-agent-runtime
+
+# Custom ports
+python3 -m engine.core.service_manager \
+  --web-port 8080 \
+  --monitor-port 8765
 ```
 
-### Automated Code Review
-
-AI-powered PR reviews with comprehensive checks:
+### Production Deployment
 
 ```bash
-python -m agents.pr_reviewer owner/repo 42 --username my-bot
-```
-
-### Instruction Validation
-
-Automatically enforce project standards defined in `.github/copilot-instructions.md`:
-
-```python
-from agents.instruction_validator import InstructionValidator
-
-# Initialize validator
-validator = InstructionValidator(project_root="/path/to/project")
-
-# Validate file location (blocks root directory violations)
-result = validator.validate_file_location("test.py")
-if not result.valid:
-    print(f"❌ {result.message}")
-
-# Validate commit message (enforces conventional commits)
-result = validator.validate_commit_message("update files")
-if not result.valid:
-    # Auto-fix invalid format
-    fixed = validator.auto_fix_commit_message("update files")
-    print(f"✅ Auto-fixed: {fixed}")
-
-# Generate compliance report
-report = validator.generate_compliance_report(
-    changed_files=["agents/test.py", "CHANGELOG.md"],
-    commit_message="feat(validator): add validation"
-)
-print(report.get_summary())
-```
-
-**Features:**
-- ✅ File location validation (root directory rule)
-- ✅ Commit message format enforcement (conventional commits)
-- ✅ Changelog requirement checking
-- ✅ Port usage validation (assigned ranges)
-- ✅ Documentation language checking (English)
-- ✅ Auto-fix for common violations
-- ✅ Educational feedback explaining rules
-
-**Integration:**
-- Automatically integrated into `IssueHandler`, `FileEditor`, and `GitOperations`
-- Non-breaking and optional (fails gracefully if disabled)
-- Configurable via `config/instruction_rules.yaml`
-
-See [Instruction Validation Guide](docs/INSTRUCTION_VALIDATION_GUIDE.md) for detailed usage.
-
-### Bot Account Operations
-
-Dedicated bot account for GitHub operations:
-
-```bash
-python -m agents.bot_agent create \
-  --repo owner/repo \
-  --title "New feature" \
-  --body "Description" \
-  --labels "enhancement,high-priority"
-```
-
-## 🌐 Supported LLM Providers
-
-### Commercial
-- **OpenAI**: GPT-4 Turbo, GPT-4, GPT-3.5 Turbo
-- **Anthropic**: Claude 3 Opus, Sonnet, Haiku
-- **Google**: Gemini Pro (free tier available)
-- **Cohere**: Command models
-- **Together AI**: Open source model hosting
-
-### Local (via Ollama)
-- **Qwen2.5-Coder**: 7B, 14B, 32B (specialized for code)
-- **DeepSeek-Coder**: 6.7B, 33B
-- **CodeLlama**: 7B, 13B, 34B
-- **Mixtral**: 8x7B, 8x22B (strong reasoning)
-- **Llama 3**: 8B, 70B
-
-See [docs/LLM_PROVIDER_SETUP.md](docs/LLM_PROVIDER_SETUP.md) for setup guides and cost comparison.
-
-## 🔐 Security
-
-- 🔒 **Token Security**: Store GitHub tokens securely in environment variables
-- 🛡️ **Terminal Whitelist**: Configurable command whitelist/blacklist
-- ✅ **Operation Approval**: Critical operations require confirmation
-- 📝 **Audit Logging**: All operations logged for security review
-- 🚫 **Bot Account Isolation**: Separate bot account prevents email spam
-
-## 📦 Project Structure
-
-```
-agent-forge/
-├── agents/              # Agent implementations
-├── configs/             # Project configurations
-├── docs/                # Documentation
-├── frontend/            # Real-time monitoring dashboard
-├── scripts/             # Deployment and utility scripts
-├── tests/               # Unit tests
-└── README.md
-```
-
-## 🚀 Deployment
-
-### Systemd Service (Production)
-
-```bash
-# Install as system service
-sudo ./scripts/install-service.sh
-
-# Configure environment
-sudo nano /etc/default/agent-forge
-# Add: BOT_GITHUB_TOKEN=your_token_here
+# Install systemd service
+sudo bash scripts/install-service.sh
 
 # Start service
 sudo systemctl start agent-forge
+
+# Enable auto-start
 sudo systemctl enable agent-forge
+
+# Check status
+sudo systemctl status agent-forge
 
 # View logs
 sudo journalctl -u agent-forge -f
 ```
 
-## 🤝 Contributing
+### Sync to Production
 
-Contributions welcome! Please:
+```bash
+# Development → Production sync
+bash scripts/sync-to-production.sh
 
-1. Fork the repository
-2. Create a feature branch
-3. Add tests for new functionality
-4. Submit a pull request
+# Manual sync
+rsync -av --exclude='.git' \
+  /home/flip/agent-forge/ \
+  /opt/agent-forge/
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-## 📄 License
-
-Agent-Forge is **dual licensed**:
-
-- **GNU Affero General Public License v3.0 (AGPLv3)** — see [LICENSE](LICENSE)
-- **Agent Forge Commercial License** — see [docs/COMMERCIAL-LICENSE.md](docs/COMMERCIAL-LICENSE.md)
-
-Choose the license that matches your use case. See [docs/LICENSING.md](docs/LICENSING.md) for guidance and FAQs.
-
-## 🙏 Credits
-
-Created for the Caramba AI platform project.
-
-Powered by:
-- [Ollama](https://ollama.com) - Local LLM runtime
-- [FastAPI](https://fastapi.tiangolo.com) - Backend framework
-- [WebSocket](https://developer.mozilla.org/en-US/docs/Web/API/WebSocket) - Real-time communication
-
-## 📞 Support
-
-- **Issues**: [GitHub Issues](https://github.com/m0nk111/agent-forge/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/m0nk111/agent-forge/discussions)
-- **Documentation**: [docs/](docs/)
+sudo chown -R agent-forge:agent-forge /opt/agent-forge
+sudo systemctl restart agent-forge
+```
 
 ---
 
-**Status**: Active Development | **Version**: 0.2.0 | **Python**: 3.12+
+## 📊 Monitoring
 
-Made with ❤️ by the Agent-Forge community
+### Dashboard Access
+
+- **Main Dashboard**: http://localhost:8897/dashboard.html
+- **Config UI**: http://localhost:8897/config_ui.html
+- **API Endpoint**: http://localhost:7997/api
+
+### REST API
+
+```bash
+# Services status
+curl http://localhost:7997/api/services | jq .
+
+# Agents status
+curl http://localhost:7997/api/agents | jq .
+
+# Agent details
+curl http://localhost:7997/api/agents/m0nk111-qwen-agent/status | jq .
+
+# Agent logs
+curl http://localhost:7997/api/agents/m0nk111-qwen-agent/logs | jq .
+
+# Activity history
+curl http://localhost:7997/api/activity | jq .
+```
+
+### WebSocket
+
+```javascript
+// Connect to monitoring WebSocket
+const ws = new WebSocket('ws://localhost:7997/ws/monitor');
+
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  console.log('Agent update:', data);
+};
+```
+
+**See also:** [docs/MONITORING_API.md](docs/MONITORING_API.md)
+
+---
+
+## 🔒 Security
+
+### Token Management
+
+```bash
+# Create token file
+echo "ghp_YOUR_GITHUB_TOKEN" > secrets/agents/my-agent.token
+chmod 600 secrets/agents/my-agent.token
+
+# Token is automatically loaded by ConfigManager
+# Never commit tokens to git (blocked by .gitignore)
+```
+
+### Authentication
+
+Agent-Forge uses **SSH/PAM authentication** for dashboard access:
+
+- Login with system credentials (SSH username/password)
+- 24-hour JWT session tokens
+- HttpOnly cookies for security
+- Authentication service on port 7996
+
+### Permissions
+
+Role-based permissions per agent:
+- **Read-only**: Can read files and run read-only commands
+- **Developer**: Full file/terminal access, no PR merge
+- **Admin**: Full access including PR merge and config changes
+
+**See also:** [docs/TOKEN_SECURITY.md](docs/TOKEN_SECURITY.md)
+
+---
+
+## 📚 Documentation
+
+### Core Documentation
+- [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture and design
+- [CHANGELOG.md](CHANGELOG.md) - Version history and changes
+- [LICENSE](LICENSE) - AGPL-3.0 license terms
+
+### Guides
+- [docs/AGENT_ONBOARDING.md](docs/AGENT_ONBOARDING.md) - Quick start checklist
+- [docs/MONITORING_API.md](docs/MONITORING_API.md) - API documentation
+- [docs/PORT_REFERENCE.md](docs/PORT_REFERENCE.md) - Port allocation guide
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) - Deployment guide
+- [docs/TESTING.md](docs/TESTING.md) - Testing guide
+
+### Visual Documentation
+- [docs/diagrams/architecture-overview.md](docs/diagrams/architecture-overview.md) - Architecture diagrams
+- [docs/diagrams/data-flow.md](docs/diagrams/data-flow.md) - Data flow diagrams
+- [docs/diagrams/component-interactions.md](docs/diagrams/component-interactions.md) - Component diagrams
+
+---
+
+## 🛠️ Development
+
+### Setup Development Environment
+
+```bash
+# Clone repository
+git clone https://github.com/m0nk111/agent-forge.git
+cd agent-forge
+
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Install development dependencies
+pip install pytest pytest-asyncio black pylint mypy
+```
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run specific test file
+pytest tests/test_agent_registry.py
+
+# Run with coverage
+pytest --cov=engine --cov-report=html
+
+# Run integration tests
+pytest tests/test_integration_validator.py
+```
+
+### Code Style
+
+```bash
+# Format code
+black engine/ tests/
+
+# Lint code
+pylint engine/
+
+# Type checking
+mypy engine/
+```
+
+### Contributing
+
+1. Follow the [Copilot Instructions](.github/copilot-instructions.md)
+2. Update [CHANGELOG.md](CHANGELOG.md) for all changes
+3. Add tests for new features
+4. Run linters before committing
+5. Use conventional commit messages
+
+---
+
+## 📊 Recent Updates
+
+### October 2025
+
+**✅ Unified Agent Runtime** (Breaking Change):
+- Implemented role-based lifecycle management (always-on vs on-demand)
+- Following industry patterns: LangChain, AutoGPT, MS Semantic Kernel
+- Resource-efficient lazy loading for event-driven agents
+- CLI: `--no-agent-runtime` (replaces deprecated `--no-qwen`)
+
+**✅ Instruction Validation System** (PR #63):
+- Auto-fix commit messages and changelog entries
+- 30+ tests with 78% code coverage
+- Validation of file locations, ports, documentation language
+
+**✅ Visual Documentation Suite** (PR #68):
+- Complete Mermaid architecture diagrams (1389 lines)
+- Agent onboarding checklist
+- Port reference guide with troubleshooting
+
+---
+
+## 📄 License
+
+This project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
+
+- ✅ Commercial use allowed with dual licensing
+- ✅ Modification and distribution allowed
+- ⚠️ Network use requires source disclosure (AGPL clause)
+- ⚠️ Must preserve copyright notices
+
+**For commercial licensing without AGPL restrictions:**
+Contact: [Commercial License Inquiry](mailto:info@example.com)
+
+See [LICENSE](LICENSE) and [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md) for details.
+
+---
+
+## 🤝 Support
+
+- **Documentation**: [docs/](docs/)
+- **Issues**: [GitHub Issues](https://github.com/m0nk111/agent-forge/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/m0nk111/agent-forge/discussions)
+
+---
+
+**Built with ❤️ by the Agent-Forge team**
