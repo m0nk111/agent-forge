@@ -352,15 +352,23 @@ class IssueHandler:
         # If issue title implies file creation but no explicit "create" tasks found,
         # synthesize a primary task to ensure the file gets created
         title_lower = issue['title'].lower()
+        body_lower = body.lower()
         creation_keywords = ['create', 'add', 'new', 'generate', 'make']
         has_explicit_creation = any('create' in t['description'].lower() or 'add' in t['description'].lower() 
                                    for t in requirements['tasks'])
         
         if any(keyword in title_lower for keyword in creation_keywords) and not has_explicit_creation:
-            # Try to extract file path from title
+            # Try to extract file path from title OR body (body is more common)
             title_file_match = re.search(r'[\`]?([\w/.-]+\.\w+)', issue['title'])
-            if title_file_match:
+            body_file_match = re.search(r'[\`]?([\w/.-]+\.\w+)', body)
+            
+            file_path = None
+            if body_file_match:
+                file_path = body_file_match.group(1)
+            elif title_file_match:
                 file_path = title_file_match.group(1)
+            
+            if file_path:
                 print(f"   🧠 Synthesizing primary task: Create {file_path}")
                 requirements['tasks'].insert(0, {
                     'description': f"Create {file_path} as specified in the issue requirements",
