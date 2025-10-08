@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2025-10-08
+
+### Added
+
+- **Anti-spam protection and rate limiting** - Prevents GitHub account suspension
+  - New file: `engine/core/rate_limiter.py` - Comprehensive rate limiting system
+  - Features: Per-operation limits, cooldown periods, duplicate detection, burst protection
+  - Rate limits: Comments (3/min, 30/hour, 200/day), Issues (10/hour), PRs (5/hour)
+  - Cooldowns: Comments (20s), Issues (60s), PRs (120s)
+  - Duplicate detection: Tracks content hashes for 1 hour, blocks repeated operations
+  - Burst protection: Max 10 operations per minute, automatic cooldown
+  - GitHub API tracking: Respects 5000/hour limit, stops at 100 remaining
+  - Integrated into `GitHubAPIHelper` for automatic protection
+  - Documentation: `docs/ANTI_SPAM_PROTECTION.md`
+
+### Security
+
+- **Removed all hardcoded tokens** - Eliminated security risk
+  - Deleted `/opt/agent-forge/config/github.env` (contained hardcoded tokens)
+  - Deleted `/opt/agent-forge/config/.config/gh/` (gh CLI config with tokens)
+  - Deleted `/home/agent-forge/.config/gh/` (gh CLI config with tokens)
+  - Updated `.gitignore` to prevent token commits: `ghp_*`, `*github.env*`, `.config/gh/`
+  - All tokens now loaded from `secrets/agents/{agent-id}.token` files only
+
+### Fixed
+
+- **Model configuration** - Corrected Qwen model from 32b to 7b
+  - Fixed: `qwen2.5-coder:32b` (does not exist) → `qwen2.5-coder:7b` (available)
+  - Issue: Was causing 404 errors when querying Ollama for LLM code generation
+  - File: `engine/core/service_manager.py`
+
 ## [Unreleased] - 2025-10-07
 
 ### Added

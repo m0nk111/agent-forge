@@ -13,6 +13,13 @@ ENV/
 secrets/
 *.token
 *.key
+*github.env*
+.config/gh/
+keys.json
+*.key
+*.pem
+.env
+ghp_*
 
 # Testing
 .coverage
