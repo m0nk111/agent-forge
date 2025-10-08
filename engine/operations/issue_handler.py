@@ -16,6 +16,7 @@ import os
 from typing import Dict, List, Optional
 from pathlib import Path
 from engine.runners.monitor_service import AgentStatus
+from engine.operations.llm_file_editor import LLMFileEditor
 
 
 class IssueHandler:
@@ -39,6 +40,9 @@ class IssueHandler:
         """
         self.agent = agent
         self.project_root = agent.project_root
+        
+        # Initialize LLM-powered file editor
+        self.llm_editor = LLMFileEditor(agent)
         
         # Initialize instruction validator (optional)
         self.validator = None
@@ -445,7 +449,7 @@ class IssueHandler:
                             result['actions'].append(f"Searched for '{pattern}'")
                     
                     elif action_type == 'edit_file':
-                        # Edit or create file - extract file path from description
+                        # Edit or create file using LLM
                         description_lower = description.lower()
                         
                         # Try to get file path from action (set by _task_to_action) or extract from description
@@ -453,45 +457,28 @@ class IssueHandler:
                         
                         if not file_path:
                             # Try to extract file path from description
-                            # Look for patterns like "Create file: /path/to/file" or "create /path/to/file"
                             import re
                             # Match file paths (absolute or relative)
-                            # Pattern matches: README.md, /path/to/file, ./relative/path, docs/file.py, etc.
                             file_match = re.search(r'[`:]?\s*(\.?/?[\w/.-]+\.\w+)', description)
                             
                             if file_match:
-                                file_path = file_match.group(1).strip()  # Use group 1 (the path)
+                                file_path = file_match.group(1).strip()
                         
                         if file_path:
+                            # Use LLM to generate the file content
+                            edit_result = self.llm_editor.edit_file(
+                                file_path=file_path,
+                                instruction=description,
+                                context=f"Task: {phase['name']}"
+                            )
                             
-                            # If this is a create operation and file doesn't exist
-                            if 'create' in description_lower:
-                                # Try to extract content from issue body
-                                # For now, create with placeholder content
-                                import os
-                                os.makedirs(os.path.dirname(file_path) if os.path.dirname(file_path) else '.', exist_ok=True)
-                                
-                                # Simple content - look for "content:" in description or use default
-                                content = "0.1.0"  # Default for VERSION file
-                                
-                                with open(file_path, 'w') as f:
-                                    f.write(content)
-                                
+                            if edit_result['success']:
                                 result['files_modified'].append(file_path)
-                                result['actions'].append(f"Created {file_path}")
-                                print(f"      ✅ Created {file_path}")
+                                result['actions'].append(edit_result['changes_made'])
                             else:
-                                # Update existing file
-                                operation = action.get('operation', 'update')
-                                success = self._execute_edit(action)
-                                
-                                if success:
-                                    result['files_modified'].append(file_path)
-                                    result['actions'].append(f"Modified {file_path}")
-                                else:
-                                    result['success'] = False
-                                    result['error'] = f"Failed to edit {file_path}"
-                                    return result
+                                result['success'] = False
+                                result['error'] = edit_result.get('error', 'File edit failed')
+                                return result
                         else:
                             print(f"      ⚠️  Could not extract file path from: {description}")
                     
