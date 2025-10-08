@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Intelligent task recognition system** - Enables LLM-powered file creation from descriptive issues
+  - Smart fallback in `_task_to_action()`: Infers file creation when issue title contains creation keywords
+  - Task synthesis in `_parse_issue_requirements()`: Generates explicit tasks from implicit requirements
+  - Checks both issue title AND body for filenames (body checked first as it's more common)
+  - Handles descriptive tasks like "A circle in the center" without explicit "create" keywords
+  - Example: Issue titled "Create sun diagram" with body mentioning ` docs/sun.md` → synthesizes "Create docs/sun.md" task
+  - Fallback keywords: create, add, new, generate, make
+  - Enables autonomous file creation for issues that describe WHAT to include rather than HOW
+
 - **Anti-spam protection and rate limiting** - Prevents GitHub account suspension
   - New file: `engine/core/rate_limiter.py` - Comprehensive rate limiting system
   - Features: Per-operation limits, cooldown periods, duplicate detection, burst protection
