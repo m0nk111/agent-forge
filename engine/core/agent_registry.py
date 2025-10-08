@@ -13,6 +13,7 @@ from typing import Dict, List, Optional, Any
 from pathlib import Path
 
 from engine.core.config_manager import AgentConfig, AgentRole
+from engine.runners.monitor_service import AgentStatus
 
 logger = logging.getLogger(__name__)
 
@@ -186,11 +187,11 @@ class AgentRegistry:
         logger.info(f"🚀 Starting agent: {agent_id} ({managed.config.role})")
         managed.state = AgentState.STARTING
         
-        # Update monitoring
+        # Update monitoring with AgentStatus enum
         if self.monitor:
             self.monitor.update_agent_status(
                 agent_id=agent_id,
-                status="starting",
+                status=AgentStatus.WORKING,  # Use enum, not string
                 current_task="Initializing agent"
             )
         
@@ -206,11 +207,11 @@ class AgentRegistry:
         
         managed.state = AgentState.IDLE
         
-        # Update monitoring
+        # Update monitoring with AgentStatus enum
         if self.monitor:
             self.monitor.update_agent_status(
                 agent_id=agent_id,
-                status="idle",
+                status=AgentStatus.IDLE,  # Use enum, not string
                 current_task=None
             )
         
