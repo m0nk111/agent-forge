@@ -301,6 +301,9 @@ class IssueHandler:
         - Code blocks (examples)
         - File paths mentioned
         - Acceptance criteria
+        
+        Also intelligently adds a synthetic "create file" task if the issue
+        title implies file creation but no explicit creation tasks are found.
         """
         body = issue['body']
         
@@ -345,6 +348,25 @@ class IssueHandler:
                                 line.strip().lstrip('-*✓☑ ')
                             )
         
+        # 🧠 INTELLIGENT TASK SYNTHESIS:
+        # If issue title implies file creation but no explicit "create" tasks found,
+        # synthesize a primary task to ensure the file gets created
+        title_lower = issue['title'].lower()
+        creation_keywords = ['create', 'add', 'new', 'generate', 'make']
+        has_explicit_creation = any('create' in t['description'].lower() or 'add' in t['description'].lower() 
+                                   for t in requirements['tasks'])
+        
+        if any(keyword in title_lower for keyword in creation_keywords) and not has_explicit_creation:
+            # Try to extract file path from title
+            title_file_match = re.search(r'[\`]?([\w/.-]+\.\w+)', issue['title'])
+            if title_file_match:
+                file_path = title_file_match.group(1)
+                print(f"   🧠 Synthesizing primary task: Create {file_path}")
+                requirements['tasks'].insert(0, {
+                    'description': f"Create {file_path} as specified in the issue requirements",
+                    'completed': False
+                })
+        
         return requirements
     
     def _generate_plan(self, requirements: Dict) -> Dict:
@@ -386,7 +408,7 @@ class IssueHandler:
         implementation_actions = []
         
         for task in requirements['tasks']:
-            action = self._task_to_action(task)
+            action = self._task_to_action(task, issue_title=requirements['title'])
             if action:
                 implementation_actions.append(action)
         
@@ -641,7 +663,6 @@ class IssueHandler:
             # Create PR
             owner, repo_name = repo.split('/')
             pr_data = bot.create_pull_request(
-                owner=owner,
                 repo=repo_name,
                 title=f"Fix: {issue['title']}",
                 body=f"Resolves #{issue['number']}\n\nAutonomously implemented by Agent-Forge.",
@@ -666,8 +687,17 @@ class IssueHandler:
         keywords = [w for w in words if w not in stop_words and len(w) > 3]
         return keywords[0] if keywords else text
     
-    def _task_to_action(self, task: Dict) -> Optional[Dict]:
-        """Convert task description to action."""
+    def _task_to_action(self, task: Dict, issue_title: str = "") -> Optional[Dict]:
+        """
+        Convert task description to action.
+        
+        Args:
+            task: Task dictionary with 'description' field
+            issue_title: Issue title for context (used in smart fallback)
+            
+        Returns:
+            Action dictionary or None if task can't be converted
+        """
         description = task['description'].lower()
         original_desc = task['description']  # Keep original case for file extraction
         
@@ -685,7 +715,7 @@ class IssueHandler:
             if '://' in original_desc[max(0, file_match.start()-10):file_match.start()]:
                 file_path = None  # This is part of a URL, ignore it
         
-        # Detect action type from description
+        # Detect action type from description (explicit keywords)
         if 'add' in description or 'create' in description:
             action = {
                 'type': 'edit_file',
@@ -713,6 +743,28 @@ class IssueHandler:
             if file_path:
                 action['file'] = file_path
             return action
+        
+        # 🔍 SMART FALLBACK: Handle descriptive tasks when issue title implies file creation
+        # This catches cases like "Create a simple sun diagram" where tasks describe
+        # WHAT to include rather than using explicit "create" keywords
+        if issue_title:
+            title_lower = issue_title.lower()
+            creation_keywords = ['create', 'add', 'new', 'generate', 'make']
+            
+            # If issue title contains creation intent AND we have a file path context
+            if any(keyword in title_lower for keyword in creation_keywords):
+                # Try to extract file path from issue title
+                title_file_match = re.search(r'[\`]?([\w/.-]+\.\w+)', issue_title)
+                inferred_file = title_file_match.group(1) if title_file_match else file_path
+                
+                if inferred_file:
+                    print(f"   🧠 Smart fallback: Inferred file creation for '{inferred_file}' from issue title")
+                    return {
+                        'type': 'edit_file',
+                        'operation': 'add',
+                        'description': f"Create {inferred_file}: {original_desc}",
+                        'file': inferred_file
+                    }
         
         return None
     
