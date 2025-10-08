@@ -320,8 +320,26 @@
             animation: pulse 2s infinite;
         }
 
+        .status-working {
+            background: #f59e0b;
+            box-shadow: 0 0 8px #f59e0b;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-idle {
+            background: #3b82f6;
+            box-shadow: 0 0 6px #3b82f6;
+        }
+
         .status-offline {
+            background: #6b7280;
+            opacity: 0.6;
+        }
+
+        .status-error {
             background: #ef4444;
+            box-shadow: 0 0 10px #ef4444;
+            animation: pulse 1s infinite;
         }
 
         .status-busy {
@@ -1392,14 +1410,14 @@
                 'polling': 'GitHub Polling',
                 'monitoring': 'Monitoring API',
                 'web_ui': 'Web Dashboard',
-                'code_agent': 'Code Agent Runtime'
+                'agent_runtime': 'Agent Runtime'
             };
             
             const serviceTypes = {
                 'polling': 'GitHub Monitor',
                 'monitoring': 'WebSocket Server',
                 'web_ui': 'HTTP Server',
-                'code_agent': 'Agent Manager'
+                'agent_runtime': 'Unified Runtime'
             };
             
             const services = Object.entries(servicesStatus);
@@ -1443,8 +1461,27 @@
             document.getElementById('agent-count').textContent = `${agentArray.length} agent${agentArray.length > 1 ? 's' : ''}`;
             
             grid.innerHTML = agentArray.map(agent => {
-                const statusClass = agent.status === 'online' ? 'status-online' : 
-                                  agent.status === 'busy' ? 'status-busy' : 'status-offline';
+                // Map API status to CSS classes
+                // API returns: idle, working, error, offline
+                let statusClass = 'status-offline';
+                switch(agent.status.toLowerCase()) {
+                    case 'idle':
+                        statusClass = 'status-idle';
+                        break;
+                    case 'working':
+                        statusClass = 'status-working';
+                        break;
+                    case 'online':
+                        statusClass = 'status-online';
+                        break;
+                    case 'error':
+                        statusClass = 'status-error';
+                        break;
+                    case 'offline':
+                    default:
+                        statusClass = 'status-offline';
+                        break;
+                }
                 
                 const isSelected = agent.agent_id === selectedAgentId;
                 
