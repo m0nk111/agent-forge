@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Dashboard services status** - Services now show correct status indicators
+  - Fixed service name mapping: polling-service → polling, code_agent → agent_runtime
+  - Extract 'healthy' property from service objects correctly
+  - Dynamic service mapping from API response instead of hardcoded names
+  - All 4 services now show green indicators when online
+
 - **Agent status heartbeat** - Idle agents no longer timeout to offline status
   - Added periodic heartbeat in agent_runtime service loop (every 60s)
   - Prevents cleanup loop from marking idle agents as offline after 5min timeout
