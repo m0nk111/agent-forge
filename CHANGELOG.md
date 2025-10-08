@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **File path extraction in IssueHandler** - Agent can now detect and modify files
+  - Updated regex pattern to match relative file paths (e.g., README.md, docs/guide.md)
+  - Previous pattern `r'[`:]?\s*(/[\w/.\\-]+)'` only matched absolute paths starting with /
+  - New pattern `r'[`:]?\s*(\.?/?[\w/.-]+\.\w+)'` matches absolute, relative, and dot paths
+  - Added file path extraction in _task_to_action() method to set action['file'] directly
+  - Modified _execute_plan() to use action['file'] if available before regex extraction
+  - Fixes issue #74, #75, #76 where all had "Files modified: 0" due to regex mismatch
+  - Test: issue #77 will verify the fix works with real file modifications
+
 - **GitHub token loading** - Agents now authenticate correctly with GitHub API
   - get_agents() now loads tokens from secrets/ directory for all agents
   - Previously only get_agent() (single agent) loaded tokens
