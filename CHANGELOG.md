@@ -5,9 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - 2025-10-07
+## [Unreleased] - 2025-10-08
 
 ### Added
+
+- **README.md complete restructure** - Following GitHub industry standards
+  - Fixed corrupt markdown header (broken in line 1)
+  - Added GitHub badges: license, Python version, code style
+  - Complete table of contents with working anchor links
+  - Organized sections: Features, Quick Start, Architecture, Project Structure, Configuration, Usage, Monitoring, Security
+  - **Accurate project structure**: Reflects current engine/ architecture (not obsolete agents/)
+  - Visual markers (⭐) for recently added components
+  - Professional tone and clear formatting throughout
+  - Code examples with proper language tags
+  - API usage examples with curl commands
+  - Old README backed up as README.old.md
 
 - **Unified agent runtime with role-based lifecycle management** - Industry-standard architecture
   - engine/core/agent_registry.py: New AgentRegistry class for centralized agent lifecycle management
