@@ -55,10 +55,11 @@ class RateLimitConfig:
     updates_per_minute: int = 5
     updates_per_hour: int = 50
     
-    # Cooldown periods (seconds)
-    comment_cooldown: int = 20  # 20 seconds between comments
-    issue_cooldown: int = 60  # 1 minute between issue creations
-    pr_cooldown: int = 120  # 2 minutes between PR creations
+    # Cooldown periods (seconds) - reduced for normal operations
+    comment_cooldown: int = 15  # 15 seconds between comments
+    issue_cooldown: int = 30  # 30 seconds between issue creations
+    pr_cooldown: int = 60  # 60 seconds between PR creations
+    read_cooldown: int = 5  # 5 seconds between read operations
     
     # Duplicate detection
     duplicate_detection_window: int = 3600  # 1 hour
@@ -124,7 +125,8 @@ class RateLimiter:
         self,
         operation_type: OperationType,
         target: str,
-        content: Optional[str] = None
+        content: Optional[str] = None,
+        bypass: bool = False
     ) -> Tuple[bool, Optional[str]]:
         """
         Check if an operation is allowed.
@@ -133,10 +135,16 @@ class RateLimiter:
             operation_type: Type of operation
             target: Target (repo, issue, etc.)
             content: Optional content (for duplicate detection)
+            bypass: If True, bypass rate limits (for internal/trusted operations)
         
         Returns:
             Tuple of (allowed: bool, reason: Optional[str])
         """
+        # Bypass rate limits for internal operations
+        if bypass:
+            logger.debug(f"🔓 Rate limit bypassed for {operation_type.value} on {target}")
+            return True, None
+        
         now = time.time()
         
         # 1. Check GitHub API limits
@@ -258,6 +266,8 @@ class RateLimiter:
             OperationType.PR_COMMENT: self.config.comment_cooldown,
             OperationType.ISSUE_CREATE: self.config.issue_cooldown,
             OperationType.PR_CREATE: self.config.pr_cooldown,
+            OperationType.API_READ: self.config.read_cooldown,
+            OperationType.API_WRITE: self.config.read_cooldown,
         }
         return cooldowns.get(operation_type, 10)  # Default 10s
     

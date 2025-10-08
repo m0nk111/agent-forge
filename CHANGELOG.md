@@ -13,12 +13,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - New file: `engine/core/rate_limiter.py` - Comprehensive rate limiting system
   - Features: Per-operation limits, cooldown periods, duplicate detection, burst protection
   - Rate limits: Comments (3/min, 30/hour, 200/day), Issues (10/hour), PRs (5/hour)
-  - Cooldowns: Comments (20s), Issues (60s), PRs (120s)
+  - Cooldowns: Comments (15s), Issues (30s), PRs (60s), Reads (5s) - reduced for normal operations
   - Duplicate detection: Tracks content hashes for 1 hour, blocks repeated operations
   - Burst protection: Max 10 operations per minute, automatic cooldown
   - GitHub API tracking: Respects 5000/hour limit, stops at 100 remaining
+  - Bypass mechanism: Internal operations (polling) can bypass rate limits
   - Integrated into `GitHubAPIHelper` for automatic protection
   - Documentation: `docs/ANTI_SPAM_PROTECTION.md`
+
+### Changed
+
+- **Rate limiter improvements** - Better balance between protection and functionality
+  - Reduced cooldown periods: Comments (20s → 15s), Issues (60s → 30s), PRs (120s → 60s)
+  - Added read cooldown: 5 seconds between read operations (prevents startup blocks)
+  - Added bypass parameter: Polling service bypasses rate limits (trusted internal operations)
+  - Updated `list_issues()`: Now accepts `bypass_rate_limit` parameter
+  - Updated `check_rate_limit()`: Now accepts `bypass` parameter for whitelisting
 
 ### Security
 

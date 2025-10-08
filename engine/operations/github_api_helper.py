@@ -53,9 +53,25 @@ class GitHubAPIHelper:
         if reset_time:
             self.rate_limiter.update_github_rate_limit(remaining, reset_time)
     
-    def _check_rate_limit(self, operation_type: OperationType, target: str, content: Optional[str] = None) -> bool:
-        """Check if operation is allowed by rate limiter."""
-        allowed, reason = self.rate_limiter.check_rate_limit(operation_type, target, content)
+    def _check_rate_limit(
+        self, 
+        operation_type: OperationType, 
+        target: str, 
+        content: Optional[str] = None,
+        bypass: bool = False
+    ) -> bool:
+        """
+        Check if operation is allowed by rate limiter.
+        
+        Args:
+            operation_type: Type of operation
+            target: Target (repo, issue, etc.)
+            content: Optional content for duplicate detection
+            bypass: If True, bypass rate limits (for internal operations)
+        """
+        allowed, reason = self.rate_limiter.check_rate_limit(
+            operation_type, target, content, bypass=bypass
+        )
         
         if not allowed:
             logger.warning(f"🛡️ Rate limit blocked: {reason}")
@@ -74,7 +90,8 @@ class GitHubAPIHelper:
         assignee: Optional[str] = None,
         state: str = "open",
         labels: Optional[List[str]] = None,
-        per_page: int = 100
+        per_page: int = 100,
+        bypass_rate_limit: bool = False
     ) -> List[Dict]:
         """List issues in a repository.
         
@@ -85,14 +102,15 @@ class GitHubAPIHelper:
             state: Issue state (open, closed, all)
             labels: Filter by label names
             per_page: Results per page (max 100)
+            bypass_rate_limit: Bypass rate limits (for internal polling)
             
         Returns:
             List of issue dictionaries
         """
         target = f"{owner}/{repo}"
         
-        # Check rate limit for read operations
-        if not self._check_rate_limit(OperationType.API_READ, target):
+        # Check rate limit for read operations (bypass for internal polling)
+        if not self._check_rate_limit(OperationType.API_READ, target, bypass=bypass_rate_limit):
             logger.warning(f"⚠️ Rate limit prevents listing issues for {target}")
             return []
         
