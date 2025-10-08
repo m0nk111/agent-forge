@@ -9,13 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Unified agent runtime with role-based lifecycle management** - Industry-standard architecture
+  - engine/core/agent_registry.py: New AgentRegistry class for centralized agent lifecycle management
+  - AgentLifecycle enum: always-on (coordinator, developer), on-demand (bot, reviewer, tester, documenter, researcher), disabled
+  - AgentState enum: registered, starting, running, idle, stopping, stopped, error
+  - ManagedAgent dataclass: Container for agent instances with lifecycle tracking
+  - Role-based startup strategies: coordinator/developer start immediately, bot/reviewer/tester/documenter/researcher lazy-load on demand
+  - Follows industry patterns: LangChain supervisor model, AutoGPT sub-agent spawning, MS Semantic Kernel plugin loading
+  - Resource-efficient: only runs agents when needed, not all agents running continuously
+  - Scalable: add new agent roles without code changes, just config updates
+  - service_manager.py: Replaced _start_code_agent() with _start_agent_runtime()
+  - service_manager.py: Changed enable_code_agent → enable_agent_runtime in ServiceConfig
+  - CLI: Added --no-agent-runtime flag, kept --no-qwen for backward compatibility (deprecated)
+  - Health checks: agent_runtime service tracked in monitoring dashboard
+  - All agent roles now supported: coordinator, developer, bot, reviewer, tester, documenter, researcher
+
 - **Services API and monitoring service tracking** - Infrastructure services now properly tracked
   - monitor_service.py: Added `self.services` dict for service health status
   - monitor_service.py: Added `update_services()` and `get_services()` methods
   - service_manager.py: Now calls `monitor.update_services()` in health check loop
   - service_manager.py: Initial service status sent to monitoring on startup
   - websocket_handler.py: Simplified `/api/services` route to use `monitor.get_services()`
-  - Dashboard now shows all service statuses: polling, monitoring, web_ui, code_agent
+  - Dashboard now shows all service statuses: polling, monitoring, web_ui, agent_runtime
   - Services properly distinguished from AI agents in API responses
 
 - **MONITORING_API.md documentation** - Complete monitoring API reference
@@ -33,7 +48,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Enables proper dropdown selection in add/edit agent panels
   - All roles are single-word strings for consistency
 
+### Changed
+
+- **Code agent renamed to agent runtime** - Breaking architectural change
+  - service_manager.py: enable_code_agent parameter → enable_agent_runtime
+  - CLI flags: --no-qwen still works but deprecated, use --no-agent-runtime instead
+  - Health status: code_agent → agent_runtime in monitoring dashboard
+  - Service name: services['code_agent'] → services['agent_runtime']
+  - Architecture: from single-purpose developer agent to multi-role agent registry
+
 ### Fixed
+
+- **Bot agents always offline** - Fixed with on-demand lifecycle strategy
+  - Bot agents now register but don't start until triggered
+  - Reduces resource usage for event-driven agents
+  - Follows industry pattern for reactive agents
 
 - **Polling service incorrectly registered as agent** - Fixed architectural issue
   - polling_service.py: Removed `monitor.register_agent()` and `update_agent_status()` calls

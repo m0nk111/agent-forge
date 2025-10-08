@@ -60,7 +60,7 @@ class ServiceConfig:
     web_ui_port: int = 8897  # Standard dashboard port
     
     # Code Agent (formerly Qwen Agent)
-    enable_code_agent: bool = True
+    enable_agent_runtime: bool = True  # Unified agent runtime for all roles
     qwen_model: str = "qwen2.5-coder:32b"  # Keep param name for backward compat
     qwen_base_url: str = "http://localhost:11434"  # Keep param name for backward compat
     
@@ -138,65 +138,48 @@ class ServiceManager:
             self.health_status['polling'] = False
             raise
     
-    async def _start_code_agent(self):
-        """Start code agent from configuration."""
+    async def _start_agent_runtime(self):
+        """Start unified agent runtime for all agent roles."""
         try:
-            from engine.runners.code_agent import CodeAgent
             from engine.core.config_manager import get_config_manager
+            from engine.core.agent_registry import AgentRegistry
             
-            logger.info("Starting code agent from configuration...")
+            logger.info("Starting unified agent runtime...")
             
-            # Load agent configuration
+            # Get monitoring service
+            monitor = self.services.get('monitoring')
+            
+            # Create agent registry
             config_manager = get_config_manager()
+            registry = AgentRegistry(config_manager, monitor=monitor)
             
-            # Find first enabled developer agent
-            all_agents = config_manager.get_agents()
-            agent_config = None
-            for agent in all_agents:
-                if agent.enabled and agent.role == "developer":
-                    # Reload agent to get token from secrets
-                    agent_config = config_manager.get_agent(agent.agent_id)
-                    break
+            # Load all enabled agents
+            loaded = await registry.load_agents()
+            logger.info(f"📋 Loaded {len(loaded)} agents:")
+            for agent_id, lifecycle in loaded.items():
+                logger.info(f"   - {agent_id}: {lifecycle}")
             
-            if not agent_config:
-                logger.error("❌ No enabled developer agent found in config/agents/")
-                logger.error("Please add an agent with role='developer' via dashboard or config file")
-                self.health_status['code_agent'] = False
-                return
+            # Start always-on agents (coordinator, developer)
+            started = await registry.start_always_on_agents()
+            logger.info(f"✅ Started {len(started)} always-on agents")
             
-            logger.info(f"📋 Loaded config for {agent_config.agent_id}")
-            logger.info(f"   Model: {agent_config.model_provider}/{agent_config.model_name}")
-            logger.info(f"   Shell: {agent_config.shell_permissions if agent_config.local_shell_enabled else 'disabled'}")
+            # Store registry for later use
+            self.services['agent_runtime'] = registry
+            self.health_status['agent_runtime'] = True
             
-            # Set GitHub token as environment variable if available
-            if agent_config.github_token:
-                os.environ['GITHUB_TOKEN'] = agent_config.github_token
-                logger.info(f"   GitHub: Authenticated as {agent_config.agent_id}")
-            else:
-                logger.warning(f"   GitHub: No token found - GitHub operations will fail")
+            logger.info("✅ Agent runtime initialized")
             
-            # Create agent instance from config
-            agent = CodeAgent(
-                model=agent_config.model_name,
-                ollama_url=agent_config.api_base_url or self.config.qwen_base_url,
-                project_root=agent_config.shell_working_dir or "/opt/agent-forge",
-                enable_monitoring=True,
-                agent_id=agent_config.agent_id
-            )
-            
-            self.services['code_agent'] = agent
-            self.health_status['code_agent'] = True
-            
-            logger.info(f"✅ {agent_config.name} initialized from config")
-            
-            # Keep agent alive (it handles issues via polling service callbacks)
+            # Keep runtime alive
             while self.running:
                 await asyncio.sleep(10)
-                # Agent stays registered and ready
+                # Registry manages agent lifecycle
             
         except Exception as e:
-            logger.error(f"Code agent error: {e}", exc_info=True)
-            self.health_status['code_agent'] = False
+            logger.error(f"Agent runtime error: {e}", exc_info=True)
+            self.health_status['agent_runtime'] = False
+            raise
+            
+    async def _start_monitoring_service(self):
             raise
             
     async def _start_monitoring_service(self):
@@ -325,10 +308,10 @@ class ServiceManager:
                     process = self.services['web_ui']
                     self.health_status['web_ui'] = process.poll() is None
                 
-                # Check code agent
-                if 'code_agent' in self.services:
-                    # Code agent health is tracked via agent status
-                    self.health_status['code_agent'] = True
+                # Check agent runtime (unified agent registry)
+                if 'agent_runtime' in self.services:
+                    # Agent runtime health is tracked via agent registry
+                    self.health_status['agent_runtime'] = True
                     
                 # Update monitoring service with health status
                 if 'monitoring' in self.services:
@@ -391,10 +374,10 @@ class ServiceManager:
                 )
                 await asyncio.sleep(1)
             
-            # Start code agent
-            if self.config.enable_code_agent:
-                self.tasks['code_agent'] = asyncio.create_task(
-                    self._start_code_agent()
+            # Start agent runtime
+            if self.config.enable_agent_runtime:
+                self.tasks['agent_runtime'] = asyncio.create_task(
+                    self._start_agent_runtime()
                 )
                 await asyncio.sleep(1)
                 
@@ -523,7 +506,8 @@ async def main():
     parser.add_argument("--no-polling", action="store_true", help="Disable polling service")
     parser.add_argument("--no-monitoring", action="store_true", help="Disable monitoring")
     parser.add_argument("--no-web-ui", action="store_true", help="Disable web UI")
-    parser.add_argument("--no-qwen", action="store_true", help="Disable Qwen agent")
+    parser.add_argument("--no-agent-runtime", action="store_true", help="Disable agent runtime")
+    parser.add_argument("--no-qwen", action="store_true", help="Disable agent runtime (deprecated, use --no-agent-runtime)")
     parser.add_argument("--polling-interval", type=int, default=300, help="Polling interval (seconds)")
     parser.add_argument("--web-port", type=int, default=8080, help="Web UI port")
     parser.add_argument("--monitor-port", type=int, default=8765, help="Monitoring WebSocket port")
@@ -542,7 +526,7 @@ async def main():
         enable_polling=not args.no_polling,
         enable_monitoring=not args.no_monitoring,
         enable_web_ui=not args.no_web_ui,
-        enable_code_agent=not args.no_qwen,  # Keep --no-qwen flag for backward compat
+        enable_agent_runtime=not (args.no_agent_runtime or args.no_qwen),  # Support both flags
         polling_interval=args.polling_interval,
         web_ui_port=args.web_port,
         monitoring_port=args.monitor_port,
