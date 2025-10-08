@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2025-10-08
 
+### Fixed
+
+- **Agent status heartbeat** - Idle agents no longer timeout to offline status
+  - Added periodic heartbeat in agent_runtime service loop (every 60s)
+  - Prevents cleanup loop from marking idle agents as offline after 5min timeout
+  - Agents now maintain "idle" status when not processing tasks
+  - Fixes dashboard showing red indicators for healthy idle agents
+
+- **Dashboard status indicators** - Accurate status colors and API mapping
+  - Added status-idle (blue), status-working (orange), status-error (red) CSS classes
+  - Updated agent status mapping from ternary to switch statement
+  - Fixed service name mapping: 'code_agent' → 'agent_runtime'
+  - Added pulse animations for online/working/error states
+  - Status colors now match API responses (idle, working, error, offline)
+
 ### Added
 
 - **README.md complete restructure** - Following GitHub industry standards

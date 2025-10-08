@@ -169,10 +169,20 @@ class ServiceManager:
             
             logger.info("✅ Agent runtime initialized")
             
-            # Keep runtime alive
+            # Keep runtime alive and send heartbeats for idle agents
             while self.running:
-                await asyncio.sleep(10)
-                # Registry manages agent lifecycle
+                await asyncio.sleep(60)  # Heartbeat every 60s (cleanup timeout is 300s)
+                
+                # Send heartbeat for idle agents to prevent timeout
+                from engine.runners.monitor_service import AgentStatus
+                for agent_id, managed in registry.agents.items():
+                    from engine.core.agent_registry import AgentState as RegistryAgentState
+                    if managed.state == RegistryAgentState.IDLE and monitor:
+                        monitor.update_agent_status(
+                            agent_id=agent_id,
+                            status=AgentStatus.IDLE,
+                            current_task=None
+                        )
             
         except Exception as e:
             logger.error(f"Agent runtime error: {e}", exc_info=True)
