@@ -53,17 +53,16 @@ This project represents a significant achievement in AI-assisted development. **
 
 ### Code Statistics (All Repositories)
 
-- **Total Lines of Code**: 631,351
-- **Total Repositories**: 8 (1 public, 7 private)
-- **Total Files**: 893
-- **Primary Languages**: Python (40K lines), C++ (7K lines), Shell (7K lines)
+- **Total Lines of Code**: 126,065
+- **Total Repositories**: 7 (1 public, 6 private)
+- **Total Files**: 786
+- **Primary Languages**: Python (40K lines), Shell (7K lines), HTML (9K lines)
 - **Documentation**: 43K lines of Markdown
 
 #### Repository Breakdown
 
 | Repository | Lines | Language | Type |
 |------------|-------|----------|------|
-| VelvetAbyss | 505,286 | C++ | Private |
 | agent-forge | 34,773 | Python | Public |
 | caramba | 32,948 | Python | Private |
 | stepperheightcontrol | 31,188 | Python | Private |
