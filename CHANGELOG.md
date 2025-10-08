@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Services API and monitoring service tracking** - Infrastructure services now properly tracked
+  - monitor_service.py: Added `self.services` dict for service health status
+  - monitor_service.py: Added `update_services()` and `get_services()` methods
+  - service_manager.py: Now calls `monitor.update_services()` in health check loop
+  - service_manager.py: Initial service status sent to monitoring on startup
+  - websocket_handler.py: Simplified `/api/services` route to use `monitor.get_services()`
+  - Dashboard now shows all service statuses: polling, monitoring, web_ui, code_agent
+  - Services properly distinguished from AI agents in API responses
+
+- **MONITORING_API.md documentation** - Complete monitoring API reference
+  - Documented all REST endpoints: /api/agents, /api/services, /api/agents/{id}/status, /api/agents/{id}/logs, /api/activity
+  - Documented WebSocket endpoints: ws://localhost:7997/ws/monitor, ws://localhost:7997/ws/logs/{agent_id}
+  - Added examples for dashboard integration and monitoring scripts
+  - Clarified services vs agents architecture distinction
+
 - **Agent role standardization and API** - Formalized agent roles with Enum and config API endpoints
   - config_manager.py: Added AgentRole enum with 7 standardized roles (coordinator, developer, reviewer, tester, documenter, bot, researcher)
   - api/config_routes.py: New endpoints for dropdown options in config UI:
@@ -19,6 +34,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - All roles are single-word strings for consistency
 
 ### Fixed
+
+- **Polling service incorrectly registered as agent** - Fixed architectural issue
+  - polling_service.py: Removed `monitor.register_agent()` and `update_agent_status()` calls
+  - Added comment clarifying polling service is infrastructure, not an agent
+  - Polling service no longer appears in `/api/agents` list
+  - Proper separation between services (infrastructure) and agents (AI workers)
+
+- **Secrets directory permissions** - Fixed permission denied errors
+  - Changed ownership: `sudo chown -R agent-forge:agent-forge /opt/agent-forge/secrets`
+  - Service can now read token files from secrets/agents/ directory
+  - Agents authenticate successfully with GitHub after restart
 
 - **GitHub token loading and authentication** - Fixed token loading from secrets directory
   - config_manager.py: Enhanced token loading with better error messages for permission issues
@@ -48,6 +74,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fixed imports to use engine.operations and engine.core paths
   - Removed old relative imports from agents/ directory
   - All imports now use absolute paths from engine/
+
+### Changed
+
+- **ARCHITECTURE.md structure documentation** - Updated with latest directory layout
+  - Added complete project directory tree (engine/, config/, secrets/, frontend/, docs/, scripts/, tests/)
+  - Documented services vs agents distinction with clear definitions
+  - Added Key Directory Conventions section explaining organizational rules
+  - Updated all agent paths from `agents/` to `engine/runners/`
+
+- **DEPLOYMENT.md path updates** - Added note about refactored structure
+  - Added warning box with path changes (engine/, config/, secrets/)
+  - Reference to ARCHITECTURE.md for full directory structure
+  - Service command updated to `python3 -m engine.core.service_manager`
 
 ### Removed
 

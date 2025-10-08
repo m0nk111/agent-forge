@@ -154,7 +154,31 @@ service_manager:
 
 ## Agent Roles & Responsibilities
 
-### 1. Bot Agent (`agents/bot_agent.py`)
+### Services vs Agents Distinction
+
+**Important**: The system distinguishes between **Services** (infrastructure) and **Agents** (AI workers).
+
+**Services** (Infrastructure Components):
+- `polling` - GitHub repository polling service (`engine/runners/polling_service.py`)
+- `monitoring` - Monitoring API and WebSocket service (`engine/runners/monitor_service.py`)
+- `web_ui` - Dashboard HTTP server (Python HTTP server)
+- `code_agent` - Code agent runtime wrapper (service that runs the agent)
+
+**Agents** (AI Workers):
+- `m0nk111-qwen-agent` - Developer agent (Qwen 2.5 Coder, role: developer)
+- `m0nk111-bot` - GitHub bot agent (role: bot)
+
+**Key Differences**:
+- **Services** are managed by `service_manager` and register via `self.services` dict
+- **Agents** register themselves via `monitor.register_agent()` and appear in `/api/agents`
+- **Services** appear in `/api/services` with health status (online/offline)
+- **Agents** have detailed status (idle/working/error/offline) and task tracking
+
+**API Endpoints**:
+- `GET /api/services` - Infrastructure service health (polling, monitoring, web_ui, code_agent)
+- `GET /api/agents` - AI agent status (m0nk111-qwen-agent, m0nk111-bot)
+
+### 1. Bot Agent (`engine/runners/bot_agent.py`)
 
 **Purpose**: Executes GitHub operations
 
@@ -297,7 +321,125 @@ PollingService
 
 ## Frontend Architecture
 
-### Directory Structure
+### Project Directory Structure
+
+```
+agent-forge/
+├── ARCHITECTURE.md          # System architecture (this file)
+├── README.md                # Project overview
+├── CHANGELOG.md             # Version history
+├── LICENSE                  # License information
+│
+├── engine/                  # ⭐ CORE ENGINE (Python modules)
+│   ├── core/                # Core system components
+│   │   ├── config_manager.py      # Configuration management
+│   │   ├── service_manager.py     # Service orchestration
+│   │   ├── context_manager.py     # Context tracking
+│   │   ├── key_manager.py         # API key management
+│   │   └── permissions.py         # Permission presets
+│   │
+│   ├── operations/          # Agent operations
+│   │   ├── workspace_tools.py     # File/directory operations
+│   │   ├── file_editor.py         # File editing
+│   │   ├── terminal_operations.py # Shell commands
+│   │   ├── github_api_helper.py   # GitHub API wrapper
+│   │   ├── codebase_search.py     # Code search
+│   │   ├── git_operations.py      # Git operations
+│   │   ├── web_fetcher.py         # Web scraping
+│   │   └── websocket_handler.py   # WebSocket routes
+│   │
+│   ├── runners/             # Service runners
+│   │   ├── bot_agent.py           # GitHub bot agent
+│   │   ├── code_agent.py          # Code agent (generic LLM)
+│   │   ├── coordinator_agent.py   # Coordinator agent
+│   │   ├── monitor_service.py     # Monitoring service
+│   │   └── polling_service.py     # GitHub polling
+│   │
+│   └── validation/          # Validation & security
+│       ├── instruction_parser.py  # Rule parsing
+│       ├── instruction_validator.py # Validation logic
+│       └── security_auditor.py    # Security checks
+│
+├── config/                  # ⭐ CONFIGURATION (YAML files)
+│   ├── agents/              # Agent configurations
+│   │   ├── m0nk111-qwen-agent.yaml   # Developer agent
+│   │   └── m0nk111-bot.yaml          # Bot agent
+│   │
+│   ├── services/            # Service configurations
+│   │   ├── coordinator.yaml          # Coordinator settings
+│   │   └── polling.yaml              # Polling settings
+│   │
+│   ├── system/              # System-wide configurations
+│   │   ├── system.yaml               # System settings
+│   │   ├── repositories.yaml         # Monitored repos
+│   │   └── trusted_agents.yaml       # Agent permissions
+│   │
+│   ├── rules/               # Policy & validation rules
+│   │   ├── instruction_rules.yaml    # Copilot instructions
+│   │   ├── review_criteria.yaml      # PR review rules
+│   │   └── security_audit.yaml       # Security rules
+│   │
+│   └── development/         # Development configs
+│       └── test_task.yaml            # Test task definitions
+│
+├── secrets/                 # ⭐ SECRETS (DO NOT COMMIT)
+│   └── agents/              # Agent tokens
+│       ├── m0nk111-qwen-agent.token  # Developer token
+│       └── m0nk111-bot.token         # Bot token
+│
+├── frontend/                # Web dashboards
+│   ├── dashboard.html              # ⭐ DEFAULT DASHBOARD
+│   ├── unified_dashboard.html      # Unified view
+│   ├── monitoring_dashboard.html   # Classic monitoring
+│   └── config_ui.html             # Configuration UI
+│
+├── docs/                    # Documentation
+│   ├── MONITORING_API.md           # Monitoring API reference
+│   ├── DEPLOYMENT.md               # Deployment guide
+│   ├── AGENT_ROLES.md              # Agent role definitions
+│   └── diagrams/                   # Visual diagrams
+│
+├── scripts/                 # Utility scripts
+│   ├── start-service.sh            # Start agent-forge service
+│   ├── install-service.sh          # Install systemd service
+│   └── monitor-cli.py              # CLI monitoring tool
+│
+├── systemd/                 # Systemd service files
+│   └── agent-forge.service         # Service definition
+│
+└── tests/                   # Test suite
+    ├── test_bot_agent.py
+    ├── test_coordinator_agent.py
+    ├── test_instruction_validator.py
+    └── test_polling_service.py
+```
+
+### Key Directory Conventions
+
+**Rule**: Narrow and deep directory structure for better organization
+
+**Engine Module** (`engine/`):
+- All Python code in `engine/` (no more `agents/` directory in root)
+- Organized by function: `core/`, `operations/`, `runners/`, `validation/`
+- Imports use `engine.*` prefix (e.g., `from engine.core import config_manager`)
+
+**Configuration** (`config/`):
+- Hierarchical structure: `agents/`, `services/`, `system/`, `rules/`
+- All YAML configuration files
+- No Python code in `config/` directory
+
+**Secrets** (`secrets/`):
+- **DO NOT COMMIT** - gitignored
+- Token files: `secrets/agents/{agent_id}.token`
+- Permissions: `agent-forge:agent-forge` ownership, mode `600`
+- Loaded automatically by `ConfigManager`
+
+**Root Directory**:
+- **Only** allowed: README.md, CHANGELOG.md, LICENSE, ARCHITECTURE.md, config files
+- **No** scripts, tests, or agent code in root
+- Keeps root clean for navigation
+
+### Frontend Dashboard Structure
 
 ```
 frontend/

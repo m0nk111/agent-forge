@@ -99,6 +99,7 @@ class AgentMonitor:
             max_activity_events: Maximum activity events to store globally
         """
         self.agents: Dict[str, AgentState] = {}
+        self.services: Dict[str, dict] = {}  # Service health status
         self.logs: Dict[str, deque] = {}  # agent_id -> deque of LogEntry
         self.activity: deque = deque(maxlen=max_activity_events)
         self.max_logs_per_agent = max_logs_per_agent
@@ -229,6 +230,31 @@ class AgentMonitor:
         
         # Notify clients
         asyncio.create_task(self._broadcast_agent_update(agent_id))
+    
+    def update_services(self, services: Dict[str, bool]):
+        """
+        Update service health status.
+        
+        Args:
+            services: Dictionary of service_name -> healthy (bool)
+        """
+        timestamp = time.time()
+        for service_name, healthy in services.items():
+            self.services[service_name] = {
+                "name": service_name,
+                "status": "online" if healthy else "offline",
+                "healthy": healthy,
+                "last_update": timestamp
+            }
+    
+    def get_services(self) -> Dict[str, dict]:
+        """
+        Get all service statuses.
+        
+        Returns:
+            Dictionary of service statuses
+        """
+        return self.services.copy()
     
     def update_agent_metrics(
         self,

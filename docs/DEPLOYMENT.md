@@ -2,6 +2,15 @@
 
 Complete guide for deploying Agent-Forge in development and production environments.
 
+> **⚠️ Important Path Changes (October 2025)**  
+> The project structure has been refactored:
+> - All Python modules are now in `engine/` (not `agents/`)
+> - Configurations are hierarchically organized in `config/`
+> - Secrets are stored in `secrets/agents/` with proper permissions
+> - Service command: `python3 -m engine.core.service_manager`
+>
+> See [ARCHITECTURE.md](../ARCHITECTURE.md) for full directory structure.
+
 ---
 
 ## 📋 Table of Contents

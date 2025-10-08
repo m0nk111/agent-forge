@@ -324,6 +324,19 @@ class ServiceManager:
                 if 'web_ui' in self.services:
                     process = self.services['web_ui']
                     self.health_status['web_ui'] = process.poll() is None
+                
+                # Check code agent
+                if 'code_agent' in self.services:
+                    # Code agent health is tracked via agent status
+                    self.health_status['code_agent'] = True
+                    
+                # Update monitoring service with health status
+                if 'monitoring' in self.services:
+                    try:
+                        monitor = self.services['monitoring']
+                        monitor.update_services(self.health_status)
+                    except Exception as e:
+                        logger.error(f"Failed to update monitoring service: {e}")
                     
                 # Log health status
                 uptime = time.time() - self.start_time
@@ -394,6 +407,15 @@ class ServiceManager:
             self.tasks['health'] = asyncio.create_task(
                 self._health_check_loop()
             )
+            
+            # Initialize service status in monitoring
+            if 'monitoring' in self.services:
+                try:
+                    monitor = self.services['monitoring']
+                    monitor.update_services(self.health_status)
+                    logger.info("✅ Initial service status sent to monitoring")
+                except Exception as e:
+                    logger.error(f"Failed to initialize monitoring service status: {e}")
             
             # Notify systemd we're ready
             if HAS_SYSTEMD:
