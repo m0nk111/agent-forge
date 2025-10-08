@@ -260,7 +260,13 @@ class ConfigManager:
                         }
                         filtered_data = {k: v for k, v in agent_data.items() if k in valid_fields}
                         
-                        agents.append(AgentConfig(**filtered_data))
+                        agent = AgentConfig(**filtered_data)
+                        
+                        # Load token from secrets if not in config
+                        if not agent.github_token:
+                            agent.github_token = self._load_token(agent.agent_id)
+                        
+                        agents.append(agent)
                         logger.debug(f"✅ Loaded agent from {agent_file.name}")
                 except Exception as e:
                     logger.error(f"Failed to parse {agent_file}: {e}")
