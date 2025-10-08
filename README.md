@@ -174,6 +174,25 @@ See [docs/QWEN_MONITORING.md](docs/QWEN_MONITORING.md) for detailed documentatio
 
 > **📊 Visual Documentation**: See [Architecture Diagrams](docs/diagrams/architecture-overview.md) for visual system overview, data flow, and component interactions.
 
+### Unified Agent Runtime
+
+Agent-Forge uses a **unified agent runtime** with role-based lifecycle management, following industry best practices from LangChain, AutoGPT, and Microsoft Semantic Kernel.
+
+**Key Features:**
+- **Role-Based Lifecycle**: 
+  - **Always-on agents** (coordinator, developer): Start immediately, run continuously
+  - **On-demand agents** (bot, reviewer, tester, documenter, researcher): Register but only start when triggered (lazy loading)
+- **Resource Efficient**: Only runs agents when needed, reducing memory/CPU usage
+- **Scalable**: Add new agent roles without code changes, just config updates
+- **Centralized Management**: AgentRegistry class handles all agent lifecycle operations
+
+**Architecture Components:**
+- `engine/core/agent_registry.py`: Central lifecycle manager
+- `engine/core/service_manager.py`: Service orchestrator with agent_runtime
+- `engine/runners/code_agent.py`: Developer agent (always-on)
+- `engine/runners/bot_agent.py`: Bot agent (on-demand)
+- `engine/runners/monitor_service.py`: Real-time monitoring and health checks
+
 For complete architecture details, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## 📰 Recent Developments
@@ -221,25 +240,40 @@ Agent-Forge supports multiple specialized agent roles:
 
 ```
 agent-forge/
-├── agents/              # Agent implementations
-│   ├── service_manager.py      # Central service orchestrator
-│   ├── code_agent.py           # Generic code agent (config-driven, any LLM)
-│   ├── polling_service.py      # Autonomous GitHub polling
-│   ├── pr_reviewer.py          # Automated code review
-│   ├── bot_agent.py            # Bot account operations
-│   ├── file_editor.py          # File editing operations
-│   ├── terminal_operations.py  # Terminal command execution
-│   ├── test_runner.py          # Test execution and parsing
-│   ├── codebase_search.py      # Code search (grep/semantic)
-│   ├── error_checker.py        # Syntax/lint/type checking
-│   ├── workspace_tools.py      # Project structure exploration
-│   └── context_manager.py      # Context window management
+├── engine/              # Core engine components
+│   ├── core/
+│   │   ├── agent_registry.py       # Unified agent lifecycle manager
+│   │   ├── service_manager.py      # Central service orchestrator
+│   │   └── config_manager.py       # Configuration management
+│   ├── runners/
+│   │   ├── code_agent.py           # Developer agent (always-on)
+│   │   ├── bot_agent.py            # Bot agent (on-demand)
+│   │   ├── coordinator_agent.py    # Coordinator agent (always-on)
+│   │   └── monitor_service.py      # Real-time monitoring
+│   ├── operations/
+│   │   ├── file_editor.py          # File editing operations
+│   │   ├── terminal_operations.py  # Terminal command execution
+│   │   ├── git_operations.py       # Git operations
+│   │   └── github_api_helper.py    # GitHub API wrapper
+│   └── validation/
+│       └── instruction_validator.py # Instruction validation
 ├── frontend/            # Real-time monitoring dashboard
 │   └── dashboard.html          # WebSocket-powered UI
-├── configs/             # Agent configurations
+├── config/              # Configuration files (role-based)
+│   ├── agents/          # Agent configs (per-agent YAML)
+│   ├── services/        # Service configs (coordinator, polling)
+│   ├── system/          # System configs (repositories, trusted_agents)
+│   └── rules/           # Validation rules (instruction_rules, review_criteria)
 ├── docs/                # Documentation
 └── scripts/             # Deployment and utility scripts
 ```
+
+**Agent Lifecycle:**
+1. **Registration**: AgentRegistry loads enabled agents from config
+2. **Always-on startup**: Coordinator and developer agents start immediately
+3. **On-demand registration**: Bot, reviewer, tester agents register but don't start
+4. **Lazy loading**: On-demand agents start only when triggered by events
+5. **Health monitoring**: All agents report status to monitoring service
 
 ## 📚 Documentation
 

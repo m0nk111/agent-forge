@@ -21,10 +21,11 @@
 
 ## System Overview
 
-Agent-Forge is a multi-agent orchestration platform for GitHub automation. It consists of:
+Agent-Forge is a multi-agent orchestration platform for GitHub automation with **unified agent runtime**. It consists of:
 
-- **Service Manager**: Central orchestrator running all services
-- **Specialized Agents**: Bot, Coordinator, Code Agent (generic LLM, formerly Qwen)
+- **Service Manager**: Central orchestrator with unified agent runtime
+- **Agent Registry**: Role-based lifecycle management (always-on vs on-demand)
+- **Specialized Agents**: Bot, Coordinator, Code Agent (generic LLM support)
 - **Monitoring Infrastructure**: WebSocket server + real-time dashboards
 - **Polling Service**: Autonomous GitHub issue detection
 - **Configuration Management**: YAML-based agent and system configuration
@@ -33,10 +34,19 @@ Agent-Forge is a multi-agent orchestration platform for GitHub automation. It co
 
 ### Recent Updates (October 2025)
 
+**Unified Agent Runtime** (October 2025):
+- Industry-standard architecture following LangChain, AutoGPT, MS Semantic Kernel patterns
+- `engine/core/agent_registry.py`: Centralized agent lifecycle manager
+- Role-based lifecycle: always-on (coordinator, developer) vs on-demand (bot, reviewer, tester, documenter, researcher)
+- Resource-efficient: lazy loading for event-driven agents
+- Scalable: add roles without code changes
+- Breaking change: `code_agent` → `agent_runtime` service
+- CLI: `--no-agent-runtime` (new), `--no-qwen` (deprecated but backward compatible)
+
 **Agent Refactoring**:
 - `qwen_agent.py` renamed to `code_agent.py` for generic LLM support
 - `QwenAgent` class renamed to `CodeAgent`
-- Service manager updated: `enable_qwen_agent` → `enable_code_agent`
+- Service manager updated: `enable_qwen_agent` → `enable_code_agent` → `enable_agent_runtime`
 - Backward compatibility maintained via CLI flags
 
 **Instruction Validation** (PR #63):
@@ -97,24 +107,63 @@ Agent-Forge is a multi-agent orchestration platform for GitHub automation. It co
 
 ### Purpose
 
-The Service Manager (`agents/service_manager.py`) is the central orchestrator that:
+The Service Manager (`engine/core/service_manager.py`) is the central orchestrator that:
 - Starts and manages all services in a single process
+- Manages unified agent runtime via AgentRegistry
 - Handles graceful shutdown on SIGTERM/SIGINT
 - Provides systemd integration (watchdog, notify)
 - Monitors service health
-- Exposes REST API for service control
+- Exposes REST API via monitoring service
 
 ### Architecture
 
 ```python
 ServiceManager
-├── PollingService      # GitHub issue monitoring
-├── MonitorService      # Agent state tracking
-├── WebSocketHandler    # Real-time communication
-├── CodeAgent          # Code generation (Qwen)
-├── BotAgent           # GitHub operations
-└── CoordinatorAgent   # Task orchestration
+├── AgentRuntime (AgentRegistry)  # Unified agent lifecycle manager
+│   ├── CodeAgent (always-on)     # Developer agent
+│   ├── BotAgent (on-demand)      # GitHub operations
+│   └── CoordinatorAgent (always-on)  # Task orchestration
+├── PollingService                # GitHub issue monitoring
+├── MonitorService                # Agent state tracking + REST API
+├── WebSocketHandler              # Real-time communication
+└── Web UI Process                # Frontend dashboard
 ```
+
+### Agent Registry
+
+**File**: `engine/core/agent_registry.py`
+
+The AgentRegistry implements role-based lifecycle management following industry patterns:
+
+**Lifecycle Strategies**:
+- **Always-on**: Agents start immediately and run continuously
+  - Coordinator: Task orchestration, planning
+  - Developer: Code generation, bug fixes
+- **On-demand**: Agents register but only start when triggered (lazy loading)
+  - Bot: GitHub operations (comments, labels, close issues)
+  - Reviewer: PR reviews, code quality checks
+  - Tester: Test execution, validation
+  - Documenter: Documentation generation
+  - Researcher: Information gathering, analysis
+
+**Lifecycle States**:
+```
+REGISTERED → STARTING → RUNNING → IDLE → STOPPING → STOPPED
+                   ↓
+                 ERROR
+```
+
+**Key Methods**:
+- `load_agents()`: Load and register all enabled agents from config
+- `start_always_on_agents()`: Start coordinator and developer agents immediately
+- `start_on_demand(agent_id)`: Lazy-load specific agent when triggered
+- `stop_agent(agent_id)`: Graceful agent shutdown
+- `get_agent_status()`: Query agent lifecycle state
+
+**Industry Patterns**:
+- **LangChain/LangGraph**: Supervisor agent pattern with worker agents
+- **AutoGPT**: Sub-agent spawning for specialized tasks
+- **Microsoft Semantic Kernel**: Plugin/skill lazy loading
 
 ### Configuration
 
@@ -125,7 +174,7 @@ service_manager:
   enable_polling: true
   enable_monitoring: true
   enable_web_ui: true
-  enable_code_agent: true
+  enable_agent_runtime: true  # Unified agent runtime (replaces enable_code_agent)
   
   polling_interval: 300  # 5 minutes
   monitoring_port: 7997
@@ -136,18 +185,27 @@ service_manager:
     - "m0nk111/stepperheightcontrol"
 ```
 
+**Agent Configs**: `config/agents/{agent-id}.yaml`
+
+Each agent has individual config:
+- `agent_id`: Unique identifier (e.g., m0nk111-qwen-agent)
+- `role`: Agent role (developer, bot, coordinator, reviewer, tester, documenter, researcher)
+- `enabled`: Whether agent should be loaded
+- `model_provider`: LLM provider (local, openai, anthropic, google)
+- `model_name`: Specific model (qwen2.5-coder:7b, gpt-4, etc)
+- `github_token`: GitHub authentication (loaded from secrets/)
+
 ### REST API Endpoints
 
-**Base URL**: `http://localhost:8080`
+**Base URL**: `http://localhost:7997` (monitoring service)
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/health` | GET | Service health check |
-| `/status` | GET | Detailed service status |
-| `/agents` | GET | List all agents and states |
-| `/agents/{id}/start` | POST | Start specific agent |
-| `/agents/{id}/stop` | POST | Stop specific agent |
-| `/config` | GET | Get system configuration |
+| `/api/services` | GET | Infrastructure service health (polling, monitoring, web_ui, agent_runtime) |
+| `/api/agents` | GET | List all agents and states |
+| `/api/agents/{id}/status` | GET | Detailed agent status |
+| `/api/agents/{id}/logs` | GET | Agent logs |
+| `/api/activity` | GET | Historical activity events |
 | `/config` | PUT | Update configuration |
 
 ---

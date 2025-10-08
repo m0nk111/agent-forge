@@ -75,7 +75,7 @@ curl http://localhost:7997/api/agents | jq .
 
 Get status of infrastructure services.
 
-**Returns**: Infrastructure services (polling, monitoring, web_ui, code_agent)
+**Returns**: Infrastructure services (polling, monitoring, web_ui, agent_runtime)
 
 #### Request
 ```bash
@@ -104,8 +104,8 @@ curl http://localhost:7997/api/services | jq .
       "healthy": true,
       "last_update": 1759876978.473456
     },
-    "code_agent": {
-      "name": "code_agent",
+    "agent_runtime": {
+      "name": "agent_runtime",
       "status": "online",
       "healthy": true,
       "last_update": 1759876978.473456
@@ -320,14 +320,16 @@ ws.onmessage = (event) => {
 - `polling` - GitHub repository polling service
 - `monitoring` - Monitoring API and WebSocket service
 - `web_ui` - Dashboard HTTP server
-- `code_agent` - Code agent runtime wrapper
+- `agent_runtime` - Unified agent runtime with role-based lifecycle management
 
 **Agents** (AI Workers):
-- `m0nk111-qwen-agent` - Developer agent (Qwen 2.5 Coder)
-- `m0nk111-bot` - GitHub bot agent
+- `m0nk111-qwen-agent` - Developer agent (always-on, Qwen 2.5 Coder)
+- `m0nk111-bot` - Bot agent (on-demand, GitHub operations)
 
 Services are part of the infrastructure and managed by `service_manager`.  
-Agents are AI workers that register themselves and process tasks.
+Agents are AI workers managed by `agent_runtime` (AgentRegistry) with role-based lifecycle:
+- **Always-on**: coordinator, developer (start immediately)
+- **On-demand**: bot, reviewer, tester, documenter, researcher (lazy loading)
 
 ### Status Updates
 
