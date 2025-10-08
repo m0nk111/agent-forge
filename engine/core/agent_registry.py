@@ -133,6 +133,16 @@ class AgentRegistry:
             self.agents[agent_config.agent_id] = managed_agent
             loaded[agent_config.agent_id] = lifecycle.value
             
+            # Register with monitoring service
+            if self.monitor:
+                self.monitor.register_agent(
+                    agent_id=agent_config.agent_id,
+                    name=agent_config.name or agent_config.agent_id,
+                    role=agent_config.role,
+                    model=agent_config.model_name,
+                    capabilities=agent_config.capabilities
+                )
+            
             logger.info(f"📋 Registered: {agent_config.agent_id} ({agent_config.role}) - {lifecycle.value}")
         
         return loaded
