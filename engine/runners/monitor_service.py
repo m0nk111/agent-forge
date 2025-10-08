@@ -204,18 +204,18 @@ class AgentMonitor:
             elif status in (AgentStatus.IDLE, AgentStatus.ERROR):
                 agent.started_at = None
         
-        if current_task is not None:
-            agent.current_task = current_task
-        if current_issue is not None:
-            agent.current_issue = current_issue
-        if current_pr is not None:
-            agent.current_pr = current_pr
+        # Always update these fields when explicitly provided (even if None to clear)
+        # Only skip update if parameter was not provided at all (using **kwargs pattern would be better)
+        # For now, we update whenever the function is called with the parameter
+        agent.current_task = current_task
+        agent.current_issue = current_issue
+        agent.current_pr = current_pr
+        
         if progress is not None:
             agent.progress = max(0.0, min(100.0, progress))
-        if phase is not None:
-            agent.phase = phase
-        if error_message is not None:
-            agent.error_message = error_message
+        
+        agent.phase = phase
+        agent.error_message = error_message
         
         agent.last_update = time.time()
         
