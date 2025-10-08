@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **GitHub token loading** - Agents now authenticate correctly with GitHub API
+  - get_agents() now loads tokens from secrets/ directory for all agents
+  - Previously only get_agent() (single agent) loaded tokens
+  - Fixes "GitHub: No token - operations may fail" warning on startup
+  - Fixes 401 Unauthorized errors in polling service
+  - Agent startup now shows "GitHub: Authenticated as {agent_id}"
+
 - **Agent task clearing** - Agents no longer stuck showing initialization task
   - update_agent_status() now accepts None to clear current_task, phase, error_message
   - Previously `if field is not None` check prevented clearing fields
