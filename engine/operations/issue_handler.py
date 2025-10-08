@@ -448,14 +448,21 @@ class IssueHandler:
                         # Edit or create file - extract file path from description
                         description_lower = description.lower()
                         
-                        # Try to extract file path from description
-                        # Look for patterns like "Create file: /path/to/file" or "create /path/to/file"
-                        import re
-                        # Match file paths (absolute or relative)
-                        file_match = re.search(r'[`:]?\s*(/[\w/.\\-]+)', description)
+                        # Try to get file path from action (set by _task_to_action) or extract from description
+                        file_path = action.get('file')
                         
-                        if file_match:
-                            file_path = file_match.group(1).strip()  # Use group 1 (the path without the : or /)
+                        if not file_path:
+                            # Try to extract file path from description
+                            # Look for patterns like "Create file: /path/to/file" or "create /path/to/file"
+                            import re
+                            # Match file paths (absolute or relative)
+                            # Pattern matches: README.md, /path/to/file, ./relative/path, docs/file.py, etc.
+                            file_match = re.search(r'[`:]?\s*(\.?/?[\w/.-]+\.\w+)', description)
+                            
+                            if file_match:
+                                file_path = file_match.group(1).strip()  # Use group 1 (the path)
+                        
+                        if file_path:
                             
                             # If this is a create operation and file doesn't exist
                             if 'create' in description_lower:
@@ -675,26 +682,41 @@ class IssueHandler:
     def _task_to_action(self, task: Dict) -> Optional[Dict]:
         """Convert task description to action."""
         description = task['description'].lower()
+        original_desc = task['description']  # Keep original case for file extraction
+        
+        # Try to extract file path from description
+        import re
+        file_match = re.search(r'[`:]?\s*(\.?/?[\w/.-]+\.\w+)', original_desc)
+        file_path = file_match.group(1).strip() if file_match else None
         
         # Detect action type from description
         if 'add' in description or 'create' in description:
-            return {
+            action = {
                 'type': 'edit_file',
                 'operation': 'add',
-                'description': task['description']
+                'description': original_desc
             }
+            if file_path:
+                action['file'] = file_path
+            return action
         elif 'update' in description or 'modify' in description:
-            return {
+            action = {
                 'type': 'edit_file',
                 'operation': 'update',
-                'description': task['description']
+                'description': original_desc
             }
+            if file_path:
+                action['file'] = file_path
+            return action
         elif 'remove' in description or 'delete' in description:
-            return {
+            action = {
                 'type': 'edit_file',
                 'operation': 'delete',
-                'description': task['description']
+                'description': original_desc
             }
+            if file_path:
+                action['file'] = file_path
+            return action
         
         return None
     
