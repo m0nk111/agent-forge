@@ -685,9 +685,18 @@ class IssueHandler:
         original_desc = task['description']  # Keep original case for file extraction
         
         # Try to extract file path from description
+        # Exclude URLs (http:// or https://) and match file paths
         import re
-        file_match = re.search(r'[`:]?\s*(\.?/?[\w/.-]+\.\w+)', original_desc)
-        file_path = file_match.group(1).strip() if file_match else None
+        # Match file paths but NOT URLs - use negative lookbehind for http/https
+        file_match = re.search(r'(?<!http:/)(?<!https:/)[\`:]?\s*(\.?/?[\w/.-]+\.\w+)', original_desc)
+        file_path = None
+        
+        if file_match:
+            file_path = file_match.group(1).strip()
+            # Additional validation: exclude common URL patterns
+            # Check if there's :// before the match (URL indicator)
+            if '://' in original_desc[max(0, file_match.start()-10):file_match.start()]:
+                file_path = None  # This is part of a URL, ignore it
         
         # Detect action type from description
         if 'add' in description or 'create' in description:
