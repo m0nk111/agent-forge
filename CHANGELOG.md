@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Agent task clearing** - Agents no longer stuck showing initialization task
+  - update_agent_status() now accepts None to clear current_task, phase, error_message
+  - Previously `if field is not None` check prevented clearing fields
+  - Agents properly show "idle" without stale "Initializing agent" task
+  - Dashboard now displays clean agent status after startup
+
 - **Dashboard services status** - Services now show correct status indicators
   - Fixed service name mapping: polling-service → polling, code_agent → agent_runtime
   - Extract 'healthy' property from service objects correctly
