@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2025-10-09
 
+### Fixed
+
+- **Ollama API endpoint correction** - Fixed 404 errors when generating file content
+  - Changed from `/api/generate` to `/api/chat` (correct Ollama API endpoint)
+  - Changed from 'prompt' string to 'messages' array format (OpenAI-compatible chat format)
+  - Changed response parsing from 'response' to 'message.content' (chat API response structure)
+  - Fixes LLM file generation failures causing issues #81 and #82 to fail at final step
+  - Production-tested: curl works but code was using wrong endpoint
+  - Issues will now complete successfully with actual file creation
+
 ### Added
 
 - **Copilot instructions and chatmode sync with Caramba** - Enhanced development guidelines
