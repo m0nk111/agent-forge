@@ -6,7 +6,106 @@
 
 ---
 
-## 🚨 Huidige Security Issues
+## � Quick Start (Emergency Response)
+
+**If you need to secure tokens RIGHT NOW, follow these steps first:**
+
+### Step 1: Revoke Leaked Token (if applicable)
+
+```bash
+# 1. Open: https://github.com/settings/tokens
+# 2. Find: leaked token (e.g., ghp_EXAMPLE_TOKEN_REPLACE_WITH_YOUR_OWN)
+# 3. Click: Delete/Revoke
+```
+
+### Step 2: Run Security Script
+
+```bash
+cd /home/flip/agent-forge
+./scripts/secure-tokens.sh
+```
+
+This script will:
+- ✅ Create `secrets/` directory (with 0700 permissions)
+- ✅ Update `.gitignore` (block secrets/)
+- ✅ Prompt for new token
+- ✅ Remove token from `config/agents.yaml`
+- ✅ Verify security setup
+
+### Step 3: Commit Changes
+
+```bash
+git add .gitignore config/agents.yaml
+git commit -m "security(tokens): move tokens to secrets directory"
+git push
+```
+
+### Step 4: Verify Security
+
+```bash
+# Check: No tokens in git
+grep -r "ghp_" config/
+# Should return nothing
+
+# Check: secrets/ is ignored
+git status
+# Should NOT show secrets/
+
+# Check: File permissions correct
+ls -la secrets/agents/
+# Should show: -rw------- (600)
+
+# Check: Token works
+curl -H "Authorization: token $(cat secrets/agents/AGENT_ID.token)" \
+  https://api.github.com/user
+# Should return user details
+```
+
+✅ **Done!** Your tokens are now secure. Continue reading for complete security strategy.
+
+---
+
+## 📁 Secure File Structure
+
+**Before (INSECURE):**
+```
+config/agents.yaml         # ❌ Plaintext token!
+```
+
+**After (SECURE):**
+```
+secrets/                   # ✅ Secured directory (0700)
+├── agents/
+│   └── agent-id.token    # ✅ Token files (0600)
+└── keys/
+    └── providers.json    # ✅ LLM API keys
+
+.gitignore                # ✅ Blocks secrets/
+config/agents.yaml        # ✅ Token references only
+```
+
+---
+
+## 🔐 Security Principles
+
+1. **Git Protection**
+   - ✅ `secrets/` in `.gitignore`
+   - ✅ Never commit tokens to git
+   - ✅ Separate secrets from configuration
+
+2. **Filesystem Protection**
+   - ✅ File permissions: `0600` (owner read/write only)
+   - ✅ Directory permissions: `0700` (owner access only)
+   - ✅ Secrets in dedicated directory
+
+3. **Access Control**
+   - ✅ Tokens loaded only via ConfigManager
+   - ✅ API responses show masked tokens
+   - ✅ Dashboard never displays plaintext tokens
+
+---
+
+## 🚨 Current Security Issues (Detailed Analysis)
 
 ### ❌ Issue 1: Plaintext Tokens in Git
 **Locatie:** `config/agents.yaml` line 49
