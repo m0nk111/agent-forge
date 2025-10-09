@@ -128,15 +128,28 @@ class ServiceManager:
                 logger.warning("⚠️ GitHub token file not found, using environment variable")
                 github_token = os.getenv("BOT_GITHUB_TOKEN") or os.getenv("GITHUB_TOKEN")
             
+            # Load polling config from YAML
+            polling_config_file = Path("/opt/agent-forge/config/services/polling.yaml")
+            polling_config_data = {}
+            if polling_config_file.exists():
+                try:
+                    import yaml
+                    with open(polling_config_file, 'r') as f:
+                        polling_config_data = yaml.safe_load(f) or {}
+                    logger.info(f"✅ Loaded polling config from {polling_config_file}")
+                except Exception as e:
+                    logger.warning(f"⚠️ Failed to load polling config: {e}, using defaults")
+            
             # Create polling config
             config = PollingConfig(
-                interval_seconds=self.config.polling_interval,
+                interval_seconds=polling_config_data.get('interval_seconds', self.config.polling_interval),
                 github_token=github_token,
-                github_username="m0nk111-qwen-agent",
-                repositories=["m0nk111/agent-forge", "m0nk111/stepperheightcontrol"],
-                watch_labels=["agent-ready", "auto-assign"],
-                max_concurrent_issues=3,
-                state_file="/opt/agent-forge/data/polling_state.json"
+                github_username=polling_config_data.get('github', {}).get('username', "m0nk111-qwen-agent"),
+                repositories=polling_config_data.get('repositories', ["m0nk111/agent-forge", "m0nk111/stepperheightcontrol"]),
+                watch_labels=polling_config_data.get('watch_labels', ["agent-ready", "auto-assign"]),
+                max_concurrent_issues=polling_config_data.get('max_concurrent_issues', 3),
+                claim_timeout_minutes=polling_config_data.get('claim_timeout_minutes', 60),
+                state_file=f"/opt/agent-forge/data/{polling_config_data.get('state_file', 'polling_state.json')}"
             )
             
             # Create service with monitoring enabled
