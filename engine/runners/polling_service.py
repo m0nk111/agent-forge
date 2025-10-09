@@ -389,6 +389,8 @@ class PollingService:
             now = datetime.utcnow()
             timeout = timedelta(minutes=self.config.claim_timeout_minutes)
             
+            logger.info(f"🐛 DEBUG: Checking {len(comments)} comments for claims (timeout: {self.config.claim_timeout_minutes}min)")
+            
             for comment in comments:
                 body = comment.get('body', '')
                 if '🤖 Agent' in body and 'started working on this issue' in body:
@@ -396,9 +398,14 @@ class PollingService:
                     created_at = datetime.fromisoformat(
                         comment['createdAt'].replace('Z', '+00:00')
                     )
+                    age_minutes = (now - created_at.replace(tzinfo=None)).total_seconds() / 60
+                    logger.info(f"🐛 DEBUG: Found claim comment - age: {age_minutes:.1f} min (timeout: {self.config.claim_timeout_minutes} min)")
+                    logger.info(f"🐛 DEBUG: Comment created: {created_at}, Now: {now}")
                     if now - created_at.replace(tzinfo=None) < timeout:
                         logger.info(f"Issue {repo}#{issue_number} claimed by another agent")
                         return True
+                    else:
+                        logger.info(f"🐛 DEBUG: Claim expired! Age {age_minutes:.1f}min > timeout {self.config.claim_timeout_minutes}min")
             
             return False
             
