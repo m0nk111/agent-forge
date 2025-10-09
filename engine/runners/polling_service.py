@@ -322,6 +322,9 @@ class PollingService:
         for idx, issue in enumerate(issues):
             try:
                 logger.info(f"🐛 DEBUG: Processing issue {idx+1}/{len(issues)}")
+                logger.info(f"🐛 DEBUG: Issue dict keys: {list(issue.keys())}")
+                logger.info(f"🐛 DEBUG: Issue repository: {issue.get('repository')}")
+                logger.info(f"🐛 DEBUG: Issue number: {issue.get('number')}")
                 issue_key = self.get_issue_key(issue['repository'], issue['number'])
                 
                 logger.info(f"🔍 Evaluating issue {issue_key}: {issue['title']}")
