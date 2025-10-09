@@ -345,20 +345,21 @@ class CodeAgent:
             )
     
     def query_qwen(self, prompt: str, system_prompt: Optional[str] = None, stream: bool = False) -> str:
-        """Query Qwen2.5-Coder via Ollama API"""
+        """Query Qwen2.5-Coder via Ollama API (using /api/chat endpoint)"""
         self.print_info(f"Querying {self.model}...")
         
-        # Build full prompt with system context
-        full_prompt = prompt
+        # Build messages array for chat API
+        messages = []
         if system_prompt:
-            full_prompt = f"{system_prompt}\n\n{prompt}"
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
         
         try:
             response = requests.post(
-                f"{self.ollama_url}/api/generate",
+                f"{self.ollama_url}/api/chat",  # Use /api/chat instead of /api/generate
                 json={
                     "model": self.model,
-                    "prompt": full_prompt,
+                    "messages": messages,
                     "stream": stream
                 },
                 timeout=300  # 5 minute timeout for complex generations
@@ -371,14 +372,15 @@ class CodeAgent:
                 for line in response.iter_lines():
                     if line:
                         chunk = json.loads(line)
-                        if 'response' in chunk:
-                            result += chunk['response']
-                            print(chunk['response'], end='', flush=True)
+                        if 'message' in chunk and 'content' in chunk['message']:
+                            content = chunk['message']['content']
+                            result += content
+                            print(content, end='', flush=True)
                 print()  # New line after streaming
                 return result
             else:
                 result = response.json()
-                return result.get('response', '')
+                return result.get('message', {}).get('content', '')
         
         except requests.exceptions.RequestException as e:
             self.print_error(f"Failed to query Qwen: {e}")
