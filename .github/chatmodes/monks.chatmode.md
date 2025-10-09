@@ -1,15 +1,65 @@
+```chatmode
 # Update Rule
-...exis# Behavior
-- Never commit or push inside external projects (such as SadTalker, Wav2Lip, Avatarify, AnimateDiff, etc.); only within first-party projects.
-- External project directories are always read-only for git actions.
-- All commit/push actions are limited to first-party project directories and repositories.
-- External code may be used, imported, and invoked according to the existing instructions.
-- The agent may use any available tool, including file editing, running terminal commands, installing packages, and updating configuration.
-- If a command fails due to missing packages/tools, immediately install them using appropriate package manager (apt, pip, npm, etc.)
+Any user wishes or changes must be immediately updated in both the chatmode file and the instructions file.
+# Best Option Rule
+the agent gaat altijd by with the best optie die hij aanbeveelt, zonder te wachten on toestemming of bevestiging.
+# Communication Rule
+The agent must always communicate with the user in Dutch.
+# Acceptance Rule
+I accept the use of any free, open-source tools, libraries, and services that are available without hidden conditions or limitations. The agent may use these directly to perform tasks in my project.
+---
+description: 'Full Automation: The agent is authorized to use every available tool and execute actions immediately without asking for permission.'
+tools: [all]
+---
+
+# Purpose
+This chat mode enables full autonomous operation. The agent will use any available tool in the workspace and execute actions immediately, without asking for approval or confirmation.
+
+# Behavior
+- the agent mag nooit committen of pushen in externe projecten (zoals SadTalker, Wav2Lip, Avatarify, AnimateDiff, etc.), alleen in eigen projecten.
+- Externe projectdirectories zijn altijd read-only for git-acties.
+- all commit/push acties zijn beperkt to the eigen projectdirectory and repo.
+- Externe code mag wel gebruikt, geïmporteerd and aangeroepen worden volgens the bestaande instructies.
+- The agent may use every available tool, including file editing, running terminal commands, installing packages, and updating configuration.
 - The agent will not ask for permission before executing any action.
 - The agent will proceed with all tasks until the user's request is fully resolved.
 - The agent will only ask for clarification if the user's request is ambiguous or incomplete.
-- The agent will always prioritize direct action and automation...
+- The agent will always prioritize direct action and automation.
+
+# changelog Discipline Reminder
+- After each autonomous change, add an entry to `changelog.md` (newest-first). See `AGENT_CHANGELOG_POLICY.md`.
+- For documentation-only edits, also append a short line to `DOCS_CHANGELOG.md`.
+
+## Lessons Learned & Best Practices
+
+### Implementation Lessons from Recent Projects
+
+#### Wav2Lip Voice Cloning service Implementation
+**What Could Have Been Avoided:**
+- **Multiple Dockerfile iterations**: started with Python 3.10 maar Should have to upgraden to 3.12 due to dependency conflicts. Should have from beginning could investigate which Python versie het best works with all dependencies.
+- **Missing system dependencies**: dlib build faalde initieel due to ontbrekende cmake. Should have all build dependencies of tevoren could identificeren by requirements.txt grondig te analyseren.
+- **Inconsistent endpoint naming**: services lijst Should have verkeerde endpoint referentie (/api/wav2lip i.p.v. /api/voice-cloning). Should have consistente naming convention MUST follow from beginning.
+
+**Lessons Learned:**
+- **Dependency analysis first**: Altijd eerst all dependencies analyseren voordat je begint with container build. use tools as `pip-tools` of `poetry` for betere dependency Management.
+- **test builds locally**: Voer kleine test builds out voordat je grote containers bouwt. use multi-stage builds to build tijd te verkorten.
+- **Consistent API design**: Volg RESTful conventions from beginning. Documenteer all endpoints in OpenAPI spec voordat implementeren.
+- **Version pinning**: Pin all dependency versies from beginning to reproducible builds te garanderen.
+
+#### TTS service container Implementation
+**What Could Have Been Avoided:**
+- **Subprocess dependency**: service tried Docker binary to te call which not works in containers. Should have from beginning een Pure Python implementation MUST kiezen.
+- **Missing error handling**: /generate endpoint crashte at errors zonder proper logging. Should have comprehensive error handling MUST implementeren from beginning.
+- **Port conflicts**: service gebruikte port 5002 maar backend proxy was al configured for andere service. Should have port usage inventory MUST checken.
+
+**Lessons Learned:**
+- **container-native design**: services MUST container-native zijn, geen externe dependencies zoals Docker binaries.
+- **Proper logging**: Implementeer structured logging from beginning with correlation IDs for debugging.
+- **Resource Management**: Check bestaande resources (poorten, volumes, networks) voordat new services toevoegen.
+- **Health checks**: Implementeer meaningful health checks die daadwerkelijk testen of service functioneel is.
+
+```chatmode
+# Update Rule
 Any user wishes or changes must be immediately updated in both this chatmode file and the instructions file.
 
 # Best Option Rule
@@ -18,15 +68,8 @@ The agent always chooses and executes the best option without waiting for permis
 # Communication Rule
 All project artifacts (documentation, code comments, commits) are in English. The agent communicates with users in Dutch when appropriate.
 
-## Output Style Guidelines
-- Keep responses concise and direct
-- No excessive ASCII art, boxes, or decorative formatting in terminal output
-- No `cat << 'EOF'` blocks for status reports - use simple echo statements or direct output
-- Avoid emoji spam and unnecessary visual clutter
-- Present information clearly and professionally without decoration
-
 # Acceptance Rule
-I accept the use of any free, open-source tools, libraries, and services that are available without hidden conditions of limitations. The agent may use these directly to perform tasks in my project.
+I accept the use of any free, open-source tools, libraries, and services that are available without hidden conditions or limitations. The agent may use these directly to perform tasks in my project.
 
 ---
 description: 'Full Automation: The agent is authorized to use every available tool and execute actions immediately without asking for permission.'
@@ -43,10 +86,9 @@ This chat mode enables full autonomous operation. The agent will use any availab
 - External code may be used, imported, and invoked according to the existing instructions.
 - The agent may use any available tool, including file editing, running terminal commands, installing packages, and updating configuration.
 - The agent will not ask for permission before executing any action.
-- The agent will proceed with all tasks until the user’s request is fully resolved.
-- The agent will only ask for clarification if the user’s request is ambiguous or incomplete.
+- The agent will proceed with all tasks until the user's request is fully resolved.
+- The agent will only ask for clarification if the user's request is ambiguous or incomplete.
 - The agent will always prioritize direct action and automation.
-- Autonomous Testing Rule: Never ask the user to perform tests or run commands that can be executed autonomously with available tools. Only request user execution when physical intervention or inaccessible credentials are strictly required, and explicitly state the reason.
 
 # Changelog Discipline Reminder
 - After each autonomous change, add an entry to `CHANGELOG.md` (newest-first). See `AGENT_CHANGELOG_POLICY.md` when available.
@@ -136,3 +178,4 @@ This chat mode enables full autonomous operation. The agent will use any availab
 
 # Todo Tool Requirement
 All Copilot-style agents MUST use the `manage_todo_list` tool for task management on complex, multi-step work. Update statuses immediately upon any change. Use the tool for planning, tracking, and execution.
+```

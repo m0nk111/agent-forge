@@ -5,9 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - 2025-10-08
+## [Unreleased] - 2025-10-09
 
 ### Added
+
+- **Copilot instructions and chatmode sync with Caramba** - Enhanced development guidelines
+  - Synced copilot-instructions.md with Caramba's comprehensive global best practices
+  - Added comprehensive debug code requirements with emoji system (🐛 🔍 ⚠️ ❌ ✅ 📊 🔧)
+  - Added autonomous testing rule: Always test solutions before claiming fixed
+  - Added GitHub account usage policy: Avoid m0nk111 admin account for email-triggering operations
+  - Added GitHub issue/PR work policy: Self-assign and comment before starting work
+  - Enhanced tool usage guidelines: Auto-install missing packages
+  - Added lessons learned sections from Wav2Lip and TTS service implementations
+  - Preserved Agent-Forge specific conventions (agent naming, directory structure, port assignments)
+  - Updated monks.chatmode.md with proper chatmode markers for VS Code Copilot recognition
+  - Improved changelog discipline reminders and structured sections
+
+- **YAML configuration loading for polling service** - Dynamic configuration management
+  - Polling service now loads config from `config/services/polling.yaml` instead of hardcoded values
+  - Implemented YAML parsing with `yaml.safe_load()` and fallback defaults in service_manager.py
+  - Fixed username mismatch: Changed from "m0nk111-bot" to "m0nk111-qwen-agent" to match GitHub assignments
+  - Reduced claim timeout from 60 to 10 minutes for faster claim expiration during testing
+  - Configuration hot-reload: Changes take effect on service restart without code modifications
+  - Comprehensive error handling and logging for config loading failures
+  - Documented all config parameters with examples in polling.yaml
+
+- **Enhanced polling service debug logging** - Comprehensive execution tracing
+  - Added 15+ debug log points throughout polling cycle for issue detection and claim checking
+  - Debug output shows: Issue counts, filter results, state checks, claim ages, timeout comparisons
+  - Emoji prefixes for log filtering: 🐛 DEBUG, ✅ Success, ❌ Error, 🔍 Inspect
+  - Claim age calculation with timestamp comparison logs
+  - Production-tested: Successfully diagnosed state persistence and claim expiry bugs
+  - Enables rapid troubleshooting without adding extra logging code
 
 - **Intelligent task recognition system** - Enables LLM-powered file creation from descriptive issues
   - Smart fallback in `_task_to_action()`: Infers file creation when issue title contains creation keywords
