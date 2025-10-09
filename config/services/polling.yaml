@@ -29,8 +29,8 @@ max_concurrent_issues: 3
 
 # Claim timeout in minutes (how long before another agent can claim an issue)
 # Default: 60 minutes (1 hour)
-# TEMPORARILY REDUCED to 30 minutes for testing
-claim_timeout_minutes: 30
+# TEMPORARILY REDUCED to 10 minutes for testing (claims from 11:41 should expire)
+claim_timeout_minutes: 10
 
 # State file path (tracks processing issues)
 state_file: "polling_state.json"
