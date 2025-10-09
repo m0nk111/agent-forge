@@ -7,9 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2025-01-XX
 
+### Changed
+
+- **PROVISIONAL_GOALS.md transformed into comprehensive onboarding guide** (2025-10-09)
+  - Rewritten from simple provisional goal to central developer onboarding hub
+  - New structure: Table of contents (8 sections), Quick Start for Human Developers (4 progressive steps: Installation 15min, Architecture 30min, First Contribution 1-2hr, Deep Dive ongoing), Quick Start for AI Agent Developers (4 required reading categories: System Context, Development Guidelines, Operational Knowledge, Security & Best Practices - total 15 essential docs)
+  - What Agent-Forge Is: Vision (autonomous multi-agent platform), Core Concept (GitHub issue → zero human clicks → merged PR), Key Differentiators (multi-agent architecture, security-first, real-time monitoring, local LLM, GitHub native)
+  - What Currently Works: 6-component detailed breakdown with implementation files and doc links (Issue Detection ✅ polling_service.py, Agent Assignment ✅/🔄 coordinator_agent.py, Task Execution ✅/🔄 ASCII art working + code gen in progress, PR Creation ✅/🔄 bot_agent.py, Security Audit ✅ security_auditor.py, Monitoring ✅ monitor_service.py + unified_dashboard.html)
+  - Project Goals & Vision: Primary goal (full autonomous issue-to-PR pipeline), completion criteria (6 detailed checkpoints), acceptance criteria (Core Automation, Monitoring & Validation, Artifact Quality, Testing & Repeatability with 4-7 checkboxes each), secondary goals (developer experience, performance & scalability, advanced features)
+  - Development Roadmap: 6 phases with detailed status (Phase 1 Issue Detection ✅ complete, Phase 2 Agent Assignment 🔄 mostly complete, Phase 3 Task Execution 🔄 in progress with 3 sub-phases A/B/C, Phase 4 PR Creation ✅ mostly complete, Phase 5 Security & Review ✅ security complete + 🔄 review in progress, Phase 6 Monitoring ✅ complete + 🔄 enhancements planned) - each phase includes key files, documentation links, achievements, next steps
+  - Essential Documentation Map: All 32 consolidated docs categorized (Getting Started 4 docs, Architecture & Design 4 docs, Security & Quality 5 docs, Testing & Operations 6 docs, Deployment & Operations 4 docs, Reference & Planning 6 docs, Contributing 3 docs) with quick reference tips, troubleshooting tips, development tips, recently enhanced docs highlighted
+  - Known Issues & Limitations: Current limitations (6 items with workarounds: code generation not autonomous, PR preview missing, agent assignment basic, limited LLM support, no horizontal scaling, rate limiting edge cases), technical debt (high/medium/low priority from REFACTOR_PLAN.md), security considerations (current risks: token exposure, injection attacks, SSH authentication, rate limit bypass + mitigation status ✅ and 🔄), scalability concerns (current capacity: 15-20 issues/day/agent, 3-5 concurrent agents, 5 repositories; bottlenecks: LLM inference 10-30s, GitHub API 5000/hr, polling 60s intervals, WebSocket ~50 concurrent; scaling strategies: horizontal scaling, database sharding, model optimization, caching), known bugs with workarounds and fix ETAs (3 active bugs, 3 recently fixed)
+  - Documentation gaps: Missing documentation planned (5 items: video tutorial, interactive API docs, agent dev example, performance tuning guide, disaster recovery), incomplete documentation in progress (4 docs need enhancements), documentation quality metrics (32 files -16%, visual diagrams ✅, quick start sections ✅, code examples ✅, cross-references need validation 🔄)
+  - How to Contribute: Human developer workflow (pick issue, development workflow git commands, quality checklist 5 items), AI agent developer workflow (understand system, autonomous workflow 5 steps, quality standards 5 requirements), priority development areas (high/medium/low), questions or issues section with GitHub links
+  - Document version 2.0 (2025-10-09), living document status, previous version 1.0 (provisional goal structure)
+  - Benefits: Single entry point for all developers (human and AI), clear understanding of what works and project direction, comprehensive doc references (25+ links with specific sections and use cases), time estimates for human developers (15min/30min/1-2hr/ongoing), required reading categories for AI developers (4 categories, 15 docs total), reduced onboarding confusion and duplication
+
 ### Added
 
-- **Major documentation enhancements and consolidation** - Filled critical gaps and reduced redundancy
+- **Major documentation enhancements and consolidation (Phase 1)** - Filled critical gaps and reduced redundancy
   - Created `docs/ERROR_RECOVERY.md` (475 lines) - Comprehensive retry policies, circuit breakers, health checks
     - Exponential backoff for GitHub API (3 retries, 2-60s delay, rate limit handling)
     - Circuit breaker pattern (5 failures/60s threshold, auto-recovery after 300s)
@@ -50,12 +66,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Identified 7 consolidation groups: setup (4→1), troubleshooting (2→1), security (2→1), SSH (2→1), licensing (2→1)
     - Planned reduction: 38 files → ~30 files (-20%), ~10,000 lines → ~9,000 lines (-1,000 duplicate lines)
     - Documented cross-reference updates needed and success criteria
-  - Deleted obsolete documentation files (consolidated into INSTALLATION.md):
-    - `docs/SETUP_QWEN_GITHUB_ACCOUNT.md` (476 lines) - Now in INSTALLATION.md section "GitHub Bot Account Setup"
-    - `docs/GOOGLE_OAUTH_SETUP.md` (132 lines) - Now in INSTALLATION.md section "Dashboard Authentication Setup"
+  - Deleted obsolete documentation files (Phase 1 consolidation):
+    - `docs/SETUP_QWEN_GITHUB_ACCOUNT.md` (476 lines) - Merged into INSTALLATION.md "GitHub Bot Account Setup"
+    - `docs/GOOGLE_OAUTH_SETUP.md` (132 lines) - Merged into INSTALLATION.md "Dashboard Authentication Setup"
     - `docs/OAUTH_ACTIVATIE.md` - Merged into OAuth setup section
-  - Documentation metrics: Created 1,463 lines of new comprehensive documentation, consolidated 608 lines of duplicates
-  - Documentation count: Reduced from 38 to 36 markdown files (-5% as first phase)
+  - Documentation metrics Phase 1: Created 1,463 lines new documentation, consolidated 608 lines duplicates
+  - Documentation count Phase 1: Reduced from 38 to 36 markdown files (-5%)
+
+### Changed
+
+- **Documentation consolidation (Phase 2)** - Further reduced redundancy and improved organization
+  - Enhanced `docs/TOKEN_SECURITY.md` - Added Quick Start emergency response section at top
+    - 4-step quick start for immediate token security (revoke, script, commit, verify)
+    - Secure file structure before/after examples
+    - Security principles overview (git, filesystem, access control)
+    - Now serves as both emergency guide and comprehensive security reference
+  - Created `docs/SSH_AUTHENTICATION.md` (1,079 lines merged) - Complete SSH/PAM authentication guide
+    - Merged SSH_AUTH_DESIGN.md (783 lines) architecture and design documentation
+    - Merged SSH_AUTH_IMPLEMENTATION.md (296 lines) implementation and usage guide
+    - Added comprehensive sections: Quick Start, Architecture, Security Model, Implementation Details, Usage Guide, Troubleshooting
+    - Complete working code examples for auth backend (api/auth_routes.py)
+    - Systemd service configuration and deployment instructions
+    - Detailed troubleshooting for common issues (PAM permissions, port conflicts, CORS, token expiry)
+    - SSH vs OAuth comparison with recommendations
+    - Future enhancements roadmap (RBAC, OAuth support, MFA)
+  - Deleted consolidated documentation files (Phase 2):
+    - `docs/TOKEN_SECURITY_QUICKSTART.md` - Merged as Quick Start section in TOKEN_SECURITY.md
+    - `docs/SSH_AUTH_DESIGN.md` (783 lines) - Merged into SSH_AUTHENTICATION.md
+    - `docs/SSH_AUTH_IMPLEMENTATION.md` (296 lines) - Merged into SSH_AUTHENTICATION.md
+  - Archived historical session logs - Moved to docs/archive/ for reference
+    - `docs/SESSION_LOG_2025_10_06.md` → `docs/archive/SESSION_LOG_2025_10_06.md`
+    - `docs/SESSION_SUMMARY_2025-10-07.md` → `docs/archive/SESSION_SUMMARY_2025-10-07.md`
+  - Documentation metrics Phase 2: Consolidated 1,079 lines SSH docs, 112 lines security quickstart
+  - Documentation count Phase 2: Reduced from 36 to 32 markdown files (-11% total, -16% this phase)
+  - **Total consolidation results**: 38 → 32 files (-16%), eliminated ~1,800 lines of duplicate content
 
 ## [Unreleased] - 2025-10-09
 
