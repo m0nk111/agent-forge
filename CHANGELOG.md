@@ -5,6 +5,58 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2025-01-XX
+
+### Added
+
+- **Major documentation enhancements and consolidation** - Filled critical gaps and reduced redundancy
+  - Created `docs/ERROR_RECOVERY.md` (475 lines) - Comprehensive retry policies, circuit breakers, health checks
+    - Exponential backoff for GitHub API (3 retries, 2-60s delay, rate limit handling)
+    - Circuit breaker pattern (5 failures/60s threshold, auto-recovery after 300s)
+    - Health checks system (agent heartbeat 60s, service endpoints, database connections)
+    - Graceful degradation strategies (Ollama unavailable, GitHub rate limited, database locked, disk full)
+    - Alert threshold table (warning/critical levels for all metrics)
+    - Step-by-step recovery procedures for all failure scenarios
+  - Created `docs/PERFORMANCE_BENCHMARKS.md` (333 lines) - Real performance metrics and capacity planning
+    - System throughput: 12-15 issues/hour typical, 20 peak with 3 agents
+    - API response times: P50/P95/P99 for all 6 endpoints (health, agents, status, logs, start, WebSocket)
+    - Ollama model comparison table: qwen2.5-coder 7b/14b/32b + deepseek-coder + llama3.1
+    - Model specs: sizes 4.7-20GB, load times 2-10s, tokens/sec 12-60, RAM 6-24GB, quality ratings
+    - GPU vs CPU performance: 4-6x speedup with RTX 3090/A100, ROI analysis for >50 issues/day
+    - Per-agent resource consumption: CPU 0.5-40%, memory 50-400MB, disk/network metrics
+    - Database performance: WAL mode query times 2-80ms, concurrent access limits, growth rates
+    - Scalability limits table: current limits and bottlenecks for agents/WebSocket/GitHub/database/Ollama
+    - Capacity planning: 3 deployment tiers (small 1-3 agents 4 cores 8GB, medium 3-5 agents 8 cores 16GB, large 5+ agents 16+ cores 32GB+)
+  - Created `docs/AGENT_DEVELOPMENT_GUIDE.md` (655 lines) - Complete guide for creating custom agents
+    - Agent architecture: types, lifecycle state diagram, BaseAgent interface documentation
+    - Hello World agent: complete 130-line working example with Task/TaskResult dataclasses
+    - Advanced DocumenterAgent: 230-line real-world example with LLM integration and GitHub API
+    - Testing best practices: unit tests with pytest fixtures/mocking, integration tests with real LLM
+    - Agent configuration schema: YAML structure with all fields documented
+    - 6 complete test examples demonstrating unit and integration testing patterns
+  - Enhanced `docs/DEPLOYMENT_CHECKLIST.md` (added 500+ lines) - Comprehensive deployment procedures
+    - Added detailed rollback procedures: when to rollback, 12-step rollback process, verification checklist
+    - Added emergency procedures: database corruption, disk full, service won't start, agent stuck/unresponsive, GitHub rate limited
+    - Added monitoring schedules: first hour (every 5-10min), first day (hourly), first week (daily) with red flags
+    - Added deployment automation: 200-line automated deployment script with rollback on failure
+    - Added CI/CD integration: GitHub Actions workflow example for self-hosted runners
+  - Enhanced `docs/INSTALLATION.md` (added 400+ lines) - Complete consolidated setup guide
+    - Merged GitHub bot account setup: machine user creation, token generation, repository collaboration
+    - Merged dashboard authentication: SSH/PAM setup (default), Google OAuth setup (optional)
+    - Added Gmail filter configuration for agent notifications (standard + alerts)
+    - Added comprehensive security checklist for token management and permissions
+    - Added troubleshooting sections for common setup issues
+  - Created `docs/CONSOLIDATION_PLAN.md` - Documented consolidation strategy
+    - Identified 7 consolidation groups: setup (4→1), troubleshooting (2→1), security (2→1), SSH (2→1), licensing (2→1)
+    - Planned reduction: 38 files → ~30 files (-20%), ~10,000 lines → ~9,000 lines (-1,000 duplicate lines)
+    - Documented cross-reference updates needed and success criteria
+  - Deleted obsolete documentation files (consolidated into INSTALLATION.md):
+    - `docs/SETUP_QWEN_GITHUB_ACCOUNT.md` (476 lines) - Now in INSTALLATION.md section "GitHub Bot Account Setup"
+    - `docs/GOOGLE_OAUTH_SETUP.md` (132 lines) - Now in INSTALLATION.md section "Dashboard Authentication Setup"
+    - `docs/OAUTH_ACTIVATIE.md` - Merged into OAuth setup section
+  - Documentation metrics: Created 1,463 lines of new comprehensive documentation, consolidated 608 lines of duplicates
+  - Documentation count: Reduced from 38 to 36 markdown files (-5% as first phase)
+
 ## [Unreleased] - 2025-10-09
 
 ### Added
