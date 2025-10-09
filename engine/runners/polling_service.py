@@ -317,40 +317,49 @@ class PollingService:
         """
         actionable = []
         
-        for issue in issues:
-            issue_key = self.get_issue_key(issue['repository'], issue['number'])
-            
-            logger.info(f"🔍 Evaluating issue {issue_key}: {issue['title']}")
-            logger.info(f"   Labels: {[label['name'] for label in issue.get('labels', [])]}")
-            logger.info(f"   Watch labels: {self.config.watch_labels}")
-            logger.info(f"   In state: {issue_key in self.state}")
-            
-            # Skip if already processing
-            if issue_key in self.state and not self.state[issue_key].completed:
-                logger.info(f"   ❌ Skipping: already processing (not completed)")
-                continue
-            
-            # Skip if completed recently
-            if issue_key in self.state and self.state[issue_key].completed:
-                logger.info(f"   ❌ Skipping: already completed")
-                continue
-            
-            # Check labels
-            issue_labels = [label['name'] for label in issue.get('labels', [])]
-            has_watch_label = any(
-                label in self.config.watch_labels
-                for label in issue_labels
-            )
-            
-            logger.info(f"   Has watch label: {has_watch_label}")
-            
-            if has_watch_label:
-                logger.info(f"   ✅ Issue is actionable!")
-                actionable.append(issue)
-                logger.info(f"Actionable issue found: {issue_key} - {issue['title']}")
-            else:
-                logger.info(f"   ❌ Skipping: no watch labels match")
+        logger.info(f"🐛 DEBUG: Filtering {len(issues)} issues")
         
+        for idx, issue in enumerate(issues):
+            try:
+                logger.info(f"🐛 DEBUG: Processing issue {idx+1}/{len(issues)}")
+                issue_key = self.get_issue_key(issue['repository'], issue['number'])
+                
+                logger.info(f"🔍 Evaluating issue {issue_key}: {issue['title']}")
+                logger.info(f"   Labels: {[label['name'] for label in issue.get('labels', [])]}")
+                logger.info(f"   Watch labels: {self.config.watch_labels}")
+                logger.info(f"   In state: {issue_key in self.state}")
+                
+                # Skip if already processing
+                if issue_key in self.state and not self.state[issue_key].completed:
+                    logger.info(f"   ❌ Skipping: already processing (not completed)")
+                    continue
+                
+                # Skip if completed recently
+                if issue_key in self.state and self.state[issue_key].completed:
+                    logger.info(f"   ❌ Skipping: already completed")
+                    continue
+                
+                # Check labels
+                issue_labels = [label['name'] for label in issue.get('labels', [])]
+                has_watch_label = any(
+                    label in self.config.watch_labels
+                    for label in issue_labels
+                )
+                
+                logger.info(f"   Has watch label: {has_watch_label}")
+                
+                if has_watch_label:
+                    logger.info(f"   ✅ Issue is actionable!")
+                    actionable.append(issue)
+                    logger.info(f"Actionable issue found: {issue_key} - {issue['title']}")
+                else:
+                    logger.info(f"   ❌ Skipping: no watch labels match")
+                    
+            except Exception as e:
+                logger.error(f"🐛 DEBUG: Error processing issue {idx+1}: {e}", exc_info=True)
+                continue
+        
+        logger.info(f"🐛 DEBUG: filter_actionable_issues returning {len(actionable)} issues")
         return actionable
     
     def is_issue_claimed(self, repo: str, issue_number: int) -> bool:
