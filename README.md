@@ -44,6 +44,7 @@ Agent-Forge is an intelligent multi-agent system that automates GitHub workflows
 - 🌐 **LAN Access**: Dashboard accessible from any device on your network
 - 📝 **Comprehensive Logging**: Structured logging with real-time updates
 - 🧭 **Workspace Awareness**: Clear project identification prevents agent confusion
+- 🌞 **Creative ASCII Illustrations**: Issues that ask for drawings (sun, chair, car, etc.) trigger the agent to craft playful Markdown art and open a PR
 
 ---
 
@@ -334,7 +335,7 @@ sudo systemctl enable agent-forge
 sudo systemctl status agent-forge
 
 # View logs
-sudo journalctl -u agent-forge -f
+sudo journalctl -u agent-forge -f --no-pager
 ```
 
 ### Sync to Production

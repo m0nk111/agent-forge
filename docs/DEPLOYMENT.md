@@ -484,13 +484,13 @@ sudo systemctl restart agent-forge
 sudo systemctl reload agent-forge
 
 # View logs
-sudo journalctl -u agent-forge -f
+sudo journalctl -u agent-forge -f --no-pager
 
 # View recent logs
 sudo journalctl -u agent-forge -n 100 --no-pager
 
 # View logs since boot
-sudo journalctl -u agent-forge -b
+sudo journalctl -u agent-forge -b --no-pager
 ```
 
 ### Automatic Installation Script
@@ -524,7 +524,7 @@ echo "To start the service:"
 echo "  sudo systemctl start agent-forge"
 echo ""
 echo "To view logs:"
-echo "  sudo journalctl -u agent-forge -f"
+echo "  sudo journalctl -u agent-forge -f --no-pager"
 ```
 
 ---
@@ -813,7 +813,7 @@ Already configured in Nginx (see above).
 
 ```bash
 # View live logs
-sudo journalctl -u agent-forge -f
+sudo journalctl -u agent-forge -f --no-pager
 
 # Export logs
 sudo journalctl -u agent-forge --since "2025-10-06" > logs-2025-10-06.txt

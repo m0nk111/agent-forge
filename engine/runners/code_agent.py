@@ -355,6 +355,8 @@ class CodeAgent:
         messages.append({"role": "user", "content": prompt})
         
         try:
+            self.print_info(f"Ollama chat URL: {self.ollama_url}/api/chat")
+            self.print_info(f"Ollama payload roles: {[m['role'] for m in messages]}")
             response = requests.post(
                 f"{self.ollama_url}/api/chat",  # Use /api/chat instead of /api/generate
                 json={
@@ -364,6 +366,10 @@ class CodeAgent:
                 },
                 timeout=300  # 5 minute timeout for complex generations
             )
+            self.print_info(f"Ollama response status: {response.status_code}")
+            if response.status_code != 200:
+                truncated_body = response.text[:500] if response.text else ""
+                self.print_error(f"Ollama response body: {truncated_body}")
             response.raise_for_status()
             
             if stream:
@@ -383,6 +389,10 @@ class CodeAgent:
                 return result.get('message', {}).get('content', '')
         
         except requests.exceptions.RequestException as e:
+            error_text = ""
+            if hasattr(e, "response") and e.response is not None:
+                error_text = e.response.text[:500]
+                self.print_error(f"Ollama error body: {error_text}")
             self.print_error(f"Failed to query Qwen: {e}")
             return ""
     

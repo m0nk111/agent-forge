@@ -421,7 +421,7 @@ python -c "from agents.security_auditor import SecurityAuditor; print('OK')"
 cat config/security_audit.yaml | grep -A5 'thresholds'
 
 # Review logs
-journalctl -u agent-forge -f | grep 'security audit'
+journalctl -u agent-forge -f --no-pager | grep 'security audit'
 ```
 
 **Solutions:**

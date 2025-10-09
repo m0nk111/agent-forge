@@ -937,7 +937,7 @@ grep -i error logs/agent-forge.log
 awk '/2025-10-06 14:30:00/,/2025-10-06 14:35:00/' logs/agent-forge.log
 
 # View systemd logs
-sudo journalctl -u agent-forge -f --since "1 hour ago"
+sudo journalctl -u agent-forge -f --no-pager --since "1 hour ago"
 
 # Export logs
 sudo journalctl -u agent-forge --since today > today-logs.txt

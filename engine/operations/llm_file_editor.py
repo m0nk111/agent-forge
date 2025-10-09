@@ -9,6 +9,7 @@ Date: 2025-10-08
 """
 
 import re
+import textwrap
 from typing import Dict, Optional, List
 from pathlib import Path
 
@@ -112,6 +113,16 @@ class LLMFileEditor:
         # Determine file language/extension
         ext = Path(file_path).suffix.lstrip('.')
         language = ext if ext else 'text'
+
+        # Check for special deterministic generators (avoid LLM when possible)
+        special_content = self._handle_special_cases(
+            file_path=file_path,
+            instruction=instruction,
+            context=context,
+            is_new_file=is_new_file
+        )
+        if special_content is not None:
+            return special_content
         
         # Construct prompt based on whether it's a new file or edit
         if is_new_file:
@@ -159,7 +170,95 @@ Generate the complete content for this file. Output ONLY the file content, no ex
 Do not wrap in code blocks. Just output the raw file content."""
         
         return prompt
-    
+
+    def _handle_special_cases(
+        self,
+        file_path: str,
+        instruction: str,
+        context: Optional[str],
+        is_new_file: bool
+    ) -> Optional[str]:
+        """Generate deterministic content for known tasks to reduce LLM dependency."""
+        text = f"{file_path} {instruction} {context or ''}".lower()
+
+        if is_new_file and file_path.endswith('.md'):
+            ascii_triggers = (
+                'ascii', 'draw', 'drawing', 'sketch', 'teken', 'tekening', 'diagram', 'art',
+                'sun', 'zon', 'zonnetje', 'chair', 'stoel', 'car', 'auto'
+            )
+            if any(keyword in text for keyword in ascii_triggers):
+                return self._generate_ascii_markdown_via_llm(
+                    file_path=file_path,
+                    instruction=instruction,
+                    context=context,
+                    original_text=text
+                )
+        return None
+
+    def _generate_ascii_markdown_via_llm(
+        self,
+        file_path: str,
+        instruction: str,
+        context: Optional[str],
+        original_text: str
+    ) -> Optional[str]:
+        """Use the LLM to craft an ASCII-art Markdown document for creative tasks."""
+        subject_hint = self._extract_ascii_subject(original_text, instruction, context)
+        prompt = textwrap.dedent(f"""\
+            You must create a Markdown document that will be saved as `{file_path}`.
+
+            Primary instruction:
+            \"\"\"
+            {instruction}
+            \"\"\"
+
+            Extra context (may be empty):
+            \"\"\"
+            {context or ''}
+            \"\"\"
+
+            Requirements:
+            - Include a fenced code block labelled `text` that contains a clean ASCII art drawing.
+            - Surround the code block with a friendly heading and short bullet-point notes so the Markdown renders nicely on GitHub.
+            - Maintain a playful, child-like tone when appropriate.
+            - Focus the drawing on a {subject_hint} if that aligns with the request.
+            - Output ONLY the complete Markdown file content—no explanations of what you drew.
+        """)
+
+        try:
+            response = self.agent.query_qwen(
+                prompt=prompt,
+                stream=False,
+                system_prompt="You are a creative ASCII artist producing ready-to-commit Markdown files."
+            )
+            if not response:
+                return None
+            return response.strip()
+        except Exception as exc:
+            print(f"      ❌ ASCII LLM generation failed: {exc}")
+            return None
+
+    def _extract_ascii_subject(self, *segments: Optional[str]) -> str:
+        """Heuristic to infer the subject the ASCII art should depict."""
+        combined = ' '.join(filter(None, segments)).lower()
+        if not combined:
+            return "playful scene"
+
+        patterns = [
+            r'draw(?:ing)?\s+(?:of\s+)?a[n]?\s+(?P<subject>[\w-]+)',
+            r'ascii\s+(?P<subject>[\w-]+)',
+            r'teken(?:en)?\s+(?:een\s+)?(?P<subject>[\w-]+)',
+            r'(?P<subject>sun|zonnetje|zon|chair|stoel|auto|car)'
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, combined)
+            if match and match.group('subject'):
+                return match.group('subject')
+
+        tokens = re.findall(r'[a-z]{4,}', combined)
+        if tokens:
+            return max(set(tokens), key=tokens.count)
+        return "playful scene"
     def _build_edit_prompt(
         self,
         file_path: str,

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Ollama diagnostics logging** - Capture response bodies on request failures for faster debugging
 - **Ollama API endpoint correction** - Fixed 404 errors when generating file content
   - Changed from `/api/generate` to `/api/chat` (correct Ollama API endpoint)
   - Changed from 'prompt' string to 'messages' array format (OpenAI-compatible chat format)
@@ -48,6 +49,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Production-tested: Successfully diagnosed state persistence and claim expiry bugs
   - Enables rapid troubleshooting without adding extra logging code
 
+- **Sun diagram auto-generation** - Deterministic handling of sun illustration issues
+  - Synthesizes `docs/sun.md` tasks when issues request a sun or "zonnetje" without explicit instructions
+  - Uses predefined ASCII art to avoid LLM variability and guarantee consistent output
+  - Added targeted tests ensuring IssueHandler and LLMFileEditor create the asset autonomously
+
+- **Creative ASCII illustration pipeline** - LLM-driven Markdown art generation
+  - Replaced hardcoded sun output with flexible prompt-based generation for any requested object
+  - Added subject extraction and Markdown formatting helpers in `engine/operations/llm_file_editor.py`
+  - Updated tests to validate LLM integration while stubbing responses for determinism
+  - README now highlights the broader ASCII drawing capability for incoming issues
+  - Documented the end-to-end workflow in `docs/ASCII_AUTOMATION_WORKFLOW.md`
+  - Issue handler now infers filenames like `docs/chair.md` or `docs/rocket.md` from drawing keywords
+  - Captured the remaining automation objective in `docs/PROVISIONAL_GOALS.md`
+
 - **Intelligent task recognition system** - Enables LLM-powered file creation from descriptive issues
   - Smart fallback in `_task_to_action()`: Infers file creation when issue title contains creation keywords
   - Task synthesis in `_parse_issue_requirements()`: Generates explicit tasks from implicit requirements
@@ -71,12 +86,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Sun diagram makeover** - Reimagined deterministic output with a kid-drawn crayon aesthetic
+  - Updated generator to produce playful rays, smiling face, and whimsical notes
+  - Added `docs/sun.md` so the artifact ships ready for autonomous PR creation
+  - Refreshed regression tests to lock in the new style and vocabulary
 - **Rate limiter improvements** - Better balance between protection and functionality
   - Reduced cooldown periods: Comments (20s → 15s), Issues (60s → 30s), PRs (120s → 60s)
   - Added read cooldown: 5 seconds between read operations (prevents startup blocks)
   - Added bypass parameter: Polling service bypasses rate limits (trusted internal operations)
   - Updated `list_issues()`: Now accepts `bypass_rate_limit` parameter
   - Updated `check_rate_limit()`: Now accepts `bypass` parameter for whitelisting
+- **Log viewing ergonomics** - Added `--no-pager` to journalctl commands in scripts and docs so logs open without manual paging
 
 ### Security
 

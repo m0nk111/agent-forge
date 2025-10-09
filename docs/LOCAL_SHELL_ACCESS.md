@@ -503,7 +503,7 @@ All commands are logged with:
 
 View logs:
 ```bash
-journalctl -u agent-forge | grep "ShellRunner"
+journalctl -u agent-forge --no-pager | grep "ShellRunner"
 ```
 
 ### Access Review

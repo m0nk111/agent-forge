@@ -759,7 +759,7 @@ sudo systemctl start agent-forge
 sudo systemctl enable agent-forge
 
 # View logs
-sudo journalctl -u agent-forge -f
+sudo journalctl -u agent-forge -f --no-pager
 ```
 
 **Service File**: `systemd/agent-forge.service`

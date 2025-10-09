@@ -57,7 +57,7 @@ Pre-deployment checklist voor Agent-Forge updates.
 
 ### 8. Deployment
 - [ ] Services restarted: `sudo systemctl restart agent-forge agent-forge-auth`
-- [ ] No errors in logs: `sudo journalctl -u agent-forge -n 50`
+- [ ] No errors in logs: `sudo journalctl -u agent-forge -n 50 --no-pager`
 - [ ] Dashboard still accessible
 - [ ] Agent operations working
 - [ ] GitHub integration functional
@@ -116,8 +116,8 @@ curl http://localhost:7998/api/config/health
 curl -I http://localhost:8897/dashboard.html
 
 # 6. Monitor Logs (5 min)
-sudo journalctl -u agent-forge -f &
-sudo journalctl -u agent-forge-auth -f &
+sudo journalctl -u agent-forge -f --no-pager &
+sudo journalctl -u agent-forge-auth -f --no-pager &
 
 # Wait 5 minutes, check for errors
 ```
@@ -156,7 +156,7 @@ curl http://localhost:7996/health
 curl http://localhost:8897/dashboard.html
 
 # 6. Check logs
-sudo journalctl -u agent-forge -n 50
+sudo journalctl -u agent-forge -n 50 --no-pager
 ```
 
 ## 📝 Deployment Notes Template

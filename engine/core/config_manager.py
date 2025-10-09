@@ -259,6 +259,33 @@ class ConfigManager:
                             'max_tokens', 'created_at', 'updated_at'
                         }
                         filtered_data = {k: v for k, v in agent_data.items() if k in valid_fields}
+
+                        model_config = agent_data.get('model')
+                        if isinstance(model_config, dict):
+                            provider = model_config.get('provider')
+                            name = model_config.get('name')
+                            base_url = model_config.get('base_url')
+                            temperature = model_config.get('temperature')
+                            max_tokens = model_config.get('max_tokens')
+
+                            if provider and not filtered_data.get('model_provider'):
+                                filtered_data['model_provider'] = provider
+                            if name and not filtered_data.get('model_name'):
+                                filtered_data['model_name'] = name
+                            if base_url:
+                                filtered_data['api_base_url'] = base_url
+                            if temperature is not None and 'temperature' not in filtered_data:
+                                filtered_data['temperature'] = temperature
+                            if max_tokens is not None and 'max_tokens' not in filtered_data:
+                                filtered_data['max_tokens'] = max_tokens
+
+                            filtered_data.pop('model', None)
+
+                        # Backwards compatibility: allow legacy fields to override defaults
+                        if filtered_data.get('model') and isinstance(filtered_data['model'], str):
+                            if not filtered_data.get('model_name'):
+                                filtered_data['model_name'] = filtered_data['model']
+                            filtered_data.pop('model', None)
                         
                         agent = AgentConfig(**filtered_data)
                         

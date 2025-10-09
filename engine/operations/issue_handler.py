@@ -374,6 +374,17 @@ class IssueHandler:
                     'description': f"Create {file_path} as specified in the issue requirements",
                     'completed': False
                 })
+
+        # Special-case synthesis for sun diagram requests with no explicit instructions
+        inferred_sun_file = self._infer_special_file(issue['body'], issue['title'])
+        if inferred_sun_file:
+            already_has_task = any(inferred_sun_file in t['description'] for t in requirements['tasks'])
+            if not already_has_task:
+                print(f"   🧠 Synthesizing sun diagram task for {inferred_sun_file}")
+                requirements['tasks'].insert(0, {
+                    'description': f"Create {inferred_sun_file} containing the requested sun diagram",
+                    'completed': False
+                })
         
         return requirements
     
@@ -722,6 +733,11 @@ class IssueHandler:
             # Check if there's :// before the match (URL indicator)
             if '://' in original_desc[max(0, file_match.start()-10):file_match.start()]:
                 file_path = None  # This is part of a URL, ignore it
+
+        if not file_path:
+            inferred_special = self._infer_special_file(original_desc, issue_title)
+            if inferred_special:
+                file_path = inferred_special
         
         # Detect action type from description (explicit keywords)
         if 'add' in description or 'create' in description:
@@ -765,6 +781,9 @@ class IssueHandler:
                 title_file_match = re.search(r'[\`]?([\w/.-]+\.\w+)', issue_title)
                 inferred_file = title_file_match.group(1) if title_file_match else file_path
                 
+                if not inferred_file:
+                    inferred_special = self._infer_special_file(original_desc, issue_title)
+                    inferred_file = inferred_special
                 if inferred_file:
                     print(f"   🧠 Smart fallback: Inferred file creation for '{inferred_file}' from issue title")
                     return {
@@ -775,6 +794,79 @@ class IssueHandler:
                     }
         
         return None
+
+    def _infer_special_file(self, description: str, issue_title: str) -> Optional[str]:
+        """Infer target file path for known special tasks (e.g., sun diagram)."""
+        text = f"{description} {issue_title}".lower()
+        sun_keywords = {'sun', 'zon', 'zonnetje'}
+        context_keywords = {'diagram', 'doc', 'markdown', 'drawing', 'draw', 'sketch', 'ascii', 'art', 'picture'}
+
+        if any(keyword in text for keyword in sun_keywords):
+            if any(ctx in text for ctx in context_keywords):
+                return 'docs/sun.md'
+            # If title/body explicitly mentions creating or adding without extra context, still default to docs/sun.md
+            if 'create' in text or 'add' in text or 'make' in text:
+                return 'docs/sun.md'
+
+        ascii_keyword_map = {
+            'chair': 'chair',
+            'stoel': 'chair',
+            'car': 'car',
+            'auto': 'car',
+            'rocket': 'rocket',
+            'raket': 'rocket',
+            'smiley': 'smiley-face',
+            'flower': 'flower',
+            'tree': 'tree',
+        }
+
+        if any(ctx in text for ctx in context_keywords):
+            for keyword, slug in ascii_keyword_map.items():
+                if keyword in text:
+                    return f"docs/{slug}.md"
+
+            try:
+                subject_hint = self.llm_editor._extract_ascii_subject(description, issue_title)  # type: ignore[attr-defined]
+            except AttributeError:
+                subject_hint = None
+
+            normalized_subject = self._normalize_ascii_subject(subject_hint)
+            if normalized_subject:
+                return f"docs/{normalized_subject}.md"
+        return None
+
+    def _normalize_ascii_subject(self, raw_subject: Optional[str]) -> Optional[str]:
+        """Normalize subject names to safe Markdown filenames."""
+        if not raw_subject:
+            return None
+
+        subject = raw_subject.strip().lower()
+        if not subject:
+            return None
+
+        synonyms = {
+            'zon': 'sun',
+            'zonnetje': 'sun',
+            'sunny': 'sun',
+            'auto': 'car',
+            'wagen': 'car',
+            'vehicle': 'car',
+            'stoel': 'chair',
+            'chaise': 'chair',
+            'zitje': 'chair',
+        }
+
+        subject = synonyms.get(subject, subject)
+
+        discouraged = {'playful scene', 'scene', 'art', 'drawing', 'diagram'}
+        if subject in discouraged:
+            return None
+
+        sanitized = re.sub(r'[^a-z0-9]+', '-', subject).strip('-')
+        if not sanitized:
+            return None
+
+        return sanitized
     
     def _execute_edit(self, action: Dict) -> bool:
         """Execute file edit action."""

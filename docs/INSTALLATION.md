@@ -159,8 +159,8 @@ sudo systemctl status agent-forge
 sudo systemctl status agent-forge-auth
 
 # View logs
-sudo journalctl -u agent-forge -f
-sudo journalctl -u agent-forge-auth -f
+sudo journalctl -u agent-forge -f --no-pager
+sudo journalctl -u agent-forge-auth -f --no-pager
 ```
 
 ### 7. Passwordless Sudo (Optional)
@@ -240,7 +240,7 @@ else:
 
 ```bash
 # Check logs
-sudo journalctl -u agent-forge-auth -n 50
+sudo journalctl -u agent-forge-auth -n 50 --no-pager
 
 # Common issues:
 # 1. Port 7996 already in use
@@ -341,4 +341,4 @@ sudo rm /etc/sudoers.d/flip-nopasswd
 
 - **Issues**: https://github.com/m0nk111/agent-forge/issues
 - **Docs**: See docs/ directory
-- **Logs**: `sudo journalctl -u agent-forge -f`
+- **Logs**: `sudo journalctl -u agent-forge -f --no-pager`
