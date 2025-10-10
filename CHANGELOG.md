@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2025-01-XX
 
+### Fixed
+
+- **Code Generator Prompt Separation** (2025-10-10)
+  - Fixed prompt bug where test files could receive implementation content
+  - Enhanced `_generate_implementation()` prompt with explicit DO/DO NOT instructions
+  - Enhanced `_generate_tests()` prompt to clarify this is test file generation only
+  - Added explicit warnings: "DO NOT include implementation code" in test prompt
+  - Added file path reminders in both prompts to prevent confusion
+  - Improved LLM instruction clarity: separate concerns between implementation and tests
+  - Rationale: Previous prompts were ambiguous, leading to mixed content in generated files
+
+### Added
+
+- **Code Generator Coverage Integration** (2025-10-10)
+  - Added pytest-cov integration to `_run_tests()` method
+  - Coverage metrics now tracked when pytest-cov is installed
+  - Falls back gracefully when pytest-cov not available
+  - Coverage percentage parsed from pytest output and included in test results
+  - Added 'coverage' field to test results dictionary
+  - Logs coverage percentage when available: "📊 Coverage: XX%"
+  - Rationale: Enables tracking of test quality and completeness for generated code
+
 ### Added
 
 - **Creative Status Generator** (2025-10-10)

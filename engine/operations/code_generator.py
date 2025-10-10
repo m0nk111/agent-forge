@@ -262,7 +262,7 @@ PREVIOUS ERRORS TO FIX:
 Please fix these issues in the new implementation.
 """
         
-        prompt = f"""Generate a complete Python module: {spec.module_path}
+        prompt = f"""You are generating the IMPLEMENTATION file (not tests): {spec.module_path}
 
 Description:
 {spec.description}
@@ -282,7 +282,11 @@ Guidelines:
 
 {error_feedback}
 
-Output ONLY the complete module code. Do NOT wrap in markdown code blocks.
+CRITICAL: Output ONLY the implementation code for {spec.module_path}.
+- DO include: imports, function definitions, classes, implementation logic
+- DO NOT include: test code, pytest fixtures, test assertions
+- DO NOT wrap in markdown code blocks or add explanations
+- Start directly with imports or module docstring
 """
         
         try:
@@ -314,14 +318,14 @@ PREVIOUS TEST ERRORS TO FIX:
 Please ensure tests address these issues.
 """
         
-        prompt = f"""Generate comprehensive pytest test suite for: {spec.module_path}
+        prompt = f"""You are generating the TEST file (not implementation): {spec.test_path}
 
-Module Implementation:
+Module Implementation to Test:
 ```python
 {implementation}
 ```
 
-Requirements:
+Requirements for {spec.test_path}:
 1. Test all functions in the module
 2. Include positive and negative test cases
 3. Test edge cases and error handling
@@ -331,7 +335,14 @@ Requirements:
 
 {error_feedback}
 
-Output ONLY the complete test file code. Do NOT wrap in markdown code blocks.
+CRITICAL: Output ONLY the test file code for {spec.test_path}.
+- DO include: pytest imports, test functions, fixtures, assertions, mock usage
+- DO NOT include: the actual implementation code being tested
+- DO NOT include: function definitions from {spec.module_path}
+- DO NOT wrap in markdown code blocks or add explanations
+- Start directly with: import pytest or from {spec.module_name} import ...
+
+This file will be saved as {spec.test_path}, NOT as implementation.
 """
         
         try:
@@ -416,16 +427,30 @@ Output ONLY the complete test file code. Do NOT wrap in markdown code blocks.
         return result
     
     def _run_tests(self, test_path: Path) -> Dict:
-        """Run pytest on test file."""
+        """Run pytest on test file with coverage metrics."""
         result = {
             'passed': False,
             'tests_run': 0,
-            'failures': []
+            'failures': [],
+            'coverage': None
         }
         
         try:
+            # Run pytest with coverage if available
+            pytest_cmd = ['pytest', str(test_path), '-v', '--tb=short']
+            
+            # Try to add coverage if pytest-cov is installed
+            try:
+                import pytest_cov
+                # Get module path from test path (tests/test_X.py -> engine/operations/X.py)
+                module_name = test_path.stem.replace('test_', '')
+                pytest_cmd.extend(['--cov', '--cov-report=term-missing'])
+                logger.info("   📊 Coverage tracking enabled")
+            except ImportError:
+                logger.debug("   ℹ️  pytest-cov not available, skipping coverage")
+            
             pytest_output = subprocess.run(
-                ['pytest', str(test_path), '-v', '--tb=short'],
+                pytest_cmd,
                 capture_output=True,
                 text=True,
                 timeout=60,
@@ -438,6 +463,12 @@ Output ONLY the complete test file code. Do NOT wrap in markdown code blocks.
             passed_match = re.search(r'(\d+) passed', pytest_output.stdout)
             if passed_match:
                 result['tests_run'] = int(passed_match.group(1))
+            
+            # Parse coverage if available
+            coverage_match = re.search(r'TOTAL\s+\d+\s+\d+\s+(\d+)%', pytest_output.stdout)
+            if coverage_match:
+                result['coverage'] = int(coverage_match.group(1))
+                logger.info(f"   📊 Coverage: {result['coverage']}%")
             
             # Extract failures if any
             if not result['passed']:

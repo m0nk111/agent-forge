@@ -342,7 +342,20 @@ Until all above works reliably, development continues.
 
 #### 3B: Code Module Generation ✅ FUNCTIONAL
 
-**Status**: 90% complete - **Core infrastructure working end-to-end, minor prompt tuning needed**
+**Status**: 95% complete - **PROMPT BUG FIXED, COVERAGE ADDED** ✅
+
+**Recent Updates** (2025-10-10):
+- ✅ **Prompt Separation Bug Fixed**: Enhanced prompts with explicit DO/DO NOT instructions
+  - Implementation prompt: "DO NOT include test code, pytest fixtures, test assertions"
+  - Test prompt: "DO NOT include the actual implementation code being tested"
+  - E2E validation: test_prompt_separation_with_real_llm PASSED ✅
+- ✅ **Coverage Integration Added**: pytest-cov integration in `_run_tests()` method
+  - Coverage metrics tracked when pytest-cov installed
+  - Falls back gracefully when not available
+  - Coverage percentage parsed and logged
+- ✅ **E2E Tests Created**: `tests/test_code_generator_e2e.py` with real LLM validation
+  - test_prompt_separation_with_real_llm: Validates separation (11.92s) ✅
+  - test_full_generation_workflow: Tests complete pipeline (39.32s) ✅
 
 **E2E Validation** (2025-10-10 - Issue #84):
 - ✅ **Test Issue Created**: "Create string_utils.py helper module" with clear requirements
@@ -395,10 +408,10 @@ Until all above works reliably, development continues.
 
 **Documentation**: [CHANGELOG.md](../CHANGELOG.md#phase-3b-autonomous-code-module-generation) (comprehensive entry)
 
-**Known Limitations**:
-- Test file receives implementation content (prompt needs clearer separation instructions)
+**Known Limitations** (reduced from 4 to 2):
+- ~~Test file receives implementation content~~ ✅ **FIXED** (2025-10-10)
 - Import patterns need optimization (absolute vs relative imports)
-- No coverage metrics yet (pytest-cov integration pending)
+- ~~No coverage metrics yet~~ ✅ **ADDED** (pytest-cov integration 2025-10-10)
 - Error accumulation needs refinement (currently keeps all errors across retries)
 
 **Next Steps** (to reach 100%):
@@ -407,9 +420,10 @@ Until all above works reliably, development continues.
 3. ✅ Integration tests with real LLM (DONE)
 4. ✅ E2E validation (DONE - Issue #84)
 5. ✅ Security and test validation (DONE)
-6. ⏳ **Prompt optimization**: Fix test/implementation separation (HIGH PRIORITY)
-7. ⏳ **Full pipeline integration**: Test with polling_service → issue_handler → PR creation
-8. ⏳ **Coverage integration**: Add pytest-cov for coverage metrics (LOW PRIORITY)
+6. ✅ **Prompt optimization**: Fix test/implementation separation (DONE 2025-10-10)
+7. ✅ **Coverage integration**: Add pytest-cov for coverage metrics (DONE 2025-10-10)
+8. ⏳ **Full pipeline integration**: Test with polling_service → issue_handler → PR creation (NEXT)
+9. ⏳ **Import pattern optimization**: Better handling of absolute vs relative imports (LOW PRIORITY)
 
 
 

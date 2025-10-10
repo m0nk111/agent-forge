@@ -8,6 +8,10 @@ httpx>=0.25.0  # Async HTTP client for OAuth
 python-multipart>=0.0.6  # Form data parsing
 itsdangerous>=2.1.0  # Session security
 
+# Testing dependencies
+pytest>=8.0.0  # Test framework
+pytest-cov>=4.1.0  # Coverage tracking for code generation (Phase 3B)
+
 # Security audit dependencies (Issue #62)
 bandit>=1.7.5  # Python security linting
 safety>=3.0.0  # Dependency vulnerability scanning
