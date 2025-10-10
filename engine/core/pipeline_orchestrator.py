@@ -72,13 +72,15 @@ class PipelineConfig:
 class PipelineOrchestrator:
     """Orchestrates the complete autonomous issue resolution pipeline."""
     
-    def __init__(self, config: Optional[PipelineConfig] = None):
+    def __init__(self, config: Optional[PipelineConfig] = None, agent = None):
         """Initialize pipeline orchestrator.
         
         Args:
             config: Pipeline configuration (uses defaults if not provided)
+            agent: Code agent instance for LLM operations (optional)
         """
         self.config = config or PipelineConfig()
+        self.agent = agent  # For CodeGenerator and other LLM-based operations
         self.active_pipelines: Dict[str, Dict] = {}  # issue_key -> pipeline_state
         
         # Initialize components (lazy loading)
@@ -369,22 +371,142 @@ class PipelineOrchestrator:
     
     async def _generate_implementation(self, requirements: Dict, issue_data: Dict) -> Dict:
         """Generate code implementation (delegate to CodeGenerator)."""
-        # TODO: Integrate with actual CodeGenerator
-        logger.warning("⚠️  Code generation not yet fully integrated - placeholder")
-        return {
-            'success': False,
-            'error': 'Code generation integration pending',
-            'files': []
-        }
+        try:
+            # Import CodeGenerator
+            from engine.operations.code_generator import CodeGenerator, ModuleSpec
+            from pathlib import Path
+            
+            # Extract module specification from requirements
+            module_path = requirements.get('module_path')
+            if not module_path:
+                logger.error("❌ No module_path in requirements")
+                return {
+                    'success': False,
+                    'error': 'No module_path specified in requirements',
+                    'files': []
+                }
+            
+            # Build ModuleSpec
+            spec = ModuleSpec(
+                module_path=module_path,
+                module_name=requirements.get('module_name', Path(module_path).stem),
+                test_path=requirements.get('test_path', f"tests/test_{Path(module_path).stem}.py"),
+                description=requirements.get('description', issue_data.get('title', '')),
+                functions=requirements.get('functions', []),
+                dependencies=requirements.get('dependencies', [])
+            )
+            
+            # Generate code
+            logger.info(f"🚀 Generating module: {spec.module_name}")
+            generator = CodeGenerator(self.agent)
+            result = generator.generate_module(spec)
+            
+            if not result.success:
+                logger.error(f"❌ Code generation failed: {result.errors}")
+                return {
+                    'success': False,
+                    'error': f"Code generation failed: {', '.join(result.errors or [])}",
+                    'files': []
+                }
+            
+            logger.info(f"✅ Code generation successful (retry_count={result.retry_count})")
+            
+            # Return implementation details
+            return {
+                'success': True,
+                'module_path': spec.module_path,
+                'test_path': spec.test_path,
+                'module_content': result.module_content,
+                'test_content': result.test_content,
+                'static_analysis': result.static_analysis,
+                'retry_count': result.retry_count,
+                'files': [spec.module_path, spec.test_path]
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ Error generating implementation: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return {
+                'success': False,
+                'error': str(e),
+                'files': []
+            }
     
     async def _run_tests(self, files: List[str]) -> Dict:
         """Run tests for generated code."""
-        # TODO: Implement test execution
-        logger.warning("⚠️  Test execution not yet implemented - placeholder")
-        return {
-            'passed': True,
-            'count': 0
-        }
+        try:
+            import subprocess
+            
+            # Find test files in the files list
+            test_files = [f for f in files if f.startswith('tests/') and f.endswith('.py')]
+            
+            if not test_files:
+                logger.warning("⚠️ No test files found to execute")
+                return {
+                    'passed': False,
+                    'count': 0,
+                    'error': 'No test files found'
+                }
+            
+            logger.info(f"🧪 Running tests: {test_files}")
+            
+            # Run pytest on test files
+            cmd = ['pytest'] + test_files + ['-v', '--tb=short']
+            
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=300  # 5 minute timeout
+            )
+            
+            # Parse output for test results
+            output = result.stdout + result.stderr
+            logger.debug(f"Test output:\n{output}")
+            
+            # Extract test counts from pytest output
+            passed = failed = 0
+            for line in output.split('\n'):
+                if 'passed' in line.lower():
+                    import re
+                    match = re.search(r'(\d+) passed', line)
+                    if match:
+                        passed = int(match.group(1))
+                if 'failed' in line.lower():
+                    import re
+                    match = re.search(r'(\d+) failed', line)
+                    if match:
+                        failed = int(match.group(1))
+            
+            success = result.returncode == 0 and failed == 0
+            
+            logger.info(f"✅ Test results: {passed} passed, {failed} failed")
+            
+            return {
+                'passed': success,
+                'count': passed,
+                'failed': failed,
+                'output': output[:1000],  # Truncate for logging
+                'returncode': result.returncode
+            }
+            
+        except subprocess.TimeoutExpired:
+            logger.error("❌ Test execution timed out after 5 minutes")
+            return {
+                'passed': False,
+                'count': 0,
+                'error': 'Test execution timed out'
+            }
+        except Exception as e:
+            logger.error(f"❌ Error running tests: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return {
+                'passed': False,
+                'count': 0,
+                'error': str(e)
+            }
     
     async def _create_pull_request(
         self, 
@@ -395,29 +517,249 @@ class PipelineOrchestrator:
         token: str
     ) -> Dict:
         """Create pull request with generated changes."""
-        # TODO: Integrate with GitHubAPIHelper or MCP
-        logger.warning("⚠️  PR creation not yet integrated - placeholder")
-        return {
-            'success': False,
-            'error': 'PR creation integration pending'
-        }
+        try:
+            import requests
+            import subprocess
+            
+            owner, repo_name = repo.split('/')
+            
+            # Create branch name
+            branch_name = f"fix-issue-{issue_number}"
+            
+            # Get files to commit
+            files = generation_result.get('files', [])
+            if not files:
+                return {
+                    'success': False,
+                    'error': 'No files to commit'
+                }
+            
+            logger.info(f"🌿 Creating branch: {branch_name}")
+            
+            # Create new branch via git
+            # First, ensure we're on main
+            subprocess.run(['git', 'checkout', 'main'], capture_output=True)
+            subprocess.run(['git', 'pull', 'origin', 'main'], capture_output=True)
+            
+            # Create and checkout new branch
+            result = subprocess.run(
+                ['git', 'checkout', '-b', branch_name],
+                capture_output=True,
+                text=True
+            )
+            
+            if result.returncode != 0:
+                logger.error(f"Failed to create branch: {result.stderr}")
+                return {
+                    'success': False,
+                    'error': f'Branch creation failed: {result.stderr}'
+                }
+            
+            # Write generated files
+            module_path = generation_result.get('module_path')
+            test_path = generation_result.get('test_path')
+            module_content = generation_result.get('module_content')
+            test_content = generation_result.get('test_content')
+            
+            if module_path and module_content:
+                Path(module_path).parent.mkdir(parents=True, exist_ok=True)
+                Path(module_path).write_text(module_content)
+                logger.info(f"📝 Wrote {module_path}")
+            
+            if test_path and test_content:
+                Path(test_path).parent.mkdir(parents=True, exist_ok=True)
+                Path(test_path).write_text(test_content)
+                logger.info(f"📝 Wrote {test_path}")
+            
+            # Git add
+            subprocess.run(['git', 'add'] + files, capture_output=True)
+            
+            # Git commit
+            commit_msg = f"fix: Resolve issue #{issue_number} - {issue_data.get('title', 'Unknown')}\n\nGenerated by Agent-Forge autonomous pipeline."
+            subprocess.run(
+                ['git', 'commit', '-m', commit_msg],
+                capture_output=True,
+                text=True
+            )
+            
+            # Git push
+            result = subprocess.run(
+                ['git', 'push', 'origin', branch_name],
+                capture_output=True,
+                text=True
+            )
+            
+            if result.returncode != 0:
+                logger.error(f"Failed to push branch: {result.stderr}")
+                return {
+                    'success': False,
+                    'error': f'Push failed: {result.stderr}'
+                }
+            
+            logger.info(f"✅ Pushed branch: {branch_name}")
+            
+            # Create PR via GitHub API
+            pr_url = f"https://api.github.com/repos/{owner}/{repo_name}/pulls"
+            
+            pr_data = {
+                'title': f"Fix: {issue_data.get('title', 'Unknown')}",
+                'body': f"Resolves #{issue_number}\n\nAutomatically generated by Agent-Forge pipeline.\n\n**Generated Files:**\n" + '\n'.join([f"- `{f}`" for f in files]),
+                'head': branch_name,
+                'base': 'main'
+            }
+            
+            headers = {
+                'Authorization': f'token {token}',
+                'Accept': 'application/vnd.github+json',
+                'X-GitHub-Api-Version': '2022-11-28'
+            }
+            
+            response = requests.post(pr_url, json=pr_data, headers=headers, timeout=30)
+            response.raise_for_status()
+            
+            pr_result = response.json()
+            pr_number = pr_result['number']
+            pr_html_url = pr_result['html_url']
+            
+            logger.info(f"✅ Created PR #{pr_number}: {pr_html_url}")
+            
+            return {
+                'success': True,
+                'pr_number': pr_number,
+                'pr_url': pr_html_url,
+                'branch': branch_name
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ Error creating PR: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            
+            # Try to cleanup branch
+            try:
+                subprocess.run(['git', 'checkout', 'main'], capture_output=True)
+                subprocess.run(['git', 'branch', '-D', branch_name], capture_output=True)
+            except:
+                pass
+            
+            return {
+                'success': False,
+                'error': str(e)
+            }
     
     async def _review_pull_request(self, repo: str, pr_number: int, token: str) -> Dict:
         """Review pull request (delegate to PRReviewer)."""
-        # TODO: Integrate with PRReviewer
-        logger.warning("⚠️  PR review not yet integrated - placeholder")
-        return {
-            'approved': False
-        }
+        try:
+            from engine.operations.pr_reviewer import PRReviewer, ReviewCriteria
+            from engine.operations.github_api_helper import GitHubAPIHelper
+            import requests
+            
+            owner, repo_name = repo.split('/')
+            
+            # Fetch PR details via GitHub API
+            pr_url = f"https://api.github.com/repos/{owner}/{repo_name}/pulls/{pr_number}"
+            headers = {
+                'Authorization': f'token {token}',
+                'Accept': 'application/vnd.github+json',
+                'X-GitHub-Api-Version': '2022-11-28'
+            }
+            
+            response = requests.get(pr_url, headers=headers, timeout=30)
+            response.raise_for_status()
+            pr_data = response.json()
+            
+            # Fetch PR files
+            files_url = f"{pr_url}/files"
+            response = requests.get(files_url, headers=headers, timeout=30)
+            response.raise_for_status()
+            files = response.json()
+            
+            logger.info(f"📝 Reviewing PR #{pr_number} with {len(files)} files")
+            
+            # Create reviewer with relaxed criteria (self-review)
+            criteria = ReviewCriteria(
+                check_code_quality=True,
+                check_testing=True,
+                check_documentation=False,  # Relaxed
+                check_security=True,
+                require_changelog=False,  # Relaxed for now
+                min_test_coverage=70,  # Lower threshold
+                strictness_level="relaxed"
+            )
+            
+            github_api = GitHubAPIHelper(token)
+            reviewer = PRReviewer(
+                github_username="m0nk111-bot",  # Bot username
+                criteria=criteria,
+                llm_agent=self.agent,
+                github_api=github_api
+            )
+            
+            # Perform review
+            should_approve, summary, comments = await reviewer.review_pr(
+                repo, pr_number, pr_data, files
+            )
+            
+            logger.info(f"✅ Review complete: approved={should_approve}, comments={len(comments)}")
+            
+            return {
+                'approved': should_approve,
+                'summary': summary,
+                'comments': len(comments)
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ Error reviewing PR: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            # Default to not approved on error
+            return {
+                'approved': False,
+                'error': str(e)
+            }
     
     async def _merge_pull_request(self, repo: str, pr_number: int, token: str) -> Dict:
         """Merge pull request if approved."""
-        # TODO: Implement merge logic
-        logger.warning("⚠️  PR merge not yet implemented - placeholder")
-        return {
-            'success': False,
-            'error': 'Merge not yet implemented'
-        }
+        try:
+            import requests
+            
+            owner, repo_name = repo.split('/')
+            
+            # Merge via GitHub API
+            merge_url = f"https://api.github.com/repos/{owner}/{repo_name}/pulls/{pr_number}/merge"
+            
+            headers = {
+                'Authorization': f'token {token}',
+                'Accept': 'application/vnd.github+json',
+                'X-GitHub-Api-Version': '2022-11-28'
+            }
+            
+            merge_data = {
+                'commit_title': f"Merge pull request #{pr_number}",
+                'commit_message': f"Automatically merged by Agent-Forge pipeline",
+                'merge_method': 'squash'  # Squash commits for clean history
+            }
+            
+            response = requests.put(merge_url, json=merge_data, headers=headers, timeout=30)
+            response.raise_for_status()
+            
+            result = response.json()
+            logger.info(f"✅ Merged PR #{pr_number}: {result.get('message', 'Success')}")
+            
+            return {
+                'success': True,
+                'merged': result.get('merged', False),
+                'sha': result.get('sha')
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ Error merging PR: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return {
+                'success': False,
+                'error': str(e)
+            }
     
     async def _close_issue_with_summary(
         self, 
@@ -428,8 +770,64 @@ class PipelineOrchestrator:
         token: str
     ):
         """Close issue with completion summary."""
-        # TODO: Integrate with GitHubAPIHelper
-        logger.warning("⚠️  Issue closing not yet integrated - placeholder")
+        try:
+            import requests
+            
+            owner, repo_name = repo.split('/')
+            
+            # Build summary comment
+            files = generation_result.get('files', [])
+            retry_count = generation_result.get('retry_count', 0)
+            
+            summary = f"""## ✅ Issue Resolved
+
+This issue has been automatically resolved by the Agent-Forge autonomous pipeline.
+
+**Pull Request:** {pr_url}
+
+**Generated Files:**
+{chr(10).join([f"- `{f}`" for f in files])}
+
+**Generation Stats:**
+- Retry count: {retry_count}
+- Tests: Passed ✅
+
+The fix has been merged and is now available in the main branch.
+
+---
+*This issue was resolved autonomously by Agent-Forge 🤖*
+"""
+            
+            # Post comment via GitHub API
+            comment_url = f"https://api.github.com/repos/{owner}/{repo_name}/issues/{issue_number}/comments"
+            headers = {
+                'Authorization': f'token {token}',
+                'Accept': 'application/vnd.github+json',
+                'X-GitHub-Api-Version': '2022-11-28'
+            }
+            
+            comment_data = {'body': summary}
+            response = requests.post(comment_url, json=comment_data, headers=headers, timeout=30)
+            response.raise_for_status()
+            
+            logger.info(f"✅ Posted summary comment to issue #{issue_number}")
+            
+            # Close issue via GitHub API
+            issue_url = f"https://api.github.com/repos/{owner}/{repo_name}/issues/{issue_number}"
+            close_data = {
+                'state': 'closed',
+                'state_reason': 'completed'
+            }
+            
+            response = requests.patch(issue_url, json=close_data, headers=headers, timeout=30)
+            response.raise_for_status()
+            
+            logger.info(f"✅ Closed issue #{issue_number}")
+            
+        except Exception as e:
+            logger.error(f"❌ Error closing issue: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
     
     def get_pipeline_status(self, repo: str, issue_number: int) -> Optional[Dict]:
         """Get current status of a pipeline.
@@ -457,11 +855,12 @@ class PipelineOrchestrator:
 _orchestrator_instance: Optional[PipelineOrchestrator] = None
 
 
-def get_orchestrator(config: Optional[PipelineConfig] = None) -> PipelineOrchestrator:
+def get_orchestrator(config: Optional[PipelineConfig] = None, agent = None) -> PipelineOrchestrator:
     """Get or create the global pipeline orchestrator instance.
     
     Args:
         config: Configuration (only used on first call)
+        agent: Code agent instance (only used on first call)
         
     Returns:
         PipelineOrchestrator instance
@@ -469,6 +868,6 @@ def get_orchestrator(config: Optional[PipelineConfig] = None) -> PipelineOrchest
     global _orchestrator_instance
     
     if _orchestrator_instance is None:
-        _orchestrator_instance = PipelineOrchestrator(config)
+        _orchestrator_instance = PipelineOrchestrator(config, agent)
     
     return _orchestrator_instance

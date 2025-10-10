@@ -642,7 +642,7 @@ class PollingService:
                 auto_merge_on_approval=False,  # Safety: don't auto-merge yet
                 require_tests_passing=True
             )
-            orchestrator = get_orchestrator(pipeline_config)
+            orchestrator = get_orchestrator(pipeline_config, agent=agent)  # Pass agent for LLM operations
             
             # Run autonomous pipeline
             logger.info(f"🚀 Starting autonomous pipeline for {issue_key}")
