@@ -9,6 +9,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **🚀 Autonomous Pipeline Orchestrator** (2025-10-10)
+  - Created `engine/core/pipeline_orchestrator.py` - central coordinator for autonomous workflow
+  - Orchestrates complete pipeline: PollingService → IssueDetection → CodeGeneration → PR Creation → Review → Merge
+  - Multi-source token management: BOT_GITHUB_TOKEN, GITHUB_TOKEN, GH_TOKEN, config files, MCP injection
+  - `PipelineOrchestrator.handle_new_issue()` main entry point for autonomous resolution
+  - Phase tracking: initialization, fetch_issue, parse_requirements, generate_code, run_tests, create_pr, review_pr, merge_pr, close_issue
+  - Progress tracking (0.0 → 1.0) for each pipeline phase
+  - Comprehensive error handling with detailed logging at each phase
+  - Retry configuration support (max_retries, retry_delay)
+  - Safety features: auto_merge disabled by default, require_tests_passing enabled
+  - Singleton pattern with `get_orchestrator()` for global access
+  - Support for monitoring integration (optional)
+  - Issues #84 and #85 are E2E test cases for this pipeline
+
+- **🔄 PollingService Pipeline Integration** (2025-10-10)
+  - Updated `engine/runners/polling_service.py` to use PipelineOrchestrator
+  - Replaced direct IssueHandler calls with `orchestrator.handle_new_issue()`
+  - Async pipeline execution integrated into polling workflow
+  - Proper state tracking for pipeline-handled issues
+  - Error recovery maintains claim state for retry
+
+- **⚙️ SystemD Polling Service** (2025-10-10)
+  - Created `systemd/agent-forge-polling.service` for automatic startup
+  - Environment variable configuration for tokens: BOT_GITHUB_TOKEN, GITHUB_TOKEN
+  - Configurable polling interval (default: 300s / 5 minutes)
+  - Multi-repository support via POLLING_REPOS environment variable
+  - Auto-restart on failure with 30-second delay
+  - Resource limits: 512MB RAM, 50% CPU quota
+  - Security hardening: NoNewPrivileges, PrivateTmp, ProtectSystem=strict
+  - Journal logging with SyslogIdentifier=agent-forge-polling
+  - Created `scripts/install-polling-service.sh` installation helper
+  - Interactive setup: enable auto-start, start now, view status
+
 - **PR Review Agent - LLM Integration & GitHub Posting** (2025-10-10)
   - Added comprehensive LLM review prompts with language-specific guidelines
   - Implemented `_generate_review_prompt()` with focus on logic, security, performance, best practices

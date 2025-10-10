@@ -633,12 +633,20 @@ class PollingService:
             
             logger.info(f"✅ Using agent: {self.config.github_username} for issue {issue_key}")
             
-            # Import here to avoid circular dependency
-            from engine.operations.issue_handler import IssueHandler
+            # Use Pipeline Orchestrator for autonomous workflow
+            from engine.core.pipeline_orchestrator import get_orchestrator, PipelineConfig
             
-            # Start issue handler with agent instance
-            handler = IssueHandler(agent)
-            result = handler.assign_to_issue(repo, issue_number)
+            # Get or create orchestrator instance
+            pipeline_config = PipelineConfig(
+                default_repos=[repo],
+                auto_merge_on_approval=False,  # Safety: don't auto-merge yet
+                require_tests_passing=True
+            )
+            orchestrator = get_orchestrator(pipeline_config)
+            
+            # Run autonomous pipeline
+            logger.info(f"🚀 Starting autonomous pipeline for {issue_key}")
+            result = await orchestrator.handle_new_issue(repo, issue_number)
             success = result.get('success', False)
             
             # Update state
