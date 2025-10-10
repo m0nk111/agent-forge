@@ -230,7 +230,7 @@ class IssueHandler:
             url = f"https://api.github.com/repos/{owner}/{repo_name}/issues/{issue_number}"
             
             headers = {
-                'Authorization': f'Bearer {token}',
+                'Authorization': f'token {token}',
                 'Accept': 'application/vnd.github+json',
                 'X-GitHub-Api-Version': '2022-11-28'
             }
@@ -264,7 +264,7 @@ class IssueHandler:
             
             owner, repo_name = repo.split('/')
             headers = {
-                'Authorization': f'Bearer {token}',
+                'Authorization': f'token {token}',
                 'Accept': 'application/vnd.github+json',
                 'X-GitHub-Api-Version': '2022-11-28'
             }
