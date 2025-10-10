@@ -4,7 +4,7 @@ import asyncio
 import json
 import pytest
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, patch, AsyncMock
 
 from engine.runners.polling_service import (
@@ -12,6 +12,11 @@ from engine.runners.polling_service import (
     PollingConfig,
     IssueState
 )
+
+
+def _utc_iso(delta: timedelta = timedelta(0)) -> str:
+    """Return ISO string in UTC with Z suffix, optionally offset by delta."""
+    return (datetime.now(timezone.utc) + delta).isoformat().replace("+00:00", "Z")
 
 
 @pytest.fixture
@@ -139,7 +144,7 @@ class TestPollingService:
     def test_cleanup_old_state(self, polling_service):
         """Test cleanup of old completed issues."""
         # Add old completed issue
-        old_time = (datetime.utcnow() - timedelta(days=10)).isoformat()
+        old_time = _utc_iso(-timedelta(days=10))
         polling_service.state["owner/repo#1"] = IssueState(
             issue_number=1,
             repository="owner/repo",
@@ -150,7 +155,7 @@ class TestPollingService:
         )
         
         # Add recent completed issue
-        recent_time = datetime.utcnow().isoformat()
+        recent_time = _utc_iso()
         polling_service.state["owner/repo#2"] = IssueState(
             issue_number=2,
             repository="owner/repo",
@@ -202,7 +207,7 @@ class TestPollingService:
             issue_number=1,
             repository="owner/repo",
             claimed_by="test-bot",
-            claimed_at=datetime.utcnow().isoformat(),
+            claimed_at=_utc_iso(),
             completed=False
         )
         
@@ -225,9 +230,9 @@ class TestPollingService:
             issue_number=1,
             repository="owner/repo",
             claimed_by="test-bot",
-            claimed_at=datetime.utcnow().isoformat(),
+            claimed_at=_utc_iso(),
             completed=True,
-            completed_at=datetime.utcnow().isoformat()
+            completed_at=_utc_iso()
         )
         
         issues = [
@@ -249,14 +254,14 @@ class TestPollingService:
             issue_number=1,
             repository="owner/repo",
             claimed_by="test-bot",
-            claimed_at=datetime.utcnow().isoformat(),
+            claimed_at=_utc_iso(),
             completed=False
         )
         polling_service.state["owner/repo#2"] = IssueState(
             issue_number=2,
             repository="owner/repo",
             claimed_by="test-bot",
-            claimed_at=datetime.utcnow().isoformat(),
+            claimed_at=_utc_iso(),
             completed=False
         )
         
@@ -265,9 +270,9 @@ class TestPollingService:
             issue_number=3,
             repository="owner/repo",
             claimed_by="test-bot",
-            claimed_at=datetime.utcnow().isoformat(),
+            claimed_at=_utc_iso(),
             completed=True,
-            completed_at=datetime.utcnow().isoformat()
+            completed_at=_utc_iso()
         )
         
         count = polling_service.get_processing_count()
@@ -306,7 +311,7 @@ class TestPollingService:
     
     def test_is_issue_claimed_recently(self, polling_service):
         """Test checking recently claimed issue."""
-        recent_time = datetime.utcnow().isoformat()
+        recent_time = _utc_iso()
         with patch('subprocess.run') as mock_run:
             mock_run.return_value = Mock(
                 returncode=0,
@@ -324,7 +329,7 @@ class TestPollingService:
     
     def test_is_issue_claimed_expired(self, polling_service):
         """Test checking issue with expired claim."""
-        old_time = (datetime.utcnow() - timedelta(hours=2)).isoformat()
+        old_time = _utc_iso(-timedelta(hours=2))
         with patch('subprocess.run') as mock_run:
             mock_run.return_value = Mock(
                 returncode=0,

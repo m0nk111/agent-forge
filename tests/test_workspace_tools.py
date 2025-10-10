@@ -11,9 +11,12 @@ import sys
 import tempfile
 from pathlib import Path
 
-# Add parent to path
-sys.path.insert(0, str(Path(__file__).parent))
-from workspace_tools import WorkspaceTools
+# Zorg dat project root op sys.path staat
+PROJECT_ROOT = Path(__file__).parent.parent.resolve()
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from engine.operations.workspace_tools import WorkspaceTools
 
 
 def test_read_file_lines():
@@ -164,8 +167,8 @@ def test_integration():
     
     tools = WorkspaceTools(str(agent_forge_root))
     
-    # Test 1: Read specific function from workspace_tools.py
-    result = tools.read_function("agents/workspace_tools.py", "read_file_lines")
+    # Test 1: Read specific function from workspace_tools.py (engine path)
+    result = tools.read_function("engine/operations/workspace_tools.py", "read_file_lines")
     assert "def read_file_lines" in result
     assert "start_line" in result
     assert "end_line" in result
