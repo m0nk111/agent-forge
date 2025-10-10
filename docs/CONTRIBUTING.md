@@ -269,7 +269,7 @@ black --check .
 mypy agents/
 
 # Strict mode
-mypy --strict agents/bot_agent.py
+mypy --strict engine/runners/bot_agent.py
 ```
 
 ### Configuration Files
@@ -681,7 +681,7 @@ Low / Medium / High
 
 1. **Create agent file**:
    ```bash
-   touch agents/your_agent.py
+   touch engine/runners/your_agent.py
    ```
 
 2. **Implement agent class**:

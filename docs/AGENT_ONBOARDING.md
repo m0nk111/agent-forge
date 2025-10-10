@@ -98,8 +98,8 @@ websocket_handler.py
 
 #### **✅ New Features**
 - **Instruction Validation System (PR #63)**:
-  - `agents/instruction_parser.py`: Parses `.github/copilot-instructions.md`
-  - `agents/instruction_validator.py`: Validates file locations, commits, changelog, ports, language
+  - `engine/validation/instruction_parser.py`: Parses `.github/copilot-instructions.md`
+  - `engine/validation/instruction_validator.py`: Validates file locations, commits, changelog, ports, language
   - `config/instruction_rules.yaml`: Validation rules configuration
   - Auto-fix capabilities for commit messages
   - 30 unit tests + 4 integration tests (78% coverage)
@@ -150,18 +150,18 @@ pytest --cov=agents --cov-report=html
 
 ### 5. Agent Roles and Responsibilities
 
-#### **Bot Agent** (`agents/bot_agent.py`)
+#### **Bot Agent** (`engine/runners/bot_agent.py`)
 - Handles GitHub issue assignments
 - Performs code modifications
 - Creates branches and commits
 - Manages pull requests
 
-#### **Coordinator Agent** (`agents/coordinator_agent.py`)
+#### **Coordinator Agent** (`engine/runners/coordinator_agent.py`)
 - Orchestrates multi-agent workflows
 - Task distribution and prioritization
 - High-level decision making
 
-#### **Qwen Agent** (`agents/qwen_agent.py`)
+#### **Qwen Agent** (`engine/runners/code_agent.py`)
 - Local LLM integration (Qwen 2.5 Coder)
 - Code generation and review
 - Works offline without API costs

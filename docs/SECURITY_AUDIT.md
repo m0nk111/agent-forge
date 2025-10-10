@@ -10,12 +10,12 @@ The Agent Forge Security Audit System provides mandatory security scanning for p
 
 ### Components
 
-1. **SecurityAuditor** (`agents/security_auditor.py`)
+1. **SecurityAuditor** (`engine/validation/security_auditor.py`)
    - Core scanning engine with 6 audit methods
    - Integrates with industry-standard security tools
    - Returns structured audit results with severity scoring
 
-2. **PRReviewer Integration** (`agents/pr_reviewer.py`)
+2. **PRReviewer Integration** (`engine/operations/pr_reviewer.py`)
    - Checks PR author against trusted agents list
    - Triggers mandatory audit for non-trusted authors
    - Blocks merge on critical/high severity issues
@@ -439,7 +439,7 @@ journalctl -u agent-forge -f --no-pager | grep 'security audit'
 grep 'minimum_score' config/security_audit.yaml
 
 # Test with verbose logging
-DEBUG=1 python agents/security_auditor.py
+DEBUG=1 python engine/validation/security_auditor.py
 ```
 
 **Solutions:**

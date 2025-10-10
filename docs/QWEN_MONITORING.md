@@ -160,19 +160,19 @@ The test script demonstrates all monitoring features and serves as a reference i
 
 ### Components
 
-1. **AgentMonitor** (`agents/monitor_service.py`)
+1. **AgentMonitor** (`engine/runners/monitor_service.py`)
    - Central monitoring service
    - Tracks all agent states
    - Manages WebSocket connections
    - Broadcasts updates to dashboard
 
-2. **CodeAgent** (`agents/code_agent.py`)
+2. **CodeAgent** (`engine/runners/code_agent.py`)
    - Autonomous coding agent
    - Optional monitoring integration
    - Helper methods for status/log updates
    - Auto-registration with monitor service
 
-3. **WebSocket Server** (`agents/websocket_handler.py`)
+3. **WebSocket Server** (`engine/operations/websocket_handler.py`)
    - Real-time communication
    - Broadcasts agent updates
    - Handles client connections
@@ -345,9 +345,9 @@ Potential improvements for monitoring integration:
 
 ## Related Files
 
-- `agents/code_agent.py` - Main agent with monitoring integration
-- `agents/monitor_service.py` - Monitoring service and state management
-- `agents/websocket_handler.py` - WebSocket server for real-time updates
+- `engine/runners/code_agent.py` - Main agent with monitoring integration
+- `engine/runners/monitor_service.py` - Monitoring service and state management
+- `engine/operations/websocket_handler.py` - WebSocket server for real-time updates
 - `frontend/dashboard.html` - Web dashboard UI
 - `tests/test_qwen_monitoring.py` - Test script demonstrating monitoring
 - `scripts/demo_qwen_working.py` - Simulation of agent working on issues

@@ -524,7 +524,7 @@ tail -f logs/agent-forge.log | grep -i websocket
 
 1. **Increase Timeout**:
    ```python
-   # agents/websocket_handler.py
+   # engine/operations/websocket_handler.py
    # Adjust ping/pong timeout
    WEBSOCKET_PING_INTERVAL = 30  # seconds
    WEBSOCKET_PING_TIMEOUT = 60
@@ -663,7 +663,7 @@ ls -la config/agents/
 
 2. **Improve Prompt**:
    ```python
-   # agents/code_agent.py
+   # engine/runners/code_agent.py
    # Add more context to prompt
    prompt = f"""
    Project: {repo_name}
@@ -856,13 +856,13 @@ pmap $(pgrep -f service_manager)
 
 2. **Increase Timeout**:
    ```python
-   # agents/database.py
+   # engine/core/database.py
    conn = sqlite3.connect('data/agent-forge.db', timeout=30)
    ```
 
 3. **Use WAL Mode**:
    ```python
-   # agents/database.py
+   # engine/core/database.py
    conn.execute('PRAGMA journal_mode=WAL')
    ```
 

@@ -442,7 +442,7 @@ class TestOllamaIntegration:
             "repo": "m0nk111/agent-forge",
             "issue_title": "Add retry mechanism",
             "issue_body": "Implement exponential backoff for API calls",
-            "files": ["agents/bot_agent.py"]
+            "files": ["engine/runners/bot_agent.py"]
         }
         
         result = agent.generate_solution(context)

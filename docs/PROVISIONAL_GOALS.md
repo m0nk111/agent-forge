@@ -111,7 +111,7 @@
 - 🔄 Task delegation with full context (in progress)
 - 🔄 Priority queue for urgent issues (planned)
 
-**Implementation**: `engine/core/coordinator_agent.py`  
+**Implementation**: `engine/runners/coordinator_agent.py`  
 **Documentation**: [AGENT_ROLES.md](AGENT_ROLES.md), [MULTI_AGENT_GITHUB_STRATEGY.md](MULTI_AGENT_GITHUB_STRATEGY.md)
 
 **3. Task Execution** (Agent Operations)
@@ -134,7 +134,7 @@
 - 🔄 Rendered Markdown preview (planned)
 - 🔄 Test results in PR body (planned)
 
-**Implementation**: `engine/operations/bot_agent.py`, `engine/operations/github_api_helper.py`  
+**Implementation**: `engine/runners/bot_agent.py`, `engine/operations/github_api_helper.py`  
 **Documentation**: [BOT_USAGE_GUIDE.md](BOT_USAGE_GUIDE.md)
 
 **5. Security Audit** (Automated)
@@ -310,7 +310,7 @@ Until all above works reliably, development continues.
 - [ ] Conflict resolution for multi-agent scenarios (planned)
 
 **Key Files**:
-- `engine/core/coordinator_agent.py` - Coordination logic
+- `engine/runners/coordinator_agent.py` - Coordination logic
 - `config/agents/*.yaml` - Agent definitions and capabilities
 
 **Documentation**: [AGENT_ROLES.md](AGENT_ROLES.md), [MULTI_AGENT_GITHUB_STRATEGY.md](MULTI_AGENT_GITHUB_STRATEGY.md)
@@ -470,7 +470,7 @@ Until all above works reliably, development continues.
 - [ ] Auto-label PR based on changes (not started)
 
 **Key Files**:
-- `engine/operations/bot_agent.py` - Bot operations
+- `engine/runners/bot_agent.py` - Bot operations
 - `engine/operations/github_api_helper.py` - GitHub API wrapper
 - `engine/operations/git_operations.py` - Git commands
 

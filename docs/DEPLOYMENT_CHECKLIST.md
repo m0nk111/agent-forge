@@ -294,7 +294,7 @@ sudo chown -R agent-forge:agent-forge /opt/agent-forge
 # 7. Try manual start (debugging)
 cd /opt/agent-forge
 source venv/bin/activate
-python3 agents/service_manager.py
+python3 engine/core/service_manager.py
 
 # 8. Check dependencies
 pip3 list | grep -E "flask|pyyaml|requests|anthropic|ollama"

@@ -78,7 +78,7 @@ Or use temporary email services for machine accounts.
 
 #### 4. Configure Agent
 ```python
-# agents/code_agent.py
+# engine/runners/code_agent.py
 class CodeAgent:
     def __init__(self, config_path: str):
         # Load GitHub token from environment

@@ -41,7 +41,7 @@
 
 ### 3. **QWEN_MONITORING.md** ⚠️ INCORRECT PATHS
 - **Status**: 🔴 **Contains outdated code examples**
-- **Problem**: References `agents/code_agent.py` and `agents/qwen_agent.py` (wrong paths)
+- **Problem**: References `agents/code_agent.py` and `engine/runners/code_agent.py` (wrong paths)
 - **Evidence**:
   - Line 26: `python3 agents/code_agent.py` → Should be `python3 engine/runners/code_agent.py`
   - Line 34: `python3 agents/code_agent.py` → Should be `python3 engine/runners/code_agent.py`

@@ -214,7 +214,7 @@ secrets/
 
 **Implementatie:**
 ```python
-# agents/config_manager.py
+# engine/core/config_manager.py
 def load_agent_token(agent_id: str) -> Optional[str]:
     token_file = Path(f"secrets/agents/{agent_id}.token")
     if token_file.exists():
@@ -426,7 +426,7 @@ git push origin --force --all
 ### Stap 5: Update ConfigManager (30 min)
 ```python
 # engine/core/config_manager.py (na refactor)
-# Of: agents/config_manager.py (nu)
+# Of: engine/core/config_manager.py (nu)
 
 from pathlib import Path
 from typing import Optional
