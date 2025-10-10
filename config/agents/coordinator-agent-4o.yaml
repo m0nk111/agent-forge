@@ -1,14 +1,14 @@
-# Coordinator Agent Configuration
+# Coordinator Agent Configuration (GPT-4o Optimized)
 # Role: Task planning, breakdown, and orchestration
-# Recommended Model: GPT-4 Turbo (best reasoning, largest context, fastest)
+# Recommended Model: GPT-4o (optimized: faster, cheaper, multimodal)
 
-agent_id: "coordinator-agent"
-name: "Coordinator Agent"
+agent_id: "coordinator-agent-4o"
+name: "Coordinator Agent (GPT-4o)"
 role: "coordinator"
 
-# Model configuration - GPT-4 Turbo for complex reasoning
+# Model configuration - GPT-4o for best performance/cost ratio
 model_provider: "openai"
-model_name: "gpt-4-turbo"  # Latest turbo model: faster, 128K context
+model_name: "gpt-4o"  # Latest optimized model: 2x faster, 50% cheaper than GPT-4 Turbo
 api_key_name: "OPENAI_API_KEY"
 temperature: 0.7
 max_tokens: 4096  # Can go up to 128K if needed
@@ -22,6 +22,7 @@ capabilities:
   - dependency_resolution
   - blocker_handling
   - issue_triage
+  - vision  # GPT-4o supports images/diagrams
 
 # GitHub integration
 github:
@@ -46,12 +47,25 @@ coordinator:
   notify_on_completion: true
   notify_on_blocker: true
   create_status_updates: true
+  
+  # Advanced features (GPT-4o specific)
+  analyze_diagrams: true  # Can analyze architecture diagrams
+  generate_visualizations: false  # Can generate diagrams (future)
 
-# Fallback configuration (if GPT-4 unavailable)
+# Fallback configuration (if GPT-4o unavailable)
 fallback:
   enabled: true
   provider: "openai"
-  model: "gpt-3.5-turbo"  # Cheaper fallback
+  model: "gpt-4-turbo"  # Fallback to turbo
+  secondary_fallback:
+    provider: "openai"
+    model: "gpt-3.5-turbo"  # Secondary fallback
+
+# Cost information
+cost:
+  input_per_1m_tokens: 2.50  # $2.50 per 1M input tokens (50% cheaper than GPT-4 Turbo)
+  output_per_1m_tokens: 10.00  # $10 per 1M output tokens
+  estimated_per_task: 0.15  # ~$0.15 per coordination task
 
 # Permissions
 permissions:
@@ -67,3 +81,4 @@ execution:
   auto_start: true  # Always-on for coordination
   restart_on_failure: true
   max_restart_attempts: 5
+  priority: "high"  # High priority agent

@@ -5,7 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - 2025-01-XX
+## [Unreleased]
+
+### Added
+- **GPT-4o Coordinator Variant**: New `coordinator-agent-4o.yaml` config with GPT-4o model
+  - 2x faster than GPT-4 Turbo
+  - 50% cheaper ($2.50/1M vs $5/1M input tokens)
+  - Multimodal support (vision for diagrams)
+  - Fallback chain: gpt-4o → gpt-4-turbo → gpt-3.5-turbo
+- **Model Comparison Document**: `docs/COORDINATOR_MODEL_COMPARISON.md`
+  - Detailed comparison of GPT-4, GPT-4 Turbo, and GPT-4o
+  - Cost analysis (88% savings with GPT-4o vs classic GPT-4)
+  - Performance benchmarks and recommendations
+
+### Changed
+- **Coordinator Model Upgrade**: `coordinator-agent.yaml` upgraded from GPT-4 to GPT-4 Turbo
+  - Faster inference time (3-5s vs 5-8s)
+  - 128K context window (vs 8K)
+  - 56% cheaper than classic GPT-4
+  - Updated description to mention 128K context capability - 2025-01-XX
 
 ### Added
 
