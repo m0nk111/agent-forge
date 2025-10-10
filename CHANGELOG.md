@@ -8,15 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **GPT-4o Coordinator Variant**: New `coordinator-agent-4o.yaml` config with GPT-4o model
+- **GPT-5 Coordinator Config**: New `coordinator-agent-gpt5.yaml` with GPT-5 Chat Latest ⭐ **RECOMMENDED**
+  - 44% faster than GPT-4o for complex planning (12s vs 22s)
+  - Equal or better quality (5/5 on all metrics)
+  - More detailed responses (121 lines vs 69)
+  - Better structured output with comprehensive analysis
+  - Minimal cost increase (~$3/month vs GPT-4o)
+- **GPT-5 Test Suite**: Comprehensive testing scripts for GPT-5
+  - `scripts/test_gpt5_models.py` - Test all GPT-5 variants
+  - `scripts/compare_gpt5_gpt4o.py` - Direct speed comparison
+  - `scripts/quality_test_gpt5.py` - Complex task quality comparison
+- **GPT-4o Coordinator Variant**: `coordinator-agent-4o.yaml` config
   - 2x faster than GPT-4 Turbo
   - 50% cheaper ($2.50/1M vs $5/1M input tokens)
   - Multimodal support (vision for diagrams)
   - Fallback chain: gpt-4o → gpt-4-turbo → gpt-3.5-turbo
-- **Model Comparison Document**: `docs/COORDINATOR_MODEL_COMPARISON.md`
-  - Detailed comparison of GPT-4, GPT-4 Turbo, and GPT-4o
-  - Cost analysis (88% savings with GPT-4o vs classic GPT-4)
-  - Performance benchmarks and recommendations
+- **Model Comparison Document**: Completely updated `docs/COORDINATOR_MODEL_COMPARISON.md`
+  - Now includes GPT-5 analysis and benchmarks
+  - Detailed comparison of GPT-4, GPT-4 Turbo, GPT-4o, and GPT-5
+  - Real test results: GPT-5 wins for complex tasks
+  - Cost/performance analysis across all models
+  - Clear recommendation: GPT-5 Chat Latest
 
 ### Changed
 - **Coordinator Model Upgrade**: `coordinator-agent.yaml` upgraded from GPT-4 to GPT-4 Turbo

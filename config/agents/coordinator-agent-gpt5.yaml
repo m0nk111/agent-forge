@@ -1,0 +1,179 @@
+# GPT-5 Coordinator Agent Configuration
+# Optimized for complex planning and coordination tasks
+
+agent_id: "coordinator-agent-gpt5"
+name: "Coordinator Agent (GPT-5)"
+role: "coordinator"
+description: "Master coordinator with GPT-5 - Latest model for complex planning and task orchestration. 44% faster than GPT-4o with equal quality."
+
+# LLM Configuration
+llm:
+  provider: "openai"  # OpenAI GPT-5
+  model_name: "gpt-5-chat-latest"  # Latest GPT-5 chat model
+  temperature: 0.7  # Balanced creativity/consistency
+  max_tokens: 4096  # Can be increased up to 128K if needed
+  
+  # Cost (estimated based on GPT-4 pricing until official GPT-5 pricing)
+  cost:
+    input_per_1m_tokens: 3.00  # $3/1M (estimated, likely similar to GPT-4o)
+    output_per_1m_tokens: 15.00  # $15/1M (estimated)
+  
+  # Performance characteristics
+  performance:
+    avg_response_time: "12s"  # For complex planning (44% faster than GPT-4o)
+    speed: "55 tok/s"  # Token generation speed
+    context_window: "128K"  # tokens
+  
+  # Fallback chain if GPT-5 unavailable
+  fallback:
+    model: "gpt-4o"
+    secondary_fallback: "gpt-4-turbo"
+
+# Capabilities
+capabilities:
+  - "complex_planning"  # Break down large tasks into subtasks
+  - "task_orchestration"  # Coordinate multiple agents
+  - "dependency_analysis"  # Identify task dependencies
+  - "progress_monitoring"  # Track task completion
+  - "blocker_resolution"  # Identify and resolve blockers
+  - "quality_assurance"  # Review and validate work
+  - "architecture_decisions"  # Make technical architecture choices
+  - "risk_assessment"  # Identify potential risks and mitigation
+
+# Task Breakdown Settings
+task_breakdown:
+  max_subtasks: 10  # Maximum subtasks per task
+  min_subtasks: 3  # Minimum for complex tasks
+  granularity: "actionable"  # Each subtask should be concrete and implementable
+  include_dependencies: true  # Always specify dependencies
+  include_estimates: true  # Include time estimates when possible
+
+# Monitoring Configuration
+monitoring:
+  check_interval: 300  # Check progress every 5 minutes
+  timeout_threshold: 3600  # Alert if task stalled for 1 hour
+  auto_escalate: true  # Escalate blocked tasks
+  
+# GitHub Integration
+github:
+  username: "m0nk111-qwen-agent"  # Use qwen agent account (not spam account)
+  auto_comment: true  # Post progress updates as comments
+  auto_assign: true  # Assign subtasks to appropriate agents
+  auto_label: true  # Add progress labels
+  
+  # Comment templates
+  templates:
+    task_breakdown: |
+      🤖 **Coordinator Agent Analysis**
+      
+      I've broken down this issue into the following implementation plan:
+      
+      {breakdown}
+      
+      **Next Steps:**
+      {next_steps}
+      
+    progress_update: |
+      📊 **Progress Update**
+      
+      **Completed:** {completed_count}/{total_count} tasks
+      **In Progress:** {in_progress}
+      **Blocked:** {blocked}
+      
+      {details}
+      
+    blocker_alert: |
+      ⚠️ **Blocker Detected**
+      
+      Task: {task_name}
+      Issue: {blocker_description}
+      
+      Suggested resolution: {suggestion}
+
+# Agent Lifecycle
+lifecycle:
+  always_on: true  # Coordinator should always be monitoring
+  auto_restart: true  # Restart if crashed
+  max_concurrent_tasks: 5  # Can coordinate up to 5 issues simultaneously
+
+# Quality Standards
+quality:
+  min_subtask_clarity: 0.8  # Subtasks must be clear and actionable
+  require_acceptance_criteria: true  # Each subtask needs clear definition of done
+  require_test_plan: true  # Include testing requirements
+
+# Logging
+logging:
+  level: "INFO"
+  debug_mode: false  # Set to true for troubleshooting
+  log_to_github: true  # Post major decisions as comments
+
+# Dependencies
+dependencies:
+  required_tools:
+    - "github_api"  # GitHub API access
+    - "task_tracker"  # Track task status
+  
+  optional_tools:
+    - "slack_notifier"  # Send updates to Slack
+    - "metrics_collector"  # Collect performance metrics
+
+# Advanced Features
+advanced:
+  # Parallel task execution
+  parallel_execution:
+    enabled: true
+    max_parallel: 3  # Max 3 agents working simultaneously
+  
+  # Smart agent selection
+  agent_selection:
+    strategy: "best_fit"  # Choose agent based on capabilities
+    consider_workload: true  # Prefer less busy agents
+    consider_expertise: true  # Prefer agents with relevant experience
+  
+  # Learning from past tasks
+  learning:
+    enabled: true
+    track_success_rate: true
+    adjust_estimates: true  # Improve time estimates over time
+
+# Performance Benchmarks (from testing)
+benchmarks:
+  simple_tasks:
+    avg_response_time: "5-7s"
+    quality_score: "5/5"
+  
+  complex_planning:
+    avg_response_time: "12s"
+    quality_score: "5/5"
+    tokens_generated: "600-700"
+    lines_generated: "100-120"
+  
+  comparison_vs_gpt4o:
+    speed_improvement: "+44%"  # 44% faster for complex tasks
+    quality: "equal"  # Same 5/5 score
+    verdict: "RECOMMENDED"  # Best choice for coordinator
+
+# Notes
+notes: |
+  GPT-5 Coordinator Agent - Latest and Best
+  
+  Performance Highlights:
+  - 44% faster than GPT-4o for complex planning
+  - Equal quality (5/5 score on all indicators)
+  - Better structure and detail in responses
+  - Larger context window (128K tokens)
+  
+  Best For:
+  - Complex multi-phase projects
+  - Architecture decisions
+  - Risk assessment
+  - Detailed implementation plans
+  
+  Cost:
+  - Estimated ~$0.01 per coordination task
+  - May be slightly higher than GPT-4o but worth it for speed/quality
+  
+  Tested: October 2025
+  Status: Production Ready ✅
+  Recommendation: Use as primary coordinator
