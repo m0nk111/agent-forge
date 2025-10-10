@@ -97,6 +97,41 @@ class ExecutionPlan:
     updated_at: datetime = field(default_factory=datetime.now)
     status: str = PlanStatus.PLANNING.value
     completion_percentage: float = 0.0
+    plan_priority: int = 3  # 1-5, 5 is highest
+    labels: List[str] = field(default_factory=list)
+    
+    def __post_init__(self):
+        """Detach from externally provided mutable objects.
+
+        Tests may reuse fixtures (lists/dicts) across plans. We copy here to
+        avoid aliasing so mutations to this plan do not affect caller-owned
+        fixtures and vice versa.
+        """
+        # Ensure new list object for sub_tasks (elements remain the same)
+        if isinstance(self.sub_tasks, list):
+            self.sub_tasks = list(self.sub_tasks)
+        else:
+            self.sub_tasks = []
+
+        # Shallow copy lists within dependencies_graph
+        if isinstance(self.dependencies_graph, dict):
+            self.dependencies_graph = {
+                k: list(v) if isinstance(v, list) else []
+                for k, v in self.dependencies_graph.items()
+            }
+        else:
+            self.dependencies_graph = {}
+
+        # Copy other list-type fields
+        if isinstance(self.required_roles, list):
+            self.required_roles = list(self.required_roles)
+        else:
+            self.required_roles = []
+
+        if isinstance(self.labels, list):
+            self.labels = list(self.labels)
+        else:
+            self.labels = []
     
     def to_dict(self) -> Dict:
         """Convert to dictionary for serialization."""
@@ -293,12 +328,16 @@ class CoordinatorAgent:
         # Build dependency graph
         dependencies_graph = self._build_dependency_graph(sub_tasks)
         
-        # Identify required roles
+    # Identify required roles
         required_roles = self._identify_required_roles(sub_tasks, analysis)
         
         # Calculate total effort
         total_effort = sum(task.estimated_effort for task in sub_tasks)
         
+        # Determine labels and plan priority
+        labels = issue_data.get('labels', []) if isinstance(issue_data.get('labels', []), list) else []
+        plan_priority = self._compute_plan_priority(labels)
+
         # Create execution plan
         plan = ExecutionPlan(
             plan_id=plan_id,
@@ -309,7 +348,9 @@ class CoordinatorAgent:
             total_estimated_effort=total_effort,
             dependencies_graph=dependencies_graph,
             required_roles=required_roles,
-            status=PlanStatus.PLANNING.value
+            status=PlanStatus.PLANNING.value,
+            plan_priority=plan_priority,
+            labels=labels
         )
         
         # Store plan
@@ -321,6 +362,86 @@ class CoordinatorAgent:
         
         logger.info(f"Created execution plan {plan_id} with {len(sub_tasks)} sub-tasks")
         return plan
+
+    def _compute_plan_priority(self, labels: List[str]) -> int:
+        """Compute plan priority (1-5) from issue labels.
+
+        Mapping:
+        - critical, security, p0, high-priority -> 5
+        - bug, p1, urgent -> 4
+        - enhancement, feature -> 3
+        - documentation, chore -> 2
+        - low-priority, nice-to-have -> 1
+        """
+        label_set = {str(l).lower() for l in labels}
+        if any(k in label_set for k in ["critical", "security", "p0", "high-priority"]):
+            logger.debug("🔍 Plan priority computed: 5 (critical/security)")
+            return 5
+        if any(k in label_set for k in ["bug", "p1", "urgent"]):
+            logger.debug("🔍 Plan priority computed: 4 (bug/urgent)")
+            return 4
+        if any(k in label_set for k in ["enhancement", "feature"]):
+            logger.debug("🔍 Plan priority computed: 3 (enhancement/feature)")
+            return 3
+        if any(k in label_set for k in ["documentation", "chore"]):
+            logger.debug("🔍 Plan priority computed: 2 (docs/chore)")
+            return 2
+        logger.debug("🔍 Plan priority computed: 1 (default low)")
+        return 1
+
+    async def get_next_task_assignment(
+        self,
+        available_agents: Optional[List[str]] = None
+    ) -> Optional[TaskAssignment]:
+        """Select and assign the next highest-priority task across all active plans.
+
+        Returns the TaskAssignment if assignment succeeded, else None.
+        """
+        if not self.active_plans:
+            logger.debug("🐛 No active plans available for assignment")
+            return None
+
+        # Prepare agent capabilities
+        if available_agents:
+            agents = [self.agent_registry.get(aid) for aid in available_agents if aid in self.agent_registry]
+        else:
+            agents = list(self.agent_registry.values())
+        agents = [a for a in agents if a and a.availability and a.current_task_count < a.max_concurrent_tasks]
+        if not agents:
+            logger.warning("⚠️ No available agents for assignment")
+            return None
+
+        # Rank plans by plan_priority desc, then by created_at asc
+        plans = sorted(
+            self.active_plans.values(),
+            key=lambda p: (-int(getattr(p, 'plan_priority', 3)), getattr(p, 'created_at', datetime.now()))
+        )
+
+        for plan in plans:
+            # Get next unassigned task according to topo order and task priority
+            sorted_tasks = self._topological_sort(plan.sub_tasks, plan.dependencies_graph)
+            next_task = next((t for t in sorted_tasks if not t.assigned_to and t.status == TaskStatus.PENDING.value), None)
+            if not next_task:
+                continue
+
+            best_agent = self._find_best_agent(next_task, agents)
+            if not best_agent:
+                continue
+
+            assignment = TaskAssignment(
+                task_id=next_task.id,
+                agent_id=best_agent.agent_id,
+                priority=next_task.priority
+            )
+            next_task.assigned_to = best_agent.agent_id
+            best_agent.current_task_count += 1
+            plan.status = PlanStatus.EXECUTING.value
+            plan.updated_at = datetime.now()
+            logger.info(f"✅ Assigned {next_task.id} from plan {plan.plan_id} (prio {plan.plan_priority}) to {best_agent.agent_id}")
+            return assignment
+
+        logger.info("⚠️ No assignable tasks found across active plans")
+        return None
     
     async def _fetch_issue_data(self, repo: str, issue_number: int) -> Dict:
         """Fetch issue data from GitHub."""
