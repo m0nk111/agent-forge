@@ -296,3 +296,184 @@ class GitHubAPIHelper:
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to get issue {owner}/{repo}#{issue_number}: {e}")
             raise
+
+
+    # ================== PR REVIEW METHODS ==================
+    
+    def get_pull_request(
+        self,
+        owner: str,
+        repo: str,
+        pr_number: int
+    ) -> Dict:
+        """Get pull request details.
+        
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            pr_number: PR number
+            
+        Returns:
+            PR dictionary with metadata
+        """
+        url = f"{self.BASE_URL}/repos/{owner}/{repo}/pulls/{pr_number}"
+        
+        try:
+            response = self.session.get(url, timeout=30)
+            response.raise_for_status()
+            
+            return response.json()
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to get PR {owner}/{repo}#{pr_number}: {e}")
+            raise
+    
+    def get_pull_request_files(
+        self,
+        owner: str,
+        repo: str,
+        pr_number: int
+    ) -> List[Dict]:
+        """Get files changed in a pull request.
+        
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            pr_number: PR number
+            
+        Returns:
+            List of file change dictionaries with diffs
+        """
+        url = f"{self.BASE_URL}/repos/{owner}/{repo}/pulls/{pr_number}/files"
+        
+        try:
+            response = self.session.get(url, timeout=30)
+            response.raise_for_status()
+            
+            return response.json()
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to get PR files {owner}/{repo}#{pr_number}: {e}")
+            raise
+    
+    def create_pull_request_review(
+        self,
+        owner: str,
+        repo: str,
+        pr_number: int,
+        body: str,
+        event: str = "COMMENT",
+        comments: Optional[List[Dict]] = None
+    ) -> Dict:
+        """Create a pull request review.
+        
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            pr_number: PR number
+            body: Review summary/body
+            event: Review event type (APPROVE, REQUEST_CHANGES, COMMENT)
+            comments: List of line-specific comments (optional)
+                Format: [{'path': 'file.py', 'line': 10, 'body': 'comment', 'side': 'RIGHT'}]
+        
+        Returns:
+            Created review dictionary
+        """
+        target = f"{owner}/{repo}#{pr_number}"
+        
+        # Check rate limit
+        if not self._check_rate_limit(OperationType.ISSUE_COMMENT, target, body):
+            raise RuntimeError(f"Rate limit prevents review on {target}")
+        
+        url = f"{self.BASE_URL}/repos/{owner}/{repo}/pulls/{pr_number}/reviews"
+        
+        payload = {
+            'body': body,
+            'event': event
+        }
+        
+        if comments:
+            payload['comments'] = comments
+        
+        try:
+            response = self.session.post(url, json=payload, timeout=30)
+            response.raise_for_status()
+            
+            # Update rate limit
+            self._update_rate_limit_from_response(response)
+            
+            # Record operation
+            self._record_operation(OperationType.ISSUE_COMMENT, target, body, success=True)
+            
+            logger.info(f"✅ Review posted to {target}: {event}")
+            return response.json()
+            
+        except requests.exceptions.RequestException as e:
+            # Record failed operation
+            self._record_operation(OperationType.ISSUE_COMMENT, target, body, success=False)
+            
+            logger.error(f"Failed to post review to {owner}/{repo}#{pr_number}: {e}")
+            raise
+    
+    def create_pull_request_review_comment(
+        self,
+        owner: str,
+        repo: str,
+        pr_number: int,
+        body: str,
+        commit_id: str,
+        path: str,
+        line: int,
+        side: str = "RIGHT"
+    ) -> Dict:
+        """Create a single review comment on a specific line.
+        
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            pr_number: PR number
+            body: Comment text
+            commit_id: SHA of commit to comment on
+            path: File path
+            line: Line number
+            side: Side of diff (RIGHT for new, LEFT for old)
+            
+        Returns:
+            Created comment dictionary
+        """
+        target = f"{owner}/{repo}#{pr_number}"
+        
+        # Check rate limit
+        if not self._check_rate_limit(OperationType.ISSUE_COMMENT, target, body):
+            raise RuntimeError(f"Rate limit prevents comment on {target}")
+        
+        url = f"{self.BASE_URL}/repos/{owner}/{repo}/pulls/{pr_number}/comments"
+        
+        payload = {
+            'body': body,
+            'commit_id': commit_id,
+            'path': path,
+            'line': line,
+            'side': side
+        }
+        
+        try:
+            response = self.session.post(url, json=payload, timeout=30)
+            response.raise_for_status()
+            
+            # Update rate limit
+            self._update_rate_limit_from_response(response)
+            
+            # Record operation
+            self._record_operation(OperationType.ISSUE_COMMENT, target, body, success=True)
+            
+            logger.info(f"✅ Review comment posted to {target}:{path}:{line}")
+            return response.json()
+            
+        except requests.exceptions.RequestException as e:
+            # Record failed operation
+            self._record_operation(OperationType.ISSUE_COMMENT, target, body, success=False)
+            
+            logger.error(f"Failed to post review comment to {owner}/{repo}#{pr_number}: {e}")
+            raise
+

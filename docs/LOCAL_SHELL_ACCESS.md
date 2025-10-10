@@ -39,12 +39,12 @@ Local shell access enables agents to test their code by running commands like `p
 
 ### Components
 
-1. **Permission System** (`agents/permissions.py`)
+1. **Permission System** (`engine/core/permissions.py`)
    - Role-based permission presets
    - Granular terminal permissions
    - Dangerous operation warnings
 
-2. **ShellRunner** (`agents/shell_runner.py`)
+2. **ShellRunner** (`engine/operations/shell_runner.py`)
    - Safe command execution
    - Timeout enforcement
    - Command allow/block lists
@@ -105,7 +105,7 @@ Permissions:
 ### Enable Shell Access for Agent
 
 #### Option 1: YAML Configuration
-Edit `config/agents.yaml`:
+Edit agent config file (e.g., `config/agents/your-agent.yaml`):
 
 ```yaml
 agents:
@@ -571,8 +571,8 @@ if agent.permissions.has_permission(Permission.TERMINAL_EXECUTE):
 
 ## Related Documentation
 
-- [Permission System](agents/permissions.py) - Full permission reference
-- [ShellRunner API](agents/shell_runner.py) - Shell execution details
+- [Permission System](engine/core/permissions.py) - Full permission reference
+- [ShellRunner API](engine/operations/shell_runner.py) - Shell execution details
 - [Security Audit System](docs/SECURITY_AUDIT.md) - Related security features
 - [GitHub Issue #64](https://github.com/m0nk111/agent-forge/issues/64) - Original feature request
 

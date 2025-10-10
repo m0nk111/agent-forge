@@ -9,6 +9,122 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **PR Review Agent - LLM Integration & GitHub Posting** (2025-10-10)
+  - Added comprehensive LLM review prompts with language-specific guidelines
+  - Implemented `_generate_review_prompt()` with focus on logic, security, performance, best practices
+  - Added language detection from file extensions (Python, JS, TS, Go, Rust, etc.)
+  - Implemented `post_review_to_github()` method to post reviews via GitHub API
+  - Added GitHub PR review API methods: `get_pull_request()`, `get_pull_request_files()`, `create_pull_request_review()`, `create_pull_request_review_comment()`
+  - Added comprehensive test coverage: 7 new tests for LLM integration and GitHub posting
+  - All 34 PR reviewer tests passing
+  - Supports APPROVE, REQUEST_CHANGES, and line-specific comments
+  - Automatically limits review to 10 comments per PR to avoid spam
+  - Intelligent prompt engineering: structured review format, actionable feedback, language-specific best practices
+
+### Fixed
+
+- **Documentation Cleanup - Misleading Planning Docs** (2025-10-10)
+  - Archived REFACTOR_PLAN.md → archive/REFACTOR_PLAN_COMPLETED.md (refactor already done)
+  - Archived CONSOLIDATION_PLAN.md → archive/CONSOLIDATION_PLAN_UNEXECUTED.md (plan never executed)
+  - Moved README.old.md → archive/README.old.md
+  - Fixed 27+ references to non-existent `config/agents.yaml` → `config/agents/*.yaml`
+  - Fixed code path examples in QWEN_MONITORING.md: `agents/code_agent.py` → `engine/runners/code_agent.py`
+  - Removed REFACTOR_PLAN references from PROVISIONAL_GOALS.md, marked directory structure as COMPLETED
+  - Created OUTDATED_DOCS_AUDIT.md with comprehensive audit findings
+
+- **Code Generator Prompt Separation** (2025-10-10)
+  - Fixed prompt bug where test files could receive implementation content
+  - Enhanced `_generate_implementation()` prompt with explicit DO/DO NOT instructions
+  - Enhanced `_generate_tests()` prompt to clarify this is test file generation only
+  - Added explicit warnings: "DO NOT include implementation code" in test prompt
+  - Added file path reminders in both prompts to prevent confusion
+  - Improved LLM instruction clarity: separate concerns between implementation and tests
+  - Rationale: Previous prompts were ambiguous, leading to mixed content in generated files
+
+### Added
+
+- **Code Generator Coverage Integration** (2025-10-10)
+  - Added pytest-cov integration to `_run_tests()` method
+  - Coverage metrics now tracked when pytest-cov is installed
+  - Falls back gracefully when pytest-cov not available
+  - Coverage percentage parsed from pytest output and included in test results
+  - Added 'coverage' field to test results dictionary
+  - Logs coverage percentage when available: "📊 Coverage: XX%"
+  - Rationale: Enables tracking of test quality and completeness for generated code
+
+### Added
+
+- **Creative Status Generator** (2025-10-10)
+  - Created `engine/operations/creative_status.py` - Deterministic creative motif generator for issue logging
+  - Generates 3-line creative motifs based on issue titles and labels
+  - Theme selection: bug, docs, ops, default with emoji prefixes (🐛, 📚, 🛠️, ✨)
+  - Deterministic output (same title/labels = same motif) for stable logs
+  - Debug mode via `CREATIVE_STATUS_DEBUG` environment variable
+  - Full test coverage in `tests/test_creative_status.py` (8 tests)
+
+- **Polling Service Creative Logging** (2025-10-10)
+  - Added optional creative motif logging when issues are detected as actionable
+  - Enable via `POLLING_CREATIVE_LOGS=1` environment variable
+  - Displays 3-line artistic status for each issue processed
+
+- **Coordinator Agent Priority Queue** (2025-10-10)
+  - Added `plan_priority` field to ExecutionPlan (1-5 scale based on labels)
+  - Priority mapping: critical/security→5, bug/urgent→4, enhancement→3, docs→2, low→1
+  - Implemented `get_next_task_assignment()` - selects highest priority task across all active plans
+  - Priority queue considers plan priority first, then task priority within plan
+  - Added `labels` field to ExecutionPlan for priority computation
+  - New test: `test_priority_queue_assignment` validates security issues take precedence
+
+- **Polling Service YAML Configuration** (2025-10-10)
+  - Implemented YAML-first configuration loading from `config/services/polling.yaml`
+  - Configuration priority: explicit override → YAML file → defaults
+  - Added `_load_config_from_yaml()` and `_apply_config_overrides()` methods
+  - Supports environment variables as fallback for tokens
+  - New test: `test_polling_yaml_config.py` validates YAML loading and overrides
+
+- **Polling Service Timezone Awareness** (2025-10-10)
+  - All timestamps now timezone-aware (UTC) for consistent claim timeout calculations
+  - Added `_utc_now()`, `_utc_iso()`, `_parse_iso_timestamp()` helper functions
+  - Fixes claim timeout comparison issues across different timezone contexts
+  - Backward compatible with legacy naive timestamps
+
+### Fixed
+
+- **Test Path References** (2025-10-10)
+  - Fixed `tests/test_workspace_tools.py` to use correct import path `engine/operations/workspace_tools`
+  - Updated integration test to reference correct file location
+  - Fixed project root path resolution
+
+- **Polling Service Configuration** (2025-10-10)
+  - Fixed `PollingConfig` default values using `field(default_factory=...)` for mutable types
+  - Prevents shared mutable default issues (lists)
+  - Fixed claim timeout calculation with timezone-aware datetime objects
+
+- **Coordinator Agent Plan Mutation** (2025-10-10)
+  - Added `__post_init__()` to ExecutionPlan to detach from externally provided mutable objects
+  - Prevents test fixture aliasing issues where mutations affect caller-owned data
+  - Shallow copies: sub_tasks, dependencies_graph values, required_roles, labels
+
+- **Documentation Formatting** (2025-10-10)
+  - Fixed non-ASCII character in `docs/TOKEN_SECURITY.md` heading
+  - Updated `docs/DOCS_CHANGELOG.md` with recent formatting fixes
+
+### Changed
+
+- **Polling Service Configuration Strategy** (2025-10-10)
+  - Changed initialization to support explicit `config_path` parameter
+  - Configuration resolution: explicit config without path → use directly (no YAML load)
+  - Config is None → load from YAML (explicit path or default)
+  - Both provided → load YAML first, apply overrides
+  - Logs effective configuration at startup (with sanitized tokens)
+
+- **Polling Service Process Metrics** (2025-10-10)
+  - Added graceful handling when `psutil` is not available
+  - Metrics collection only enabled when `psutil` successfully imports and process is available
+  - Warning logged when metrics unavailable but service continues normally
+
+### Phase 3B E2E Validation
+
 - **Phase 3B E2E Validation** (2025-10-10)
   - Completed end-to-end validation of autonomous code generation pipeline with Issue #84
   - **Test Case**: "Create string_utils.py helper module" with 3 functions (capitalize_words, reverse_string, count_vowels)
@@ -423,7 +539,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Dashboard now shows configured-but-inactive agents** - Monitor service integration with ConfigManager
   - `agents/monitor_service.py`: Extended `get_all_agents()` to include config-only agents
-  - Agents from `config/agents.yaml` without active instances now appear with status "OFFLINE"
+  - Agents from `config/agents/*.yaml` without active instances now appear with status "OFFLINE"
   - Current task shows "Agent configured but not running" for inactive agents
   - Enables visibility of all configured agents without requiring them to be running
   - No service restart needed - dashboard automatically shows config changes on WebSocket reconnect
@@ -641,13 +757,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     * `AuditResult` dataclass: passed status, issues list, score (0-100), severity counts
     * 6 audit methods: secrets scanning, dependency checks, injection detection, malware patterns, license validation, code quality
   - Integrated security auditor into `agents/pr_reviewer.py`:
-    * Loads trusted agents from `config/agents.yaml`
+    * Loads trusted agents from `config/agents/*.yaml`
     * Non-trusted PR authors trigger mandatory security audit before review
     * PRs blocked on critical/high severity issues (cannot merge)
     * Trusted agents (m0nk111-bot, m0nk111-qwen-agent) bypass audit
     * Error handling: audit failures block PRs from untrusted authors for safety
     * Detailed security block message with issue breakdown, recommendations, CWE links
-  - Updated `config/agents.yaml`: Added trusted_agents section with bot and qwen-agent accounts
+  - Updated `config/agents/*.yaml`: Added trusted_agents section with bot and qwen-agent accounts
   - Added security dependencies to `requirements.txt`: bandit>=1.7.5, safety>=3.0.0
   - Leverages existing `config/security_audit.yaml` (212 lines) with:
     * Severity thresholds (block on critical/high, warn on medium)

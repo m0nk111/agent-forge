@@ -360,6 +360,43 @@ coordinator:
         # Blocked task should have blocker recorded
         blocked_task = next(t for t in updated_plan.sub_tasks if t.id == 'task-42-2')
         assert blocked_task.blocker is not None
+
+    @pytest.mark.asyncio
+    async def test_priority_queue_assignment(self, coordinator):
+        """Tasks from higher-priority plans (security/critical) are assigned first."""
+        # Two plans: one security (prio 5), one enhancement (prio 3)
+        high_plan = ExecutionPlan(
+            plan_id="plan-high",
+            issue_number=1,
+            repository="owner/repo",
+            title="Security fix",
+            sub_tasks=[SubTask(id="t1", title="Implement patch", description="", priority=3)],
+            dependencies_graph={"t1": []},
+            plan_priority=5,
+            labels=["security"]
+        )
+        low_plan = ExecutionPlan(
+            plan_id="plan-low",
+            issue_number=2,
+            repository="owner/repo",
+            title="Add enhancement",
+            sub_tasks=[SubTask(id="t2", title="Implement feature", description="", priority=5)],
+            dependencies_graph={"t2": []},
+            plan_priority=3,
+            labels=["enhancement"]
+        )
+
+        coordinator.active_plans[high_plan.plan_id] = high_plan
+        coordinator.active_plans[low_plan.plan_id] = low_plan
+
+        # Register one developer agent
+        coordinator.register_agent("dev-1", AgentRole.DEVELOPER.value, ["python"], max_concurrent_tasks=1)
+
+        # Ask for next assignment; should pick from high_plan despite lower task priority
+        assignment = await coordinator.get_next_task_assignment()
+        assert assignment is not None
+        # Task should be from high priority plan
+        assert assignment.task_id == "t1"
     
     def test_get_plan(self, coordinator):
         """Test getting plan by ID."""

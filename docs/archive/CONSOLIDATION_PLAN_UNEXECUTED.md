@@ -1,7 +1,14 @@
 # Documentation Consolidation Plan
 
+> **⚠️ ARCHIVED**: This plan was **NEVER EXECUTED**  
+> **Status**: ❌ Unimplemented - archived on 2025-10-10  
+> **Reason**: Plan references non-existent files (SETUP_QWEN_GITHUB_ACCOUNT.md, GOOGLE_OAUTH_SETUP.md, OAUTH_ACTIVATIE.md)  
+> **Note**: Kept for historical reference only
+
 **Created**: 2025-01-XX  
+**Archived**: 2025-10-10  
 **Goal**: Reduce documentation quantity while improving quality and maintainability  
+**Status**: Not executed  
 
 ## Current State
 

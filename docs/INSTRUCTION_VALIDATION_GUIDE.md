@@ -62,7 +62,7 @@ if not result.valid:
 
 # Generate compliance report
 report = validator.generate_compliance_report(
-    changed_files=["agents/test.py", "CHANGELOG.md"],
+    changed_files=["engine/operations/test.py", "CHANGELOG.md"],
     commit_message="feat(validator): add validation"
 )
 print(report.get_summary())
@@ -203,7 +203,7 @@ The validator can automatically fix common violations:
 # Generate changelog entry
 entry = validator.generate_changelog_entry(
     "feat(validator): add port validation",
-    ["agents/validator.py"]
+    ["engine/validation/validator.py"]
 )
 # Output:
 # ## [Unreleased] - 2025-01-06
@@ -217,7 +217,7 @@ Generate comprehensive compliance reports:
 
 ```python
 report = validator.generate_compliance_report(
-    changed_files=["agents/test.py", "test.py"],
+    changed_files=["engine/operations/test.py", "test.py"],
     commit_message="update stuff",
     file_contents={
         "config.py": "PORT = 5000"  # Invalid port

@@ -7,38 +7,7 @@ Features:
 - Configurable polling intervals (default: 5 minutes)
 - Multi-repository support
 - Label-based filtering (agent-ready, auto-assign)
-- Issue locking to prevent duplicate work by         except Exception as e:
-            logger.error(f"Error during polling cycle: {e}")
-            if self.monitor:
-                from engine.runners.monitor_service import AgentStatus
-                self.monitor.update_agent_status(
-                    agent_id="polling-service",
-                    status=AgentStatus.ERROR,
-                    error_message=str(e)
-                )
-                self.monitor.add_log(
-                    agent_id="polling-service",
-                    level="ERROR",
-                    message=f"Polling error: {e}"
-                )
-        finally:
-            # Cleanup old state
-            self.cleanup_old_state()
-            logger.info("=== Polling cycle complete ===")
-            
-            # Return to idle
-            if self.monitor:
-                from engine.runners.monitor_service import AgentStatus
-                self.monitor.update_agent_status(
-                    agent_id="polling-service",
-                    status=AgentStatus.IDLE,
-                    current_task=f"Waiting (next poll in {self.config.interval_seconds}s)"
-                )
-                self.monitor.add_log(
-                    agent_id="polling-service",
-                    level="INFO",
-                    message="Polling cycle complete"
-                )le agents
+- Issue locking to prevent duplicate work by multiple agents
 - State persistence across restarts
 - Graceful error handling with retry logic
 - Structured logging for all events
@@ -49,12 +18,43 @@ import json
 import logging
 import os
 import time
-from dataclasses import dataclass, asdict
-from datetime import datetime, timedelta
+import subprocess
+from dataclasses import dataclass, asdict, field, fields, MISSING
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Set
+import yaml
+
+
+def _utc_now() -> datetime:
+    """Return current UTC time as timezone-aware datetime."""
+    return datetime.now(timezone.utc)
+
+
+def _utc_iso() -> str:
+    """Return ISO-8601 string for current UTC time (Zulu suffix)."""
+    return _utc_now().isoformat().replace("+00:00", "Z")
+
+
+def _parse_iso_timestamp(value: str) -> datetime:
+    """Parse ISO timestamp supporting legacy naive and Zulu formats."""
+    normalized = value.replace("Z", "+00:00")
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError:
+        parsed = datetime.fromisoformat(value)
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+# Optional psutil import for metrics; gracefully handle absence
+try:
+    import psutil  # type: ignore
+except Exception:  # pragma: no cover
+    psutil = None  # type: ignore
 
 from engine.operations.github_api_helper import GitHubAPIHelper
+from engine.operations.creative_status import generate_issue_motif
 
 logger = logging.getLogger(__name__)
 
@@ -101,18 +101,14 @@ class PollingConfig:
     interval_seconds: int = 300  # 5 minutes
     github_token: Optional[str] = None
     github_username: str = "m0nk111-bot"
-    repositories: List[str] = None  # ["owner/repo", ...]
-    watch_labels: List[str] = None  # ["agent-ready", "auto-assign"]
+    repositories: List[str] = field(default_factory=list)  # ["owner/repo", ...]
+    watch_labels: List[str] = field(default_factory=lambda: ["agent-ready", "auto-assign"])  # labels
     max_concurrent_issues: int = 3
     claim_timeout_minutes: int = 60
     state_file: str = "polling_state.json"
     
     def __post_init__(self):
         """Initialize default values."""
-        if self.repositories is None:
-            self.repositories = []
-        if self.watch_labels is None:
-            self.watch_labels = ["agent-ready", "auto-assign"]
         if self.github_token is None:
             self.github_token = os.getenv("BOT_GITHUB_TOKEN") or os.getenv("GITHUB_TOKEN")
 
@@ -123,8 +119,8 @@ class IssueState:
     
     issue_number: int
     repository: str
-    claimed_by: str
-    claimed_at: str
+    claimed_by: Optional[str]
+    claimed_at: Optional[str]
     last_error: Optional[str] = None
     error_count: int = 0
     completed: bool = False
@@ -134,34 +130,48 @@ class IssueState:
 class PollingService:
     """Service for autonomous GitHub issue polling and workflow initiation."""
     
-    def __init__(self, config: PollingConfig, agent_registry=None, enable_monitoring: bool = True):
+    def __init__(self, config: Optional[PollingConfig] = None, agent_registry=None, enable_monitoring: bool = True, config_path: Optional[Path] = None):
         """Initialize polling service.
         
         Args:
-            config: Polling configuration
+            config: Polling configuration (overrides YAML if provided)
             agent_registry: AgentRegistry instance for getting agent instances
             enable_monitoring: Whether to register with monitor service
+            config_path: Optional explicit path to YAML config file
         """
-        self.config = config
+        # Configuration resolution strategy:
+        # - If explicit config provided without config_path: use it directly (do not load YAML)
+        # - If config is None: load from YAML (config_path or default)
+        # - If both provided: load YAML first, then apply explicit overrides
+        if config is not None and config_path is None:
+            self.config = config
+        else:
+            self.config = self._load_config_from_yaml(config_path)
+            if config is not None:
+                self._apply_config_overrides(config)
         self.agent_registry = agent_registry
-        self.state_file = Path(config.state_file)
+        self.state_file = Path(self.config.state_file)
         self.state: Dict[str, IssueState] = {}
         self.load_state()
         self.running = False
         self.enable_monitoring = enable_monitoring
         self.monitor = None
         self.api_calls = 0  # Track API calls
+        self.creative_logs_enabled = os.getenv("POLLING_CREATIVE_LOGS", "0") in {"1", "true", "TRUE"}
         
         # Initialize GitHub API helper
-        self.github_api = GitHubAPIHelper(token=config.github_token)
+        self.github_api = GitHubAPIHelper(token=self.config.github_token)
         
         # Register with monitor if enabled
         if enable_monitoring:
-            try:
-                import psutil
-                self.process = psutil.Process()
-            except ImportError:
-                self.process = None
+            # Initialize process metrics if psutil is available
+            self.process = None
+            if psutil is not None:
+                try:
+                    self.process = psutil.Process()
+                except Exception as e:
+                    logger.warning(f"psutil present but could not get process: {e}")
+            else:
                 logger.warning("psutil not installed, metrics will not be available")
             
             try:
@@ -181,6 +191,98 @@ class PollingService:
             except Exception as e:
                 logger.warning(f"Could not register with monitor: {e}")
                 self.monitor = None
+
+        # Log effective configuration (sanitize token)
+        try:
+            safe_cfg = asdict(self.config)
+            if safe_cfg.get('github_token'):
+                safe_cfg['github_token'] = '***'
+            logger.info(f"🔧 Polling config loaded: {safe_cfg}")
+        except Exception:
+            pass
+
+    def _load_config_from_yaml(self, config_path: Optional[Path]) -> PollingConfig:
+        """Load polling configuration from YAML file with sensible defaults.
+
+        Priority: explicit path -> default path config/services/polling.yaml -> defaults.
+        """
+        # Default values
+        cfg = PollingConfig()
+        # Determine path
+        if not config_path:
+            default_path = Path('config/services/polling.yaml')
+            config_path = default_path if default_path.exists() else None
+        if not config_path or not Path(config_path).exists():
+            logger.warning("⚠️ polling.yaml not found; using defaults and environment variables")
+            return cfg
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                data = yaml.safe_load(f) or {}
+        except Exception as e:
+            logger.error(f"❌ Failed to read YAML config: {e}; falling back to defaults")
+            return cfg
+
+        # Map YAML fields
+        try:
+            cfg.interval_seconds = int(data.get('interval_seconds', cfg.interval_seconds))
+            # GitHub section
+            gh = data.get('github', {}) or {}
+            username = gh.get('username')
+            if isinstance(username, str) and username.strip():
+                cfg.github_username = username.strip()
+            token = gh.get('token')
+            if isinstance(token, str) and token.strip():
+                cfg.github_token = token.strip()
+            # Repositories & labels
+            repos = data.get('repositories') or []
+            if isinstance(repos, list):
+                cfg.repositories = [str(r) for r in repos]
+            labels = data.get('watch_labels') or []
+            if isinstance(labels, list) and labels:
+                cfg.watch_labels = [str(l) for l in labels]
+            # Concurrency & state
+            cfg.max_concurrent_issues = int(data.get('max_concurrent_issues', cfg.max_concurrent_issues))
+            cfg.claim_timeout_minutes = int(data.get('claim_timeout_minutes', cfg.claim_timeout_minutes))
+            state_file = data.get('state_file')
+            if isinstance(state_file, str) and state_file.strip():
+                cfg.state_file = state_file.strip()
+        except Exception as e:
+            logger.error(f"❌ Error parsing YAML config values: {e}; continuing with partial defaults")
+        return cfg
+
+    def _apply_config_overrides(self, override: PollingConfig):
+        """Override YAML-loaded configuration with explicitly provided override values.
+
+        Only apply overrides for fields whose value differs from the dataclass default.
+        This prevents accidental replacement of YAML values with implicit defaults
+        coming from the override instance. Special-case github_token to avoid overriding
+        a YAML token with environment-derived values unless explicitly set.
+        """
+        # Build a map of default values from the dataclass definition (no __post_init__ effects)
+        defaults = {}
+        for f in fields(PollingConfig):
+            if f.default is not MISSING:
+                defaults[f.name] = f.default
+            elif f.default_factory is not MISSING:  # type: ignore[attr-defined]
+                defaults[f.name] = f.default_factory()  # type: ignore[misc]
+            else:
+                defaults[f.name] = None
+
+        # Apply only non-default overrides
+        for field_name, default_value in defaults.items():
+            value = getattr(override, field_name, None)
+            # Skip if no value or value equals the dataclass default (not explicitly overridden)
+            if value is None or value == default_value:
+                continue
+
+            # Avoid overriding YAML token with env-provided token unless explicitly different
+            if field_name == 'github_token':
+                env_token = os.getenv('BOT_GITHUB_TOKEN') or os.getenv('GITHUB_TOKEN')
+                # If the override token equals the env token, it's likely implicit -> skip
+                if value == env_token:
+                    continue
+
+            setattr(self.config, field_name, value)
         
     def load_state(self):
         """Load polling state from disk."""
@@ -215,13 +317,13 @@ class PollingService:
     
     def cleanup_old_state(self):
         """Remove old completed/closed issues from state."""
-        now = datetime.utcnow()
+        now = _utc_now()
         cutoff = now - timedelta(days=7)
         
         to_remove = []
         for key, issue_state in self.state.items():
             if issue_state.completed and issue_state.completed_at:
-                completed_time = datetime.fromisoformat(issue_state.completed_at)
+                completed_time = _parse_iso_timestamp(issue_state.completed_at)
                 if completed_time < cutoff:
                     to_remove.append(key)
         
@@ -234,7 +336,7 @@ class PollingService:
     
     def update_metrics(self):
         """Update agent metrics in monitor."""
-        if not self.monitor or not self.process:
+        if not self.monitor or not self.process or psutil is None:
             return
         
         try:
@@ -278,20 +380,28 @@ class PollingService:
         for repo in self.config.repositories:
             try:
                 owner, repo_name = repo.split('/')
-                
-                # Use GitHub REST API instead of gh CLI
-                # Bypass rate limits for internal polling operations
-                issues = self.github_api.list_issues(
-                    owner=owner,
-                    repo=repo_name,
-                    assignee=self.config.github_username,
-                    state="open",
-                    per_page=100,
-                    bypass_rate_limit=True  # Polling service is trusted internal operation
-                )
-                
-                # Increment API call counter
-                self.api_calls += 1
+                # Prefer gh CLI for tests and portability; fallback to REST helper
+                try:
+                    path = f"/repos/{owner}/{repo_name}/issues?state=open&per_page=100&assignee={self.config.github_username}"
+                    stdout = subprocess.run(
+                        ["gh", "api", path],
+                        text=True,
+                        capture_output=True
+                    )
+                    if stdout.returncode != 0:
+                        raise RuntimeError(stdout.stderr.strip() or "gh api failed")
+                    issues = json.loads(stdout.stdout or "[]")
+                except Exception:
+                    issues = self.github_api.list_issues(
+                        owner=owner,
+                        repo=repo_name,
+                        assignee=self.config.github_username,
+                        state="open",
+                        per_page=100,
+                        bypass_rate_limit=True
+                    )
+                    # Increment API call counter
+                    self.api_calls += 1
                 
                 # Add repository field to each issue
                 for issue in issues:
@@ -355,6 +465,9 @@ class PollingService:
                     logger.info(f"   ✅ Issue is actionable!")
                     actionable.append(issue)
                     logger.info(f"Actionable issue found: {issue_key} - {issue['title']}")
+                    if self.creative_logs_enabled:
+                        motif = generate_issue_motif(issue.get('title', ''), [label['name'] for label in issue.get('labels', [])])
+                        logger.info("🎨 Creative pulse for %s:%s%s", issue_key, os.linesep, motif)
                 else:
                     logger.info(f"   ❌ Skipping: no watch labels match")
                     
@@ -377,16 +490,30 @@ class PollingService:
         """
         try:
             owner, repo_name = repo.split('/')
-            
-            # Use GitHub REST API to get comments
-            comments = self.github_api.get_issue_comments(
-                owner=owner,
-                repo=repo_name,
-                issue_number=issue_number
-            )
+            # Prefer gh CLI for tests; fallback to REST helper
+            try:
+                path = f"/repos/{owner}/{repo_name}/issues/{issue_number}/comments"
+                stdout = subprocess.run(
+                    ["gh", "api", path],
+                    text=True,
+                    capture_output=True
+                )
+                if stdout.returncode != 0:
+                    raise RuntimeError(stdout.stderr.strip() or "gh api failed")
+                data = json.loads(stdout.stdout or "[]")
+                if isinstance(data, dict) and 'comments' in data:
+                    comments = data['comments']
+                else:
+                    comments = data
+            except Exception:
+                comments = self.github_api.get_issue_comments(
+                    owner=owner,
+                    repo=repo_name,
+                    issue_number=issue_number
+                )
             
             # Check for agent claim comments
-            now = datetime.utcnow()
+            now = _utc_now()
             timeout = timedelta(minutes=self.config.claim_timeout_minutes)
             
             logger.info(f"🐛 DEBUG: Checking {len(comments)} comments for claims (timeout: {self.config.claim_timeout_minutes}min)")
@@ -395,13 +522,15 @@ class PollingService:
                 body = comment.get('body', '')
                 if '🤖 Agent' in body and 'started working on this issue' in body:
                     # Check timestamp
-                    created_at = datetime.fromisoformat(
-                        comment['createdAt'].replace('Z', '+00:00')
-                    )
-                    age_minutes = (now - created_at.replace(tzinfo=None)).total_seconds() / 60
+                    created_str = comment.get('createdAt') or comment.get('created_at')
+                    if not created_str:
+                        # If missing, treat as not claimed
+                        continue
+                    created_at = _parse_iso_timestamp(created_str)
+                    age_minutes = (now - created_at).total_seconds() / 60
                     logger.info(f"🐛 DEBUG: Found claim comment - age: {age_minutes:.1f} min (timeout: {self.config.claim_timeout_minutes} min)")
                     logger.info(f"🐛 DEBUG: Comment created: {created_at}, Now: {now}")
-                    if now - created_at.replace(tzinfo=None) < timeout:
+                    if now - created_at < timeout:
                         logger.info(f"Issue {repo}#{issue_number} claimed by another agent")
                         return True
                     else:
@@ -425,15 +554,25 @@ class PollingService:
         """
         try:
             owner, repo_name = repo.split('/')
-            comment = f"🤖 Agent **{self.config.github_username}** started working on this issue at {datetime.utcnow().isoformat()}Z"
-            
-            # Use GitHub REST API to create comment
-            self.github_api.create_issue_comment(
-                owner=owner,
-                repo=repo_name,
-                issue_number=issue_number,
-                body=comment
-            )
+            comment = f"🤖 Agent **{self.config.github_username}** started working on this issue at {_utc_iso()}"
+            # Prefer gh CLI for tests; fallback to REST helper
+            try:
+                path = f"/repos/{owner}/{repo_name}/issues/{issue_number}/comments"
+                # Use -f to send form body
+                res = subprocess.run(
+                    ["gh", "api", "-X", "POST", path, "-f", f"body={comment}"],
+                    text=True,
+                    capture_output=True
+                )
+                if res.returncode != 0:
+                    raise RuntimeError(res.stderr.strip() or "gh api failed")
+            except Exception:
+                self.github_api.create_issue_comment(
+                    owner=owner,
+                    repo=repo_name,
+                    issue_number=issue_number,
+                    body=comment
+                )
             
             logger.info(f"Claimed issue {repo}#{issue_number}")
             return True
@@ -472,7 +611,7 @@ class PollingService:
             issue_number=issue_number,
             repository=repo,
             claimed_by=self.config.github_username,
-            claimed_at=datetime.utcnow().isoformat()
+            claimed_at=_utc_iso()
         )
         self.save_state()
         
@@ -504,7 +643,7 @@ class PollingService:
             
             # Update state
             self.state[issue_key].completed = success
-            self.state[issue_key].completed_at = datetime.utcnow().isoformat()
+            self.state[issue_key].completed_at = _utc_iso()
             self.save_state()
             
             logger.info(f"Workflow completed for {issue_key}: {'success' if success else 'failed'}")

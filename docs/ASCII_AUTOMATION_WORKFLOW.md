@@ -29,10 +29,10 @@ This document explains how the Agent Forge pipeline interprets GitHub issues tha
 
 | Stage | Helpful log prefix | File | Notes |
 | --- | --- | --- | --- |
-| Issue parsing | `🔍 IssueHandler` | `agents/issue_handler.py` | Confirms detection of ASCII keywords and destination path |
-| Task execution | `🐛 Coordinator` | `agents/coordinator_agent.py` | Shows delegation to the code agent |
-| File editing | `🔍 LLMFileEditor` | `agents/file_editor.py` & `engine/operations/llm_file_editor.py` | Displays prompt payload and selected subject |
-| PR publication | `✅ BotAgent` | `agents/bot_agent.py` | Confirms branch creation and PR URL |
+| Issue parsing | `🔍 IssueHandler` | `engine/operations/issue_handler.py` | Confirms detection of ASCII keywords and destination path |
+| Task execution | `🐛 Coordinator` | `engine/runners/coordinator_agent.py` | Shows delegation to the code agent |
+| File editing | `🔍 LLMFileEditor` | `engine/operations/file_editor.py` & `engine/operations/llm_file_editor.py` | Displays prompt payload and selected subject |
+| PR publication | `✅ BotAgent` | `engine/runners/bot_agent.py` | Confirms branch creation and PR URL |
 
 Enable `DEBUG=1` in the environment before running services to surface these logs.
 

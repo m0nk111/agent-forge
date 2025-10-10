@@ -440,3 +440,180 @@ class TestReviewCriteria:
         assert criteria.require_changelog is True
         assert criteria.min_test_coverage == 80
         assert criteria.strictness_level == "normal"
+
+
+# ==================== LLM INTEGRATION TESTS ====================
+
+class TestLLMReviewIntegration:
+    """Test LLM-powered code review."""
+    
+    @pytest.mark.asyncio
+    async def test_generate_review_prompt(self, reviewer):
+        """Test review prompt generation."""
+        filename = "engine/test.py"
+        patch = "+def hello():\n+    return 'world'"
+        
+        prompt = reviewer._generate_review_prompt(filename, patch)
+        
+        # Check prompt contains key sections
+        assert filename in prompt
+        assert patch in prompt
+        assert "Python" in prompt  # Language detection
+        assert "Logic & Correctness" in prompt
+        assert "Security" in prompt
+        assert "Performance" in prompt
+    
+    def test_guess_language(self, reviewer):
+        """Test language detection from file extension."""
+        assert reviewer._guess_language('.py') == 'Python'
+        assert reviewer._guess_language('.js') == 'JavaScript'
+        assert reviewer._guess_language('.ts') == 'TypeScript'
+        assert reviewer._guess_language('.go') == 'Go'
+        assert reviewer._guess_language('.rs') == 'Rust'
+        assert reviewer._guess_language('.unknown') == 'code'
+    
+    @pytest.mark.asyncio
+    async def test_llm_review_file_no_agent(self, reviewer):
+        """Test LLM review gracefully handles missing agent."""
+        # Reviewer has no llm_agent configured
+        comments = await reviewer._llm_review_file('test.py', '+print("hello")')
+        
+        assert comments == []  # Should return empty list, not crash
+    
+    @pytest.mark.asyncio
+    async def test_llm_review_with_mock_agent(self):
+        """Test LLM review with mock agent."""
+        class MockLLMAgent:
+            async def generate(self, prompt):
+                return """
+                Line 5: Consider using logging instead of print() for better debugging.
+                Line 12: This loop could be optimized using list comprehension.
+                """
+        
+        reviewer = PRReviewer(
+            github_username="test-bot",
+            llm_agent=MockLLMAgent()
+        )
+        
+        patch = "+print('test')\n+for x in range(10):\n+    result.append(x*2)"
+        comments = await reviewer._llm_review_file('test.py', patch)
+        
+        # Should parse LLM response into comments
+        assert len(comments) == 2
+        assert comments[0].line == 5
+        assert "logging" in comments[0].body
+        assert comments[1].line == 12
+        assert "comprehension" in comments[1].body
+
+
+# ==================== GITHUB POSTING TESTS ====================
+
+class TestGitHubReviewPosting:
+    """Test posting reviews to GitHub."""
+    
+    @pytest.mark.asyncio
+    async def test_post_review_no_api_client(self, reviewer):
+        """Test posting review gracefully handles missing API client."""
+        # Reviewer has no github_api configured
+        result = await reviewer.post_review_to_github(
+            repo="owner/repo",
+            pr_number=42,
+            should_approve=True,
+            summary="Looks good!",
+            comments=[]
+        )
+        
+        assert result is False  # Should return False, not crash
+    
+    @pytest.mark.asyncio
+    async def test_post_review_with_mock_api(self):
+        """Test posting review with mock GitHub API."""
+        class MockGitHubAPI:
+            def __init__(self):
+                self.posted_reviews = []
+            
+            def get_pull_request(self, owner, repo, pr_number):
+                return {
+                    'head': {'sha': 'abc123def456'}
+                }
+            
+            def create_pull_request_review(self, owner, repo, pr_number, body, event, comments):
+                self.posted_reviews.append({
+                    'repo': f"{owner}/{repo}",
+                    'pr_number': pr_number,
+                    'body': body,
+                    'event': event,
+                    'comments': comments
+                })
+        
+        mock_api = MockGitHubAPI()
+        reviewer = PRReviewer(
+            github_username="test-bot",
+            github_api=mock_api
+        )
+        
+        comments = [
+            ReviewComment(
+                path='test.py',
+                line=10,
+                body='Good improvement!',
+                severity='suggestion'
+            )
+        ]
+        
+        result = await reviewer.post_review_to_github(
+            repo="owner/repo",
+            pr_number=42,
+            should_approve=True,
+            summary="Great work!",
+            comments=comments,
+            pr_head_sha='abc123'
+        )
+        
+        assert result is True
+        assert len(mock_api.posted_reviews) == 1
+        posted = mock_api.posted_reviews[0]
+        assert posted['repo'] == "owner/repo"
+        assert posted['pr_number'] == 42
+        assert posted['event'] == "APPROVE"
+        assert posted['body'] == "Great work!"
+        assert len(posted['comments']) == 1
+        assert posted['comments'][0]['path'] == 'test.py'
+    
+    @pytest.mark.asyncio
+    async def test_post_review_limits_comments(self):
+        """Test that posting review limits number of comments."""
+        class MockGitHubAPI:
+            def __init__(self):
+                self.posted_reviews = []
+            
+            def get_pull_request(self, owner, repo, pr_number):
+                return {'head': {'sha': 'abc123'}}
+            
+            def create_pull_request_review(self, owner, repo, pr_number, body, event, comments):
+                self.posted_reviews.append({'comments': comments})
+        
+        mock_api = MockGitHubAPI()
+        reviewer = PRReviewer(
+            github_username="test-bot",
+            github_api=mock_api
+        )
+        
+        # Create 15 comments (should be limited to 10)
+        comments = [
+            ReviewComment(path='test.py', line=i, body=f'Comment {i}')
+            for i in range(1, 16)
+        ]
+        
+        await reviewer.post_review_to_github(
+            repo="owner/repo",
+            pr_number=42,
+            should_approve=False,
+            summary="Many issues found",
+            comments=comments,
+            pr_head_sha='abc123'
+        )
+        
+        # Should limit to 10 comments
+        assert len(mock_api.posted_reviews[0]['comments']) == 10
+

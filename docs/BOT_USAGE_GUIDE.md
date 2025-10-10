@@ -410,7 +410,7 @@ grep agent-forge.env ~/.bashrc
 
 ## API Reference
 
-Full API documentation: `/home/flip/agent-forge/agents/bot_operations.py`
+Full API documentation: `/home/flip/agent-forge/engine/operations/bot_operations.py`
 
 Key methods:
 - `create_issue(repo, title, body, labels=None, assignees=None)`
@@ -426,7 +426,7 @@ Key methods:
 ## Examples Repository
 
 See practical examples in:
-- `/home/flip/agent-forge/agents/bot_operations.py` (implementation)
+- `/home/flip/agent-forge/engine/operations/bot_operations.py` (implementation)
 - Recent conversation history (Issues #1-3 workflow)
 
 ## Questions?

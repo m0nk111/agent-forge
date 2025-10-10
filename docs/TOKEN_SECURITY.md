@@ -6,7 +6,7 @@
 
 ---
 
-## � Quick Start (Emergency Response)
+## Quick Start (Emergency Response)
 
 **If you need to secure tokens RIGHT NOW, follow these steps first:**
 
@@ -29,13 +29,13 @@ This script will:
 - ✅ Create `secrets/` directory (with 0700 permissions)
 - ✅ Update `.gitignore` (block secrets/)
 - ✅ Prompt for new token
-- ✅ Remove token from `config/agents.yaml`
+- ✅ Remove token from `config/agents/*.yaml`
 - ✅ Verify security setup
 
 ### Step 3: Commit Changes
 
 ```bash
-git add .gitignore config/agents.yaml
+git add .gitignore config/agents/*.yaml
 git commit -m "security(tokens): move tokens to secrets directory"
 git push
 ```
@@ -69,7 +69,7 @@ curl -H "Authorization: token $(cat secrets/agents/AGENT_ID.token)" \
 
 **Before (INSECURE):**
 ```
-config/agents.yaml         # ❌ Plaintext token!
+config/agents/*.yaml         # ❌ Plaintext token!
 ```
 
 **After (SECURE):**
@@ -81,7 +81,7 @@ secrets/                   # ✅ Secured directory (0700)
     └── providers.json    # ✅ LLM API keys
 
 .gitignore                # ✅ Blocks secrets/
-config/agents.yaml        # ✅ Token references only
+config/agents/*.yaml        # ✅ Token references only
 ```
 
 ---
@@ -108,7 +108,7 @@ config/agents.yaml        # ✅ Token references only
 ## 🚨 Current Security Issues (Detailed Analysis)
 
 ### ❌ Issue 1: Plaintext Tokens in Git
-**Locatie:** `config/agents.yaml` line 49
+**Locatie:** `config/agents/*.yaml` line 49
 ```yaml
 github_token: ghp_EXAMPLE_TOKEN_REPLACE_WITH_YOUR_OWN  # ❌ LEAKED!
 ```
@@ -214,7 +214,7 @@ secrets/
 
 **Implementatie:**
 ```python
-# agents/config_manager.py
+# engine/core/config_manager.py
 def load_agent_token(agent_id: str) -> Optional[str]:
     token_file = Path(f"secrets/agents/{agent_id}.token")
     if token_file.exists():
@@ -344,7 +344,7 @@ echo "*.key filter=git-crypt diff=git-crypt" >> .gitattributes
 cd /home/flip/agent-forge
 
 # Extract tokens from agents.yaml
-grep -A1 "github_token:" config/agents.yaml > /tmp/tokens_backup.txt
+grep -A1 "github_token:" config/agents/*.yaml > /tmp/tokens_backup.txt
 
 # Show tokens (manual copy to safe place)
 cat /tmp/tokens_backup.txt
@@ -401,18 +401,18 @@ EOF
 ### Stap 4: Remove Tokens from Git (15 min)
 ```bash
 # Update agents.yaml (remove plaintext tokens)
-sed -i 's/github_token: ghp_.*/github_token: null  # Moved to secrets\//' config/agents.yaml
+sed -i 's/github_token: ghp_.*/github_token: null  # Moved to secrets\//' config/agents/*.yaml
 
 # Verify
-grep "github_token" config/agents.yaml
+grep "github_token" config/agents/*.yaml
 
 # Commit change
-git add config/agents.yaml .gitignore
+git add config/agents/*.yaml .gitignore
 git commit -m "security(tokens): remove plaintext tokens from config"
 
 # CRITICAL: Remove from git history
 git filter-branch --force --index-filter \
-  "git rm --cached --ignore-unmatch config/agents.yaml" \
+  "git rm --cached --ignore-unmatch config/agents/*.yaml" \
   --prune-empty --tag-name-filter cat -- --all
 
 # Force push (⚠️ DESTRUCTIVE!)
@@ -426,7 +426,7 @@ git push origin --force --all
 ### Stap 5: Update ConfigManager (30 min)
 ```python
 # engine/core/config_manager.py (na refactor)
-# Of: agents/config_manager.py (nu)
+# Of: engine/core/config_manager.py (nu)
 
 from pathlib import Path
 from typing import Optional
@@ -628,11 +628,11 @@ class TokenManager:
 # Save securely!
 
 # 3. Update agents.yaml (temporary)
-nano config/agents.yaml
+nano config/agents/*.yaml
 # Replace token with new one (we'll move to secrets/ later)
 
 # 4. Commit fix
-git add config/agents.yaml
+git add config/agents/*.yaml
 git commit -m "security(urgent): rotate leaked GitHub token"
 git push
 ```

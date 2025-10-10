@@ -9,7 +9,7 @@
 - **Severity**: CRITICAL (Was a show stopper)
 - **Impact**: Entire autonomous development system was non-functional
 - **Error**: `failed to read configuration: open /home/agent-forge/.config/gh/config.yml: permission denied`
-- **Location**: All `gh` CLI subprocess calls in `agents/polling_service.py`
+- **Location**: All `gh` CLI subprocess calls in `engine/runners/polling_service.py`
 - **Root Cause**: gh CLI has design flaw - ALWAYS requires config files even with GH_TOKEN
 - **Time Spent**: 2+ hours debugging + 45 minutes implementing fix
 - **Resolution Date**: 2025-10-05 19:43 UTC
@@ -22,7 +22,7 @@
    - Removed all `subprocess.run(["gh", ...])` calls
    - Direct HTTP requests to `api.github.com`
 
-2. **Added GitHubAPI Helper Class** (`agents/polling_service.py` lines 67-143)
+2. **Added GitHubAPI Helper Class** (`engine/runners/polling_service.py` lines 67-143)
    - Session management with persistent headers
    - Bearer token authentication: `Authorization: Bearer {token}`
    - Timeout handling (30s per request)
@@ -39,7 +39,7 @@
    - `is_issue_claimed()`: GET `/repos/{owner}/{repo}/issues/{num}/comments`
    - `claim_issue()`: POST `/repos/{owner}/{repo}/issues/{num}/comments`
 
-5. **Service Manager Update** (`agents/service_manager.py` line 125)
+5. **Service Manager Update** (`engine/core/service_manager.py` line 125)
    - Removed `enable_monitoring` parameter from PollingService initialization
    - Simplified configuration
 
@@ -73,7 +73,7 @@ Oct 05 19:44:10: Health check: {'polling': True, 'monitoring': True, 'web_ui': T
 - **Severity**: MEDIUM
 - **Impact**: Dashboard and CLI show 0 for CPU, memory, API calls
 - **Root Cause**: Metrics only update after polling cycle completes
-- **Location**: `agents/polling_service.py:update_metrics()`
+- **Location**: `engine/runners/polling_service.py:update_metrics()`
 - **Fix Applied**:
   - Added psutil integration
   - Added `update_metrics()` method
@@ -86,7 +86,7 @@ Oct 05 19:44:10: Health check: {'polling': True, 'monitoring': True, 'web_ui': T
 - **Status**: 📝 DOCUMENTED
 - **Severity**: LOW
 - **Impact**: Web documentation fetching may have formatting issues
-- **Location**: `agents/mcp_client.py:175`
+- **Location**: `engine/operations/mcp_client.py:175`
 - **Note**: Contains TODO comment for proper HTML parser
 - **Current**: Uses regex `re.sub(r'<[^>]+>', '', content)`
 - **Recommended Fix**: Use BeautifulSoup or html.parser
@@ -101,21 +101,21 @@ Oct 05 19:44:10: Health check: {'polling': True, 'monitoring': True, 'web_ui': T
 ## 🔍 Potential Issues to Investigate
 
 ### Issue #1: No Error Handling for Subprocess Failures
-- **Location**: `agents/polling_service.py:check_assigned_issues()`
+- **Location**: `engine/runners/polling_service.py:check_assigned_issues()`
 - **Risk**: subprocess.run() failures logged but not re-raised
 - **Impact**: Silent failures possible
 - **Severity**: MEDIUM
 - **Suggested Fix**: Add proper exception handling and retry logic
 
 ### Issue #2: Missing File Validation in Issue Handler
-- **Location**: `agents/issue_handler.py:_validate_changes()`
+- **Location**: `engine/operations/issue_handler.py:_validate_changes()`
 - **Risk**: Only checks syntax, not file existence
 - **Impact**: Could validate non-existent files
 - **Severity**: LOW
 - **Suggested Fix**: Add file existence check before syntax validation
 
 ### Issue #3: No Rate Limiting on Monitor WebSocket
-- **Location**: `agents/websocket_handler.py`
+- **Location**: `engine/operations/websocket_handler.py`
 - **Risk**: Clients could spam WebSocket connections
 - **Impact**: Potential DoS
 - **Severity**: LOW

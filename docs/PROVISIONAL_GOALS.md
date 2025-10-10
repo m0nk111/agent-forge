@@ -111,7 +111,7 @@
 - 🔄 Task delegation with full context (in progress)
 - 🔄 Priority queue for urgent issues (planned)
 
-**Implementation**: `engine/core/coordinator_agent.py`  
+**Implementation**: `engine/runners/coordinator_agent.py`  
 **Documentation**: [AGENT_ROLES.md](AGENT_ROLES.md), [MULTI_AGENT_GITHUB_STRATEGY.md](MULTI_AGENT_GITHUB_STRATEGY.md)
 
 **3. Task Execution** (Agent Operations)
@@ -134,7 +134,7 @@
 - 🔄 Rendered Markdown preview (planned)
 - 🔄 Test results in PR body (planned)
 
-**Implementation**: `engine/operations/bot_agent.py`, `engine/operations/github_api_helper.py`  
+**Implementation**: `engine/runners/bot_agent.py`, `engine/operations/github_api_helper.py`  
 **Documentation**: [BOT_USAGE_GUIDE.md](BOT_USAGE_GUIDE.md)
 
 **5. Security Audit** (Automated)
@@ -169,7 +169,7 @@
 **Documentation**: [SSH_AUTHENTICATION.md](SSH_AUTHENTICATION.md), [INSTALLATION.md](INSTALLATION.md#dashboard-authentication-setup)
 
 **Configuration Management**
-- ✅ YAML-based configuration (`config/agents.yaml`, `config/system.yaml`)
+- ✅ YAML-based configuration (`config/agents/*.yaml`, `config/system.yaml`)
 - ✅ Hot-reload for some configs (not all yet)
 - ✅ Secrets management (`secrets/agents/*.token` with 600 permissions)
 - ✅ Environment variable support
@@ -310,8 +310,8 @@ Until all above works reliably, development continues.
 - [ ] Conflict resolution for multi-agent scenarios (planned)
 
 **Key Files**:
-- `engine/core/coordinator_agent.py` - Coordination logic
-- `config/agents.yaml` - Agent definitions and capabilities
+- `engine/runners/coordinator_agent.py` - Coordination logic
+- `config/agents/*.yaml` - Agent definitions and capabilities
 
 **Documentation**: [AGENT_ROLES.md](AGENT_ROLES.md), [MULTI_AGENT_GITHUB_STRATEGY.md](MULTI_AGENT_GITHUB_STRATEGY.md)
 
@@ -342,7 +342,20 @@ Until all above works reliably, development continues.
 
 #### 3B: Code Module Generation ✅ FUNCTIONAL
 
-**Status**: 90% complete - **Core infrastructure working end-to-end, minor prompt tuning needed**
+**Status**: 95% complete - **PROMPT BUG FIXED, COVERAGE ADDED** ✅
+
+**Recent Updates** (2025-10-10):
+- ✅ **Prompt Separation Bug Fixed**: Enhanced prompts with explicit DO/DO NOT instructions
+  - Implementation prompt: "DO NOT include test code, pytest fixtures, test assertions"
+  - Test prompt: "DO NOT include the actual implementation code being tested"
+  - E2E validation: test_prompt_separation_with_real_llm PASSED ✅
+- ✅ **Coverage Integration Added**: pytest-cov integration in `_run_tests()` method
+  - Coverage metrics tracked when pytest-cov installed
+  - Falls back gracefully when not available
+  - Coverage percentage parsed and logged
+- ✅ **E2E Tests Created**: `tests/test_code_generator_e2e.py` with real LLM validation
+  - test_prompt_separation_with_real_llm: Validates separation (11.92s) ✅
+  - test_full_generation_workflow: Tests complete pipeline (39.32s) ✅
 
 **E2E Validation** (2025-10-10 - Issue #84):
 - ✅ **Test Issue Created**: "Create string_utils.py helper module" with clear requirements
@@ -395,10 +408,10 @@ Until all above works reliably, development continues.
 
 **Documentation**: [CHANGELOG.md](../CHANGELOG.md#phase-3b-autonomous-code-module-generation) (comprehensive entry)
 
-**Known Limitations**:
-- Test file receives implementation content (prompt needs clearer separation instructions)
+**Known Limitations** (reduced from 4 to 2):
+- ~~Test file receives implementation content~~ ✅ **FIXED** (2025-10-10)
 - Import patterns need optimization (absolute vs relative imports)
-- No coverage metrics yet (pytest-cov integration pending)
+- ~~No coverage metrics yet~~ ✅ **ADDED** (pytest-cov integration 2025-10-10)
 - Error accumulation needs refinement (currently keeps all errors across retries)
 
 **Next Steps** (to reach 100%):
@@ -407,9 +420,10 @@ Until all above works reliably, development continues.
 3. ✅ Integration tests with real LLM (DONE)
 4. ✅ E2E validation (DONE - Issue #84)
 5. ✅ Security and test validation (DONE)
-6. ⏳ **Prompt optimization**: Fix test/implementation separation (HIGH PRIORITY)
-7. ⏳ **Full pipeline integration**: Test with polling_service → issue_handler → PR creation
-8. ⏳ **Coverage integration**: Add pytest-cov for coverage metrics (LOW PRIORITY)
+6. ✅ **Prompt optimization**: Fix test/implementation separation (DONE 2025-10-10)
+7. ✅ **Coverage integration**: Add pytest-cov for coverage metrics (DONE 2025-10-10)
+8. ⏳ **Full pipeline integration**: Test with polling_service → issue_handler → PR creation (NEXT)
+9. ⏳ **Import pattern optimization**: Better handling of absolute vs relative imports (LOW PRIORITY)
 
 
 
@@ -456,7 +470,7 @@ Until all above works reliably, development continues.
 - [ ] Auto-label PR based on changes (not started)
 
 **Key Files**:
-- `engine/operations/bot_agent.py` - Bot operations
+- `engine/runners/bot_agent.py` - Bot operations
 - `engine/operations/github_api_helper.py` - GitHub API wrapper
 - `engine/operations/git_operations.py` - Git commands
 
@@ -485,7 +499,7 @@ Until all above works reliably, development continues.
 
 **Key Files**:
 - `engine/validation/security_auditor.py` - Main audit logic
-- `config/agents.yaml` - Trusted agent configuration
+- `config/agents/*.yaml` - Trusted agent configuration
 
 **Documentation**: [SECURITY_AUDIT.md](SECURITY_AUDIT.md), [TOKEN_SECURITY.md](TOKEN_SECURITY.md)
 
@@ -647,10 +661,8 @@ git push origin feat/my-feature
 ### 📖 Reference & Planning
 24. **[API.md](API.md)** - API documentation
 25. **[PORT_REFERENCE.md](PORT_REFERENCE.md)** - Port assignments (8080, 7997, 8897, 7996, 11434)
-26. **[REFACTOR_PLAN.md](REFACTOR_PLAN.md)** - Directory refactor plan (Issue #69)
-27. **[LESSONS_LEARNED.md](LESSONS_LEARNED.md)** - Historical knowledge, avoid past mistakes
-28. **[AGENT_ONBOARDING.md](AGENT_ONBOARDING.md)** - Agent workflow details
-29. **[CONSOLIDATION_PLAN.md](CONSOLIDATION_PLAN.md)** - Doc consolidation strategy
+26. **[LESSONS_LEARNED.md](LESSONS_LEARNED.md)** - Historical knowledge, avoid past mistakes
+27. **[AGENT_ONBOARDING.md](AGENT_ONBOARDING.md)** - Agent workflow details
 
 ### 🤝 Contributing
 30. **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines
@@ -711,10 +723,8 @@ git push origin feat/my-feature
 
 ### Technical Debt
 
-See **[REFACTOR_PLAN.md](REFACTOR_PLAN.md)** for detailed technical debt tracking.
-
 **High Priority**:
-- **Directory Structure**: Root directory cleanup (Issue #69) - move all files to narrow/deep subdirectories
+- **Directory Structure**: ✅ **COMPLETED** - Root directory cleanup done, all files in narrow/deep subdirectories (engine/core/, engine/operations/, engine/runners/, engine/validation/)
 - **Test Coverage**: Integration tests need assertions (many use print statements only)
 - **Error Recovery**: Implement retry policies and circuit breakers (see [ERROR_RECOVERY.md](ERROR_RECOVERY.md))
 

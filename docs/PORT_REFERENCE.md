@@ -26,7 +26,7 @@
 
 **Purpose**: Central REST API for service control and monitoring
 
-**Service**: `agents/service_manager.py`
+**Service**: `engine/core/service_manager.py`
 
 **Bind Address**: `0.0.0.0` (all interfaces, LAN accessible)
 
@@ -85,7 +85,7 @@ lsof -ti:8080 | xargs kill -9
 
 **Purpose**: Real-time bidirectional communication for monitoring
 
-**Service**: `agents/websocket_handler.py`
+**Service**: `engine/operations/websocket_handler.py`
 
 **Bind Address**: `0.0.0.0` (all interfaces, LAN accessible)
 
@@ -256,7 +256,7 @@ server {
 
 **Purpose**: Optional HTTP API for direct code generation requests
 
-**Service**: `agents/code_agent.py` (when run as API server)
+**Service**: `engine/runners/code_agent.py` (when run as API server)
 
 **Bind Address**: `127.0.0.1` (localhost only, not exposed to LAN)
 
@@ -302,7 +302,7 @@ python -m agents.code_agent --api-mode --port 7996
 export OLLAMA_HOST=127.0.0.1:11434
 
 # Agent-Forge configuration
-# config/agents.yaml
+# config/agents/your-agent.yaml
 code_agent:
   model: "qwen2.5-coder:32b"
   base_url: "http://localhost:11434"  # Change port here if needed

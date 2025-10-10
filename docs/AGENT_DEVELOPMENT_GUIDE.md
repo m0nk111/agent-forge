@@ -176,7 +176,7 @@ class HelloAgent:
 ### Step 2: Register Agent in Config
 
 ```yaml
-# config/agents.yaml
+# config/agents/hello-agent.yaml
 
 agents:
   - agent_id: hello-agent

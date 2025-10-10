@@ -90,7 +90,8 @@ Before contributing, ensure you have:
 
 6. **Configure environment**:
    ```bash
-   cp config/agents.yaml.example config/agents.yaml
+   # Create agent config files in config/agents/
+   cp config/agents/m0nk111-qwen-agent.yaml.example config/agents/your-agent.yaml
    cp .env.example .env
    # Edit .env with your GitHub tokens
    ```
@@ -268,7 +269,7 @@ black --check .
 mypy agents/
 
 # Strict mode
-mypy --strict agents/bot_agent.py
+mypy --strict engine/runners/bot_agent.py
 ```
 
 ### Configuration Files
@@ -680,7 +681,7 @@ Low / Medium / High
 
 1. **Create agent file**:
    ```bash
-   touch agents/your_agent.py
+   touch engine/runners/your_agent.py
    ```
 
 2. **Implement agent class**:
@@ -702,7 +703,7 @@ Low / Medium / High
 
 3. **Add configuration**:
    ```yaml
-   # config/agents.yaml
+   # config/agents/your-agent.yaml
    your_agent:
      model: "qwen2.5-coder:7b"
      mode: "idle"

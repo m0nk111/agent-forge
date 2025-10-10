@@ -11,7 +11,7 @@ Pre-deployment checklist voor Agent-Forge updates.
 - [ ] Code coverage > 70%: `pytest --cov=agents --cov-report=html`
 
 ### 2. Configuration
-- [ ] `config/agents.yaml` updated (tokens removed)
+- [ ] `config/agents/*.yaml` updated (tokens removed)
 - [ ] `config/repositories.yaml` configured
 - [ ] `secrets/agents/*.token` files exist (0600 permissions)
 - [ ] `.gitignore` blocks `secrets/` directory
@@ -283,7 +283,9 @@ ss -tlnp | grep ':7996\|:7997\|:7998\|:8897'
 sudo lsof -ti:7997 | xargs sudo kill -9
 
 # 5. Check configuration
-python3 -c "import yaml; yaml.safe_load(open('config/agents.yaml'))"
+for config in config/agents/*.yaml; do
+  python3 -c "import yaml; yaml.safe_load(open('$config'))"
+done
 
 # 6. Check permissions
 ls -la config/ secrets/
@@ -292,7 +294,7 @@ sudo chown -R agent-forge:agent-forge /opt/agent-forge
 # 7. Try manual start (debugging)
 cd /opt/agent-forge
 source venv/bin/activate
-python3 agents/service_manager.py
+python3 engine/core/service_manager.py
 
 # 8. Check dependencies
 pip3 list | grep -E "flask|pyyaml|requests|anthropic|ollama"

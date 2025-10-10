@@ -65,7 +65,8 @@ class PRReviewer:
         self,
         github_username: str,
         criteria: Optional[ReviewCriteria] = None,
-        llm_agent = None
+        llm_agent = None,
+        github_api = None
     ):
         """
         Initialize PR reviewer.
@@ -74,10 +75,12 @@ class PRReviewer:
             github_username: Username of this agent (to skip own PRs)
             criteria: Review criteria configuration
             llm_agent: LLM agent for intelligent code analysis
+            github_api: GitHubAPIHelper instance for posting reviews
         """
         self.github_username = github_username
         self.criteria = criteria or ReviewCriteria()
         self.llm_agent = llm_agent
+        self.github_api = github_api
         
         # Review templates
         self.review_templates = self._load_review_templates()
@@ -234,6 +237,71 @@ class PRReviewer:
         logger.info(f"✅ Review complete: {pr_key} - {'APPROVE' if should_approve else 'REQUEST_CHANGES'}")
         
         return should_approve, summary, all_comments
+    
+    async def post_review_to_github(
+        self,
+        repo: str,
+        pr_number: int,
+        should_approve: bool,
+        summary: str,
+        comments: List[ReviewComment],
+        pr_head_sha: Optional[str] = None
+    ) -> bool:
+        """
+        Post review to GitHub PR.
+        
+        Args:
+            repo: Repository (owner/repo)
+            pr_number: PR number
+            should_approve: Whether to approve or request changes
+            summary: Review summary text
+            comments: List of line-specific comments
+            pr_head_sha: SHA of PR head commit (fetched if not provided)
+            
+        Returns:
+            True if successfully posted
+        """
+        if not self.github_api:
+            logger.warning("No GitHub API client configured - cannot post review")
+            return False
+        
+        try:
+            owner, repo_name = repo.split('/')
+            
+            # Get PR head SHA if not provided
+            if not pr_head_sha:
+                pr_data = self.github_api.get_pull_request(owner, repo_name, pr_number)
+                pr_head_sha = pr_data['head']['sha']
+            
+            # Determine review event type
+            event = "APPROVE" if should_approve else "REQUEST_CHANGES"
+            
+            # Format line comments for GitHub API
+            github_comments = []
+            for comment in comments[:10]:  # Limit to 10 comments per review
+                github_comments.append({
+                    'path': comment.path,
+                    'line': comment.line,
+                    'side': comment.side,
+                    'body': comment.body
+                })
+            
+            # Post review
+            self.github_api.create_pull_request_review(
+                owner=owner,
+                repo=repo_name,
+                pr_number=pr_number,
+                body=summary,
+                event=event,
+                comments=github_comments if github_comments else None
+            )
+            
+            logger.info(f"✅ Posted {event} review to {repo}#{pr_number}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to post review to {repo}#{pr_number}: {e}")
+            return False
     
     async def _review_file(self, file_data: Dict) -> Tuple[List[ReviewComment], float]:
         """
@@ -406,21 +474,8 @@ class PRReviewer:
         if not self.llm_agent:
             return []
         
-        prompt = f"""Review this code change and provide specific feedback.
-
-File: {filename}
-Diff:
-{patch}
-
-Focus on:
-1. Logic errors or bugs
-2. Edge cases not handled
-3. Performance concerns
-4. Better approaches or patterns
-
-Provide 0-3 specific, actionable suggestions. Be concise.
-Format: "Line X: <suggestion>"
-"""
+        # Create comprehensive review prompt
+        prompt = self._generate_review_prompt(filename, patch)
         
         try:
             response = await self.llm_agent.generate(prompt)
@@ -428,6 +483,72 @@ Format: "Line X: <suggestion>"
         except Exception as e:
             logger.warning(f"LLM review failed: {e}")
             return []
+    
+    def _generate_review_prompt(self, filename: str, patch: str) -> str:
+        """Generate comprehensive LLM review prompt."""
+        file_ext = Path(filename).suffix
+        language = self._guess_language(file_ext)
+        
+        prompt = f"""You are an expert code reviewer. Review the following {language} code changes.
+
+📁 **File**: `{filename}`
+
+**Diff**:
+```diff
+{patch}
+```
+
+**Review Guidelines**:
+1. **Logic & Correctness**: Identify bugs, edge cases, or incorrect logic
+2. **Security**: Flag potential security vulnerabilities or unsafe patterns
+3. **Performance**: Point out inefficiencies or performance concerns
+4. **Best Practices**: Suggest better patterns, idioms, or approaches specific to {language}
+5. **Maintainability**: Comment on readability, naming, and code organization
+
+**Output Format**:
+Provide 0-3 actionable suggestions. For each suggestion, use this exact format:
+```
+Line <number>: <clear, specific suggestion with reasoning>
+```
+
+**Important**:
+- Only comment on NEW lines (lines starting with '+' in diff)
+- Be specific and actionable - explain WHY and HOW to fix
+- Focus on high-impact issues, not nitpicks
+- If code looks good, return empty response
+
+**Examples**:
+```
+Line 42: This function doesn't handle None values. Add a null check before accessing `.items()` to prevent AttributeError.
+Line 58: Using string concatenation in a loop is inefficient. Consider using `''.join()` or a list comprehension instead.
+```
+
+Now review the code:
+"""
+        return prompt
+    
+    def _guess_language(self, ext: str) -> str:
+        """Guess programming language from file extension."""
+        lang_map = {
+            '.py': 'Python',
+            '.js': 'JavaScript',
+            '.ts': 'TypeScript',
+            '.java': 'Java',
+            '.cpp': 'C++',
+            '.c': 'C',
+            '.go': 'Go',
+            '.rs': 'Rust',
+            '.rb': 'Ruby',
+            '.php': 'PHP',
+            '.sh': 'Shell',
+            '.yaml': 'YAML',
+            '.yml': 'YAML',
+            '.json': 'JSON',
+            '.md': 'Markdown',
+            '.html': 'HTML',
+            '.css': 'CSS',
+        }
+        return lang_map.get(ext.lower(), 'code')
     
     def _parse_llm_comments(self, response: str, filename: str) -> List[ReviewComment]:
         """Parse LLM response into review comments."""

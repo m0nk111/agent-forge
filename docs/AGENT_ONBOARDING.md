@@ -78,7 +78,7 @@ websocket_handler.py
 
 #### **Core Config Files**
 - [ ] `config/system.yaml` - System-wide configuration
-- [ ] `config/agents.yaml` - Agent definitions and capabilities
+- [ ] `config/agents/*.yaml` - Agent definitions and capabilities (per agent)
 - [ ] `config/bot_config.yaml` - Bot-specific settings
 - [ ] `config/coordinator_config.yaml` - Coordinator settings
 - [ ] `config/repositories.yaml` - GitHub repository mappings
@@ -98,8 +98,8 @@ websocket_handler.py
 
 #### **✅ New Features**
 - **Instruction Validation System (PR #63)**:
-  - `agents/instruction_parser.py`: Parses `.github/copilot-instructions.md`
-  - `agents/instruction_validator.py`: Validates file locations, commits, changelog, ports, language
+  - `engine/validation/instruction_parser.py`: Parses `.github/copilot-instructions.md`
+  - `engine/validation/instruction_validator.py`: Validates file locations, commits, changelog, ports, language
   - `config/instruction_rules.yaml`: Validation rules configuration
   - Auto-fix capabilities for commit messages
   - 30 unit tests + 4 integration tests (78% coverage)
@@ -150,18 +150,18 @@ pytest --cov=agents --cov-report=html
 
 ### 5. Agent Roles and Responsibilities
 
-#### **Bot Agent** (`agents/bot_agent.py`)
+#### **Bot Agent** (`engine/runners/bot_agent.py`)
 - Handles GitHub issue assignments
 - Performs code modifications
 - Creates branches and commits
 - Manages pull requests
 
-#### **Coordinator Agent** (`agents/coordinator_agent.py`)
+#### **Coordinator Agent** (`engine/runners/coordinator_agent.py`)
 - Orchestrates multi-agent workflows
 - Task distribution and prioritization
 - High-level decision making
 
-#### **Qwen Agent** (`agents/qwen_agent.py`)
+#### **Qwen Agent** (`engine/runners/code_agent.py`)
 - Local LLM integration (Qwen 2.5 Coder)
 - Code generation and review
 - Works offline without API costs
@@ -207,7 +207,7 @@ python --version  # Should be 3.10+
 
 # 5. Check configuration
 cat config/system.yaml
-cat config/agents.yaml
+ls -la config/agents/
 ```
 
 ### 8. Quick Reference Links
@@ -224,7 +224,7 @@ cat config/agents.yaml
 
 #### **Configuration**
 - Port Reference: `/docs/PORT_REFERENCE.md`
-- Agent Config: `/config/agents.yaml`
+- Agent Configs: `/config/agents/` directory
 - System Config: `/config/system.yaml`
 
 ---
