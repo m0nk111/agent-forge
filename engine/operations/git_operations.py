@@ -26,7 +26,6 @@ class GitOperations:
     
     def __init__(self):
         """Initialize with credentials from environment."""
-        """
         super().__init__()
         self.username = os.getenv('CODEAGENT_GITHUB_USERNAME', 'm0nk111-qwen-agent')
         self.email = os.getenv('CODEAGENT_GITHUB_EMAIL', 'aicodingtime@gmail.com')
