@@ -1,0 +1,69 @@
+# Coordinator Agent Configuration
+# Role: Task planning, breakdown, and orchestration
+# Recommended Model: GPT-4 (needs high reasoning capability)
+
+agent_id: "coordinator-agent"
+name: "Coordinator Agent"
+role: "coordinator"
+
+# Model configuration - GPT-4 for complex reasoning
+model_provider: "openai"
+model_name: "gpt-4"
+api_key_name: "OPENAI_API_KEY"
+temperature: 0.7
+max_tokens: 4096
+
+# Capabilities
+capabilities:
+  - task_planning
+  - task_breakdown
+  - task_assignment
+  - progress_monitoring
+  - dependency_resolution
+  - blocker_handling
+  - issue_triage
+
+# GitHub integration
+github:
+  username: "m0nk111-qwen-agent"
+  email: "m0nk111@users.noreply.github.com"
+  token_env: "CODEAGENT_GITHUB_TOKEN"
+
+# Coordinator-specific settings
+coordinator:
+  # Task planning
+  max_subtasks_per_issue: 10
+  max_planning_depth: 3
+  
+  # Assignment strategy
+  assignment_strategy: "capability_match"  # capability_match, load_balance, round_robin
+  
+  # Progress monitoring
+  check_interval_minutes: 30
+  timeout_hours: 24
+  
+  # Communication
+  notify_on_completion: true
+  notify_on_blocker: true
+  create_status_updates: true
+
+# Fallback configuration (if GPT-4 unavailable)
+fallback:
+  enabled: true
+  provider: "openai"
+  model: "gpt-3.5-turbo"  # Cheaper fallback
+
+# Permissions
+permissions:
+  read: true
+  write: true
+  coordinate: true
+  assign_tasks: true
+  terminal: true
+
+# Execution settings
+execution:
+  enabled: true
+  auto_start: true  # Always-on for coordination
+  restart_on_failure: true
+  max_restart_attempts: 5

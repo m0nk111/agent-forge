@@ -1,0 +1,93 @@
+# Researcher Agent Configuration
+# Role: Information gathering and analysis
+# Recommended Model: GPT-4 (needs deep analysis and reasoning)
+
+agent_id: "researcher-agent"
+name: "Research Agent"
+role: "researcher"
+
+# Model configuration - GPT-4 for deep analysis
+model_provider: "openai"
+model_name: "gpt-4"
+api_key_name: "OPENAI_API_KEY"
+temperature: 0.8  # Higher creativity for research
+max_tokens: 4096
+
+# Capabilities
+capabilities:
+  - information_gathering
+  - codebase_analysis
+  - best_practice_research
+  - problem_investigation
+  - technology_research
+  - solution_finding
+
+# GitHub integration
+github:
+  username: "m0nk111-qwen-agent"
+  email: "m0nk111@users.noreply.github.com"
+  token_env: "CODEAGENT_GITHUB_TOKEN"
+
+# Researcher-specific settings
+researcher:
+  # Information sources
+  sources:
+    - github
+    - stack_overflow
+    - documentation_sites
+    - academic_papers
+    # - web_search  # Optional
+  
+  # Research depth
+  max_depth: 3  # How many links to follow
+  max_sources_per_query: 10
+  
+  # Analysis
+  analyze_codebase: true
+  find_patterns: true
+  suggest_alternatives: true
+  
+  # Output format
+  create_research_report: true
+  report_sections:
+    - "Problem Statement"
+    - "Research Findings"
+    - "Best Practices"
+    - "Recommended Solutions"
+    - "References"
+  
+  # Cache results
+  cache_research: true
+  cache_duration_days: 30
+
+# Research configuration
+research:
+  # Focus areas
+  focus_on_security: true
+  focus_on_performance: true
+  focus_on_maintainability: true
+  
+  # Quality filters
+  prefer_recent_sources: true
+  recent_threshold_months: 12
+  min_source_credibility: "medium"  # low, medium, high
+
+# Fallback configuration
+fallback:
+  enabled: true
+  provider: "openai"
+  model: "gpt-3.5-turbo"  # For simple lookups
+
+# Permissions
+permissions:
+  read: true
+  write: false  # Read-only for research
+  web_search: true
+  codebase_analysis: true
+
+# Execution settings
+execution:
+  enabled: true
+  auto_start: false  # On-demand
+  restart_on_failure: true
+  max_restart_attempts: 3

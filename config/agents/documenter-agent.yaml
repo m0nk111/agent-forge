@@ -1,0 +1,91 @@
+# Documenter Agent Configuration
+# Role: Documentation creation and maintenance
+# Recommended Model: GPT-3.5-turbo (docs don't need GPT-4 power)
+
+agent_id: "documenter-agent"
+name: "Documentation Agent"
+role: "documenter"
+
+# Model configuration - GPT-3.5 for cost-effective docs
+model_provider: "openai"
+model_name: "gpt-3.5-turbo"
+api_key_name: "OPENAI_API_KEY"
+temperature: 0.7
+max_tokens: 2048
+
+# Capabilities
+capabilities:
+  - documentation_writing
+  - readme_generation
+  - guide_creation
+  - changelog_maintenance
+  - api_documentation
+  - tutorial_creation
+
+# GitHub integration
+github:
+  username: "m0nk111-qwen-agent"
+  email: "m0nk111@users.noreply.github.com"
+  token_env: "CODEAGENT_GITHUB_TOKEN"
+
+# Documenter-specific settings
+documenter:
+  # Documentation types
+  generate_readme: true
+  generate_api_docs: true
+  generate_guides: true
+  update_changelog: true
+  
+  # Documentation style
+  format: "markdown"
+  use_emoji: true
+  include_examples: true
+  include_diagrams: false  # Optional Mermaid diagrams
+  
+  # Structure
+  readme_sections:
+    - "Installation"
+    - "Quick Start"
+    - "Usage"
+    - "API Reference"
+    - "Examples"
+    - "Contributing"
+    - "License"
+  
+  # Changelog format
+  changelog_format: "keep-a-changelog"  # keep-a-changelog, semantic
+  
+  # API documentation
+  api_doc_style: "google"  # google, numpy, sphinx
+
+# Documentation standards
+standards:
+  # Language
+  primary_language: "en"
+  spell_check: true
+  grammar_check: true
+  
+  # Quality
+  min_doc_coverage: 80  # Percent of functions documented
+  require_examples: true
+  require_type_hints: true
+
+# Fallback configuration
+fallback:
+  enabled: true
+  provider: "local"
+  model: "qwen2.5-coder:7b"  # Free local docs
+
+# Permissions
+permissions:
+  read: true
+  write: true  # Can write docs
+  terminal: false
+  file_system: true  # docs/ directory only
+
+# Execution settings
+execution:
+  enabled: true
+  auto_start: false  # On-demand
+  restart_on_failure: true
+  max_restart_attempts: 3

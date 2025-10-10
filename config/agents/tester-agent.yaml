@@ -1,0 +1,85 @@
+# Tester Agent Configuration
+# Role: Testing and validation
+# Recommended Model: GPT-3.5-turbo (tests don't need complex reasoning)
+
+agent_id: "tester-agent"
+name: "Testing Agent"
+role: "tester"
+
+# Model configuration - GPT-3.5 for cost-effective testing
+model_provider: "openai"
+model_name: "gpt-3.5-turbo"
+api_key_name: "OPENAI_API_KEY"
+temperature: 0.7
+max_tokens: 2048
+
+# Capabilities
+capabilities:
+  - test_generation
+  - test_execution
+  - validation
+  - regression_testing
+  - test_reporting
+
+# GitHub integration
+github:
+  username: "m0nk111-qwen-agent"
+  email: "m0nk111@users.noreply.github.com"
+  token_env: "CODEAGENT_GITHUB_TOKEN"
+
+# Tester-specific settings
+tester:
+  # Test generation
+  test_framework: "pytest"
+  generate_unit_tests: true
+  generate_integration_tests: true
+  min_coverage_target: 80
+  
+  # Test execution
+  run_on_pr: true
+  run_on_commit: false
+  parallel_execution: true
+  max_parallel_tests: 4
+  
+  # Test types
+  test_types:
+    - unit
+    - integration
+    - functional
+    # - e2e  # Optional
+  
+  # Reporting
+  generate_coverage_report: true
+  post_results_to_pr: true
+  fail_on_coverage_drop: true
+  coverage_drop_threshold: 5  # percent
+
+# Test configuration
+test_config:
+  timeout_seconds: 300
+  retry_failed_tests: true
+  max_retries: 2
+  
+  # Fixtures
+  use_fixtures: true
+  fixture_scope: "function"  # function, class, module, session
+
+# Fallback configuration
+fallback:
+  enabled: true
+  provider: "local"
+  model: "qwen2.5-coder:7b"  # Free local testing
+
+# Permissions
+permissions:
+  read: true
+  write: true  # Can write tests
+  terminal: true
+  run_tests: true
+
+# Execution settings
+execution:
+  enabled: true
+  auto_start: false  # Triggered by PR/commit
+  restart_on_failure: true
+  max_restart_attempts: 3

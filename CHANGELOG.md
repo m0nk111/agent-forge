@@ -9,6 +9,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **🎭 Complete Agent Role Configuration Suite** (2025-10-10)
+  - **6 New Agent Roles**: Coordinator, Developer, Reviewer, Tester, Documenter, Researcher
+  - **Optimized LLM Assignment**: Each role uses best-fit model (GPT-4, GPT-3.5-turbo, or local)
+  - **New Configuration Files**:
+    - `config/agents/coordinator-agent.yaml`: GPT-4 for complex planning & orchestration
+    - `config/agents/developer-agent.yaml`: GPT-4 for production code generation
+    - `config/agents/reviewer-agent.yaml`: GPT-4 for thorough code reviews
+    - `config/agents/tester-agent.yaml`: GPT-3.5-turbo for cost-effective testing
+    - `config/agents/documenter-agent.yaml`: GPT-3.5-turbo for documentation
+    - `config/agents/researcher-agent.yaml`: GPT-4 for deep analysis & research
+  - **Cost Optimization**:
+    - GPT-4 roles: ~$0.20-0.30/task (high quality, complex reasoning)
+    - GPT-3.5 roles: ~$0.01/task (good quality, simple tasks)
+    - Local roles: Free (development, automation)
+    - Smart fallbacks: GPT-4 → GPT-3.5 → Local
+  - **Role-Specific Features**:
+    - Coordinator: Task breakdown, progress monitoring, blocker handling
+    - Developer: PEP 8, 80% coverage, static analysis, auto-PR
+    - Reviewer: Security audit, performance check, approval scoring
+    - Tester: Parallel execution, coverage reports, PR integration
+    - Documenter: README, API docs, changelog, guides
+    - Researcher: Multi-source research, pattern analysis, caching
+  - **Documentation**: `docs/AGENT_ROLE_CONFIGS.md` (complete guide with examples)
+  - **Usage**: All roles work with universal launcher:
+    ```bash
+    python3 scripts/launch_agent.py --agent coordinator --issue 100
+    python3 scripts/launch_agent.py --agent tester --issue 101
+    python3 scripts/launch_agent.py --agent documenter --issue 102
+    ```
+
 - **🤖 New Bot Agent: m0nk111-post** (2025-10-10)
   - **Replaces Suspended Account**: m0nk111-bot account was suspended, replaced with m0nk111-post
   - **New Configuration**: config/agents/m0nk111-post.yaml (complete bot configuration)

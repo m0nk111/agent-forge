@@ -1,0 +1,83 @@
+# Developer Agent Configuration
+# Role: Code generation, implementation, and bug fixes
+# Recommended Model: GPT-4 for production, GPT-3.5-turbo for simple tasks, local for dev
+
+agent_id: "developer-agent"
+name: "Developer Agent"
+role: "developer"
+
+# Model configuration - GPT-4 for quality code
+model_provider: "openai"
+model_name: "gpt-4"
+api_key_name: "OPENAI_API_KEY"
+temperature: 0.7
+max_tokens: 4096
+
+# Capabilities
+capabilities:
+  - code_generation
+  - code_modification
+  - bug_fixing
+  - refactoring
+  - optimization
+  - feature_implementation
+
+# GitHub integration
+github:
+  username: "m0nk111-qwen-agent"
+  email: "m0nk111@users.noreply.github.com"
+  token_env: "CODEAGENT_GITHUB_TOKEN"
+
+# Developer-specific settings
+developer:
+  # Code style
+  follow_style_guide: true
+  style_guide: "PEP 8"  # For Python projects
+  
+  # Testing requirements
+  require_tests: true
+  min_test_coverage: 80
+  
+  # Code quality
+  run_static_analysis: true
+  static_analysis_tools:
+    - flake8
+    - bandit
+    - mypy
+  
+  # Git behavior
+  create_feature_branches: true
+  branch_prefix: "feature/"
+  commit_message_format: "conventional"  # conventional, simple
+  
+  # PR behavior
+  auto_create_pr: true
+  pr_template: ".github/pull_request_template.md"
+  request_review: true
+
+# Fallback configuration
+fallback:
+  enabled: true
+  provider: "openai"
+  model: "gpt-3.5-turbo"  # For simple tasks
+  fallback_on_cost: true  # Use cheaper model for simple tasks
+  simple_task_keywords:
+    - "typo"
+    - "rename"
+    - "comment"
+    - "docstring"
+
+# Permissions
+permissions:
+  read: true
+  write: true
+  terminal: true
+  file_system: true
+  run_tests: true
+
+# Execution settings
+execution:
+  enabled: true
+  auto_start: false  # On-demand
+  restart_on_failure: true
+  max_restart_attempts: 3

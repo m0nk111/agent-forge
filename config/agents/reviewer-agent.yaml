@@ -1,0 +1,86 @@
+# Reviewer Agent Configuration
+# Role: Code review and quality assurance
+# Recommended Model: GPT-4 (needs thorough analysis)
+
+agent_id: "reviewer-agent"
+name: "Code Reviewer Agent"
+role: "reviewer"
+
+# Model configuration - GPT-4 for thorough reviews
+model_provider: "openai"
+model_name: "gpt-4"
+api_key_name: "OPENAI_API_KEY"
+temperature: 0.5  # Lower temp for consistent reviews
+max_tokens: 4096
+
+# Capabilities
+capabilities:
+  - code_review
+  - quality_assurance
+  - security_audit
+  - style_checking
+  - best_practices
+  - suggest_improvements
+
+# GitHub integration
+github:
+  username: "m0nk111-qwen-agent"
+  email: "m0nk111@users.noreply.github.com"
+  token_env: "CODEAGENT_GITHUB_TOKEN"
+
+# Reviewer-specific settings
+reviewer:
+  # Review criteria
+  check_security: true
+  check_performance: true
+  check_style: true
+  check_tests: true
+  check_documentation: true
+  
+  # Review thresholds
+  min_approval_score: 70  # 0-100
+  block_on_security_issues: true
+  block_on_missing_tests: false
+  
+  # Review format
+  use_review_template: true
+  provide_code_suggestions: true
+  cite_best_practices: true
+  
+  # Automated checks
+  run_static_analysis: true
+  run_security_scan: true
+  check_test_coverage: true
+  min_coverage_threshold: 80
+
+# Review templates
+review_template:
+  structure:
+    - "## Summary"
+    - "## Security Issues"
+    - "## Performance Concerns"
+    - "## Style Issues"
+    - "## Test Coverage"
+    - "## Suggestions"
+    - "## Approval Status"
+
+# Fallback configuration
+fallback:
+  enabled: true
+  provider: "openai"
+  model: "gpt-3.5-turbo"  # For simple reviews
+
+# Permissions
+permissions:
+  read: true
+  write: false  # Read-only
+  comment: true
+  request_changes: true
+  approve_pr: true
+
+# Execution settings
+execution:
+  enabled: true
+  auto_start: false  # Triggered by PR events
+  restart_on_failure: true
+  max_restart_attempts: 3
