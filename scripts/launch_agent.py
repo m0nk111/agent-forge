@@ -217,9 +217,17 @@ def create_agent_from_profile(profile: Dict) -> Optional[CodeAgent]:
         if github_config:
             token_env = github_config.get('token_env')
             if token_env:
+                # Try environment first
                 github_token = os.getenv(token_env)
+                # If not in environment, try KeyManager
                 if not github_token:
-                    logger.warning(f"⚠️  GitHub token not found: {token_env}")
+                    km = KeyManager()
+                    github_token = km.get_key(token_env)
+                if not github_token:
+                    logger.warning(f"⚠️  GitHub token not found in environment or keys.json: {token_env}")
+                else:
+                    # Set in environment for agent to use
+                    os.environ[token_env] = github_token
         
         # Create agent
         logger.info(f"🚀 Creating agent: {agent_id}")
@@ -227,18 +235,20 @@ def create_agent_from_profile(profile: Dict) -> Optional[CodeAgent]:
         logger.info(f"   Model: {model}")
         
         agent = CodeAgent(
-            project_root=PROJECT_ROOT,
+            project_root=str(PROJECT_ROOT),  # Convert Path to str
             llm_provider=provider,
-            model_name=model,
-            api_key=api_key,
-            github_token=github_token
+            model=model,  # Fixed: parameter is 'model', not 'model_name'
+            api_key=api_key
         )
         
-        # Test connection
+        # Test connection (check if method exists)
         logger.info("🔌 Testing agent connection...")
-        if not agent.test_llm_connection():
-            logger.error("❌ Agent connection test failed")
-            return None
+        if hasattr(agent, 'test_llm_connection'):
+            if not agent.test_llm_connection():
+                logger.error("❌ Agent connection test failed")
+                return None
+        else:
+            logger.debug("   ℹ️  Skipping connection test (method not available)")
         
         logger.info("✅ Agent ready")
         return agent

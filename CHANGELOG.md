@@ -9,6 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **🤖 New Bot Agent: m0nk111-post** (2025-10-10)
+  - **Replaces Suspended Account**: m0nk111-bot account was suspended, replaced with m0nk111-post
+  - **New Configuration**: config/agents/m0nk111-post.yaml (complete bot configuration)
+  - **Token Management**: BOT_GITHUB_TOKEN stored in keys.json via KeyManager
+  - **Features**:
+    - Full bot capabilities (create issues, comments, labels, assignments)
+    - Rate limiting and anti-spam protection
+    - Task queue with priority levels
+    - Comment templates for common operations
+    - GitHub integration with default repository
+  - **GitHub Identity**:
+    - Username: m0nk111-post
+    - Email: m0nk111-post@users.noreply.github.com
+    - Token: BOT_GITHUB_TOKEN (in keys.json)
+  - **Old Bot Config**: m0nk111-bot.yaml marked as suspended
+
+### Changed
+
+- **🔧 Universal Agent Launcher Fixes** (2025-10-10)
+  - Fixed parameter name: `model_name` → `model` for CodeAgent compatibility
+  - Fixed GitHub token loading: tries environment first, then KeyManager
+  - Fixed Path conversion: PROJECT_ROOT converted to string for CodeAgent
+  - Improved connection testing: checks if method exists before calling
+  - Better error handling for missing tokens
+
 - **🚀 Universal Agent Launcher with Auto-Discovery** (2025-10-10)
   - **New Universal Launcher**: `scripts/launch_agent.py` replaces agent-specific scripts
   - **Auto-Discovery**: Scans `config/agents/` directory for all available agent profiles
