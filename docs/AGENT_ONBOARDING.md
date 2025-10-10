@@ -78,7 +78,7 @@ websocket_handler.py
 
 #### **Core Config Files**
 - [ ] `config/system.yaml` - System-wide configuration
-- [ ] `config/agents.yaml` - Agent definitions and capabilities
+- [ ] `config/agents/*.yaml` - Agent definitions and capabilities (per agent)
 - [ ] `config/bot_config.yaml` - Bot-specific settings
 - [ ] `config/coordinator_config.yaml` - Coordinator settings
 - [ ] `config/repositories.yaml` - GitHub repository mappings
@@ -207,7 +207,7 @@ python --version  # Should be 3.10+
 
 # 5. Check configuration
 cat config/system.yaml
-cat config/agents.yaml
+ls -la config/agents/
 ```
 
 ### 8. Quick Reference Links
@@ -224,7 +224,7 @@ cat config/agents.yaml
 
 #### **Configuration**
 - Port Reference: `/docs/PORT_REFERENCE.md`
-- Agent Config: `/config/agents.yaml`
+- Agent Configs: `/config/agents/` directory
 - System Config: `/config/system.yaml`
 
 ---

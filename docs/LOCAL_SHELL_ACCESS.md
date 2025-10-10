@@ -105,7 +105,7 @@ Permissions:
 ### Enable Shell Access for Agent
 
 #### Option 1: YAML Configuration
-Edit `config/agents.yaml`:
+Edit agent config file (e.g., `config/agents/your-agent.yaml`):
 
 ```yaml
 agents:

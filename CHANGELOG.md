@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Documentation Cleanup - Misleading Planning Docs** (2025-10-10)
+  - Archived REFACTOR_PLAN.md → archive/REFACTOR_PLAN_COMPLETED.md (refactor already done)
+  - Archived CONSOLIDATION_PLAN.md → archive/CONSOLIDATION_PLAN_UNEXECUTED.md (plan never executed)
+  - Moved README.old.md → archive/README.old.md
+  - Fixed 27+ references to non-existent `config/agents.yaml` → `config/agents/*.yaml`
+  - Fixed code path examples in QWEN_MONITORING.md: `agents/code_agent.py` → `engine/runners/code_agent.py`
+  - Removed REFACTOR_PLAN references from PROVISIONAL_GOALS.md, marked directory structure as COMPLETED
+  - Created OUTDATED_DOCS_AUDIT.md with comprehensive audit findings
+
 - **Code Generator Prompt Separation** (2025-10-10)
   - Fixed prompt bug where test files could receive implementation content
   - Enhanced `_generate_implementation()` prompt with explicit DO/DO NOT instructions
@@ -516,7 +525,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Dashboard now shows configured-but-inactive agents** - Monitor service integration with ConfigManager
   - `agents/monitor_service.py`: Extended `get_all_agents()` to include config-only agents
-  - Agents from `config/agents.yaml` without active instances now appear with status "OFFLINE"
+  - Agents from `config/agents/*.yaml` without active instances now appear with status "OFFLINE"
   - Current task shows "Agent configured but not running" for inactive agents
   - Enables visibility of all configured agents without requiring them to be running
   - No service restart needed - dashboard automatically shows config changes on WebSocket reconnect
@@ -734,13 +743,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     * `AuditResult` dataclass: passed status, issues list, score (0-100), severity counts
     * 6 audit methods: secrets scanning, dependency checks, injection detection, malware patterns, license validation, code quality
   - Integrated security auditor into `agents/pr_reviewer.py`:
-    * Loads trusted agents from `config/agents.yaml`
+    * Loads trusted agents from `config/agents/*.yaml`
     * Non-trusted PR authors trigger mandatory security audit before review
     * PRs blocked on critical/high severity issues (cannot merge)
     * Trusted agents (m0nk111-bot, m0nk111-qwen-agent) bypass audit
     * Error handling: audit failures block PRs from untrusted authors for safety
     * Detailed security block message with issue breakdown, recommendations, CWE links
-  - Updated `config/agents.yaml`: Added trusted_agents section with bot and qwen-agent accounts
+  - Updated `config/agents/*.yaml`: Added trusted_agents section with bot and qwen-agent accounts
   - Added security dependencies to `requirements.txt`: bandit>=1.7.5, safety>=3.0.0
   - Leverages existing `config/security_audit.yaml` (212 lines) with:
     * Severity thresholds (block on critical/high, warn on medium)

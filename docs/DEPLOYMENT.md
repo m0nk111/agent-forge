@@ -163,7 +163,7 @@ pip install -r requirements.txt
 
 ```bash
 # Copy example config
-cp config/agents.yaml.example config/agents.yaml
+cp config/agents/m0nk111-qwen-agent.yaml.example config/agents/your-agent.yaml
 cp .env.example .env
 
 # Edit .env with your tokens
@@ -275,12 +275,12 @@ pip install -r requirements.txt
 mkdir -p logs data config
 
 # Copy configuration
-cp config/agents.yaml.example config/agents.yaml
+cp config/agents/m0nk111-qwen-agent.yaml.example config/agents/your-agent.yaml
 cp .env.example .env
 
 # Edit configuration
 nano .env
-nano config/agents.yaml
+nano config/agents/your-agent.yaml
 ```
 
 ### 4. Configure Environment

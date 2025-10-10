@@ -279,7 +279,7 @@ Each agent has individual config:
 
 **LLM Support**: Qwen 2.5 Coder (7B, 14B, 32B) via Ollama
 
-**Configuration**: `config/agents.yaml`
+**Configuration**: `config/agents/*.yaml`
 
 ### 4. Polling Service (`agents/polling_service.py`)
 
@@ -659,7 +659,7 @@ ConfigManager.validate()
    ▼
 ConfigManager.save()
    │
-   ├──> config/agents.yaml
+   ├──> config/agents/*.yaml
    │
    └──> ServiceManager.reload()
         │
@@ -675,7 +675,7 @@ ConfigManager.save()
 | File | Purpose | Format |
 |------|---------|--------|
 | `config/system.yaml` | System-wide settings | YAML |
-| `config/agents.yaml` | Agent definitions | YAML |
+| `config/agents/*.yaml` | Agent definitions (per agent) | YAML |
 | `config/bot_config.yaml` | Bot-specific config | YAML |
 | `config/coordinator_config.yaml` | Coordinator settings | YAML |
 | `config/repositories.yaml` | GitHub repo mappings | YAML |

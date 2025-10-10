@@ -23,7 +23,7 @@ For complete architecture details, see [PORT_REFERENCE.md](PORT_REFERENCE.md) fo
 Add the `--enable-monitoring` flag when running the Qwen agent:
 
 ```bash
-python3 agents/code_agent.py --config configs/my_project.yaml --phase 1 --enable-monitoring
+python3 engine/runners/code_agent.py --config configs/my_project.yaml --phase 1 --enable-monitoring
 ```
 
 ### Optional: Custom Agent ID
@@ -31,7 +31,7 @@ python3 agents/code_agent.py --config configs/my_project.yaml --phase 1 --enable
 Specify a custom agent ID for better identification:
 
 ```bash
-python3 agents/code_agent.py --config configs/my_project.yaml --phase 1 --enable-monitoring --agent-id "my-qwen-agent"
+python3 engine/runners/code_agent.py --config configs/my_project.yaml --phase 1 --enable-monitoring --agent-id "my-qwen-agent"
 ```
 
 If not specified, an auto-generated ID will be used.
@@ -51,7 +51,7 @@ The dashboard will automatically connect via WebSocket to `ws://localhost:7997/w
 ### In Your Code
 
 ```python
-from agents.qwen_agent import CodeAgent
+from engine.runners.code_agent import CodeAgent
 
 # Create agent with monitoring enabled
 agent = CodeAgent(

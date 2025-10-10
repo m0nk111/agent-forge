@@ -31,8 +31,9 @@ mkdir -p secrets/agents secrets/keys
 chmod 700 secrets
 
 # 6. Configure your first agent
-cp config/agents.yaml.example config/agents.yaml
-# Edit config/agents.yaml with your settings
+# Copy example config and customize
+cp config/agents/m0nk111-qwen-agent.yaml.example config/agents/your-agent.yaml
+# Edit config/agents/your-agent.yaml with your settings
 
 # 7. Add GitHub token (if using GitHub integration)
 echo "ghp_YOUR_TOKEN_HERE" > secrets/agents/your-agent-id.token
@@ -90,7 +91,7 @@ ollama list
 
 ```bash
 # Create agent config
-nano config/agents.yaml
+nano config/agents/your-agent.yaml
 ```
 
 Example configuration:
@@ -308,7 +309,7 @@ ollama list
 
 ## Next Steps
 
-1. **Configure Agents**: Edit `config/agents.yaml` with your project settings
+1. **Configure Agents**: Edit agent config files in `config/agents/` with your project settings
 2. **Add Repositories**: Edit `config/repositories.yaml` for GitHub monitoring
 3. **Setup Agent GitHub Account**: See [GitHub Bot Account Setup](#github-bot-account-setup) below
 4. **Configure Authentication**: See [Dashboard Authentication Setup](#dashboard-authentication-setup) below
@@ -470,7 +471,7 @@ source ~/.agent-forge.env
 
 **4.1 Update agent configuration**
 
-Edit `config/agents.yaml`:
+Edit your agent config file (e.g., `config/agents/your-agent.yaml`):
 
 ```yaml
 agents:

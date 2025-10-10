@@ -169,7 +169,7 @@
 **Documentation**: [SSH_AUTHENTICATION.md](SSH_AUTHENTICATION.md), [INSTALLATION.md](INSTALLATION.md#dashboard-authentication-setup)
 
 **Configuration Management**
-- ✅ YAML-based configuration (`config/agents.yaml`, `config/system.yaml`)
+- ✅ YAML-based configuration (`config/agents/*.yaml`, `config/system.yaml`)
 - ✅ Hot-reload for some configs (not all yet)
 - ✅ Secrets management (`secrets/agents/*.token` with 600 permissions)
 - ✅ Environment variable support
@@ -311,7 +311,7 @@ Until all above works reliably, development continues.
 
 **Key Files**:
 - `engine/core/coordinator_agent.py` - Coordination logic
-- `config/agents.yaml` - Agent definitions and capabilities
+- `config/agents/*.yaml` - Agent definitions and capabilities
 
 **Documentation**: [AGENT_ROLES.md](AGENT_ROLES.md), [MULTI_AGENT_GITHUB_STRATEGY.md](MULTI_AGENT_GITHUB_STRATEGY.md)
 
@@ -499,7 +499,7 @@ Until all above works reliably, development continues.
 
 **Key Files**:
 - `engine/validation/security_auditor.py` - Main audit logic
-- `config/agents.yaml` - Trusted agent configuration
+- `config/agents/*.yaml` - Trusted agent configuration
 
 **Documentation**: [SECURITY_AUDIT.md](SECURITY_AUDIT.md), [TOKEN_SECURITY.md](TOKEN_SECURITY.md)
 
@@ -661,10 +661,8 @@ git push origin feat/my-feature
 ### 📖 Reference & Planning
 24. **[API.md](API.md)** - API documentation
 25. **[PORT_REFERENCE.md](PORT_REFERENCE.md)** - Port assignments (8080, 7997, 8897, 7996, 11434)
-26. **[REFACTOR_PLAN.md](REFACTOR_PLAN.md)** - Directory refactor plan (Issue #69)
-27. **[LESSONS_LEARNED.md](LESSONS_LEARNED.md)** - Historical knowledge, avoid past mistakes
-28. **[AGENT_ONBOARDING.md](AGENT_ONBOARDING.md)** - Agent workflow details
-29. **[CONSOLIDATION_PLAN.md](CONSOLIDATION_PLAN.md)** - Doc consolidation strategy
+26. **[LESSONS_LEARNED.md](LESSONS_LEARNED.md)** - Historical knowledge, avoid past mistakes
+27. **[AGENT_ONBOARDING.md](AGENT_ONBOARDING.md)** - Agent workflow details
 
 ### 🤝 Contributing
 30. **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines
@@ -725,10 +723,8 @@ git push origin feat/my-feature
 
 ### Technical Debt
 
-See **[REFACTOR_PLAN.md](REFACTOR_PLAN.md)** for detailed technical debt tracking.
-
 **High Priority**:
-- **Directory Structure**: Root directory cleanup (Issue #69) - move all files to narrow/deep subdirectories
+- **Directory Structure**: ✅ **COMPLETED** - Root directory cleanup done, all files in narrow/deep subdirectories (engine/core/, engine/operations/, engine/runners/, engine/validation/)
 - **Test Coverage**: Integration tests need assertions (many use print statements only)
 - **Error Recovery**: Implement retry policies and circuit breakers (see [ERROR_RECOVERY.md](ERROR_RECOVERY.md))
 
