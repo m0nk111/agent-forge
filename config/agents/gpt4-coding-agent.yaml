@@ -1,0 +1,125 @@
+# GPT-4 Coding Agent Configuration
+# Uses OpenAI GPT-4 for code generation with existing qwen-agent GitHub account
+
+# Agent Identity
+agent_id: "gpt4-coding-agent"
+name: "GPT-4 Code Generator"
+description: "Autonomous coding agent powered by OpenAI GPT-4"
+
+# Role & Capabilities
+role: "developer"
+capabilities:
+  - read_code
+  - write_code
+  - run_tests
+  - create_pr
+  - review_code
+  - refactor_code
+  - debug_code
+
+# LLM Provider Configuration (OpenAI GPT-4)
+model_provider: "openai"           # Use OpenAI API
+model_name: "gpt-4"                # GPT-4 model (best quality)
+api_key_name: "OPENAI_API_KEY"    # Key from keys.json
+temperature: 0.7                   # Balanced creativity
+max_tokens: 4096                   # Standard context
+
+# GitHub Configuration (Uses qwen-agent account)
+github:
+  username: "m0nk111-qwen-agent"   # Existing coding agent account
+  email: "m0nk111@users.noreply.github.com"
+  token_env: "CODEAGENT_GITHUB_TOKEN"  # Uses same token as qwen-agent
+  
+# Permissions
+permissions:
+  # Code Operations
+  - code_read
+  - code_write
+  - code_execute
+  
+  # Git Operations  
+  - git_read
+  - git_commit
+  - git_push
+  - git_branch
+  
+  # GitHub Operations
+  - pr_create
+  - pr_update
+  - issue_read
+  - issue_comment
+  
+  # Testing
+  - test_run
+  - test_write
+
+# Monitoring
+enable_monitoring: true
+log_level: "INFO"
+
+# Cost Management
+cost_limits:
+  max_tokens_per_request: 4096
+  max_requests_per_hour: 100
+  estimated_cost_per_issue: 0.25  # USD
+
+# Behavior Settings
+behavior:
+  auto_commit: true
+  auto_push: true
+  auto_pr: true
+  require_tests: true
+  require_docs: true
+  
+# Fallback Configuration
+fallback:
+  enabled: true
+  provider: "local"               # Fall back to Ollama if OpenAI fails
+  model: "qwen2.5-coder:7b"      # Local model for fallback
+
+# Custom Settings
+custom_settings:
+  code_style: "PEP 8"
+  docstring_style: "Google"
+  test_framework: "pytest"
+  max_file_size: 10000           # chars
+  max_retries: 3
+
+# Task Preferences
+task_preferences:
+  # Use GPT-4 for complex tasks
+  use_openai_for:
+    - "new feature implementation"
+    - "complex refactoring"
+    - "architecture decisions"
+    - "security-critical code"
+  
+  # Use Ollama for simple tasks (cost optimization)
+  use_local_for:
+    - "simple bug fixes"
+    - "documentation updates"
+    - "code formatting"
+    - "test generation"
+
+# Schedule (Optional)
+# active_hours:
+#   start: "08:00"
+#   end: "20:00"
+#   timezone: "Europe/Amsterdam"
+
+# Metadata
+created_at: "2025-10-10T21:00:00Z"
+created_by: "agent-forge-setup"
+version: "1.0.0"
+
+# Notes
+notes: |
+  This agent uses OpenAI GPT-4 for high-quality code generation
+  while reusing the existing m0nk111-qwen-agent GitHub account.
+  
+  Cost optimization: ~$0.25 per issue with GPT-4
+  Fallback: Ollama Qwen 2.5 Coder (free) if OpenAI unavailable
+  
+  GitHub identity: m0nk111-qwen-agent (same as local Qwen agent)
+  This allows seamless transition between GPT-4 and Qwen without
+  changing GitHub commit/PR authorship.
