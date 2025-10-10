@@ -63,7 +63,9 @@ class CodeAgent:
         ollama_url: str = "http://localhost:11434",
         project_root: Optional[str] = None,
         enable_monitoring: bool = False,
-        agent_id: Optional[str] = None
+        agent_id: Optional[str] = None,
+        llm_provider: Optional[str] = None,  # NEW: openai, anthropic, google, local
+        api_key: Optional[str] = None  # NEW: API key override
     ):
         # Load configuration
         if config_path:
@@ -75,6 +77,11 @@ class CodeAgent:
         self.model = model or self.config.get('model', {}).get('name', 'qwen2.5-coder:7b')
         self.ollama_url = self.config.get('model', {}).get('ollama_url', ollama_url)
         self.project_root = Path(project_root) if project_root else Path(self.config.get('project', {}).get('root', '.'))
+        
+        # LLM Provider initialization (NEW)
+        self.llm_provider = None
+        self.llm_provider_name = llm_provider or "local"
+        self._initialize_llm_provider(api_key)
         
         # Initialize workspace tools for file exploration
         self.workspace = WorkspaceTools(str(self.project_root.resolve()))
@@ -123,6 +130,80 @@ class CodeAgent:
             except Exception as e:
                 self.print_warning(f"Could not enable monitoring: {e}")
                 self.monitor = None
+    
+    def _initialize_llm_provider(self, api_key_override: Optional[str] = None):
+        """
+        Initialize LLM provider (OpenAI, Anthropic, Google, or local Ollama).
+        
+        Priority:
+        1. api_key_override parameter
+        2. KeyManager (keys.json)
+        3. Environment variables
+        4. Fall back to local Ollama
+        
+        Args:
+            api_key_override: Optional API key to use instead of KeyManager
+        """
+        if self.llm_provider_name == "local":
+            # Use Ollama (no API key needed)
+            self.print_info(f"🏠 Using local Ollama: {self.model} @ {self.ollama_url}")
+            return
+        
+        # Try to get API key for commercial providers
+        try:
+            from engine.core.key_manager import KeyManager
+            from engine.core.llm_providers import get_provider
+            
+            api_key = api_key_override
+            
+            if not api_key:
+                # Load from KeyManager
+                key_manager = KeyManager()
+                
+                # Map provider name to key name
+                key_names = {
+                    "openai": "OPENAI_API_KEY",
+                    "anthropic": "ANTHROPIC_API_KEY",
+                    "google": "GEMINI_API_KEY",
+                    "groq": "GROQ_API_KEY"
+                }
+                
+                key_name = key_names.get(self.llm_provider_name)
+                if key_name:
+                    api_key = key_manager.get_key(key_name)
+            
+            if api_key:
+                # Initialize provider
+                self.llm_provider = get_provider(self.llm_provider_name, api_key)
+                
+                if self.llm_provider:
+                    # Test connection
+                    if self.llm_provider.test_connection():
+                        models = self.llm_provider.get_available_models()
+                        self.print_success(f"✅ {self.llm_provider_name.upper()} provider initialized")
+                        self.print_info(f"   📋 Available models: {', '.join(models[:3])}...")
+                        
+                        # Update model if not set
+                        if not self.model or self.model == "qwen2.5-coder:7b":
+                            # Use first available model as default
+                            self.model = models[0] if models else "gpt-4"
+                            self.print_info(f"   🎯 Using model: {self.model}")
+                    else:
+                        self.print_warning(f"⚠️  {self.llm_provider_name.upper()} connection test failed, falling back to Ollama")
+                        self.llm_provider = None
+                        self.llm_provider_name = "local"
+                else:
+                    self.print_warning(f"⚠️  Failed to initialize {self.llm_provider_name}, falling back to Ollama")
+                    self.llm_provider_name = "local"
+            else:
+                self.print_warning(f"⚠️  No API key found for {self.llm_provider_name}, falling back to Ollama")
+                self.llm_provider_name = "local"
+                
+        except Exception as e:
+            self.print_error(f"❌ LLM provider initialization failed: {e}")
+            self.print_info("   Falling back to local Ollama")
+            self.llm_provider = None
+            self.llm_provider_name = "local"
     
     def load_config(self, config_path: str) -> Dict[str, Any]:
         """Load configuration from YAML file"""
@@ -345,8 +426,72 @@ class CodeAgent:
             )
     
     def query_qwen(self, prompt: str, system_prompt: Optional[str] = None, stream: bool = False) -> str:
-        """Query Qwen2.5-Coder via Ollama API (using /api/chat endpoint)"""
-        self.print_info(f"Querying {self.model}...")
+        """
+        Query Qwen2.5-Coder via Ollama API (using /api/chat endpoint).
+        
+        DEPRECATED: Use query_llm() instead for multi-provider support.
+        This method is kept for backward compatibility.
+        """
+        return self.query_llm(prompt, system_prompt, stream)
+    
+    def query_llm(self, prompt: str, system_prompt: Optional[str] = None, 
+                  stream: bool = False, model: Optional[str] = None) -> str:
+        """
+        Query LLM (OpenAI, Anthropic, Google, or local Ollama).
+        
+        Automatically uses configured provider:
+        - OpenAI GPT-4/3.5 (if API key configured)
+        - Anthropic Claude (if API key configured)
+        - Google Gemini (if API key configured)
+        - Ollama local models (fallback)
+        
+        Args:
+            prompt: User prompt text
+            system_prompt: Optional system prompt for context
+            stream: Whether to stream response (only for Ollama)
+            model: Optional model override
+            
+        Returns:
+            str: Generated text response
+        """
+        model_to_use = model or self.model
+        
+        # Try commercial provider first
+        if self.llm_provider_name != "local" and self.llm_provider:
+            try:
+                from engine.core.llm_providers import LLMMessage
+                
+                self.print_info(f"🌐 Querying {self.llm_provider_name.upper()}: {model_to_use}...")
+                
+                # Build messages
+                messages = []
+                if system_prompt:
+                    messages.append(LLMMessage(role="system", content=system_prompt))
+                messages.append(LLMMessage(role="user", content=prompt))
+                
+                # Call provider
+                response = self.llm_provider.chat_completion(
+                    messages=messages,
+                    model=model_to_use,
+                    temperature=0.7,
+                    max_tokens=4096
+                )
+                
+                self.print_success(f"✅ {self.llm_provider_name.upper()} response received ({response.usage.get('total_tokens', 0)} tokens)")
+                
+                # Log API usage if monitoring enabled
+                if self.monitor:
+                    self._update_metrics(api_calls=1)
+                
+                return response.content
+                
+            except Exception as e:
+                self.print_error(f"❌ {self.llm_provider_name.upper()} error: {e}")
+                self.print_info("   Falling back to Ollama...")
+                # Fall through to Ollama
+        
+        # Use Ollama (local)
+        self.print_info(f"🏠 Querying Ollama: {model_to_use}...")
         
         # Build messages array for chat API
         messages = []
@@ -360,7 +505,7 @@ class CodeAgent:
             response = requests.post(
                 f"{self.ollama_url}/api/chat",  # Use /api/chat instead of /api/generate
                 json={
-                    "model": self.model,
+                    "model": model_to_use,
                     "messages": messages,
                     "stream": stream
                 },

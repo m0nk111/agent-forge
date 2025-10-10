@@ -290,10 +290,10 @@ CRITICAL: Output ONLY the implementation code for {spec.module_path}.
 """
         
         try:
-            response = self.agent.query_qwen(
+            response = self.agent.query_llm(
                 prompt=prompt,
-                stream=False,
-                system_prompt="You are an expert Python developer. Generate clean, well-documented, production-ready code."
+                system_prompt="You are an expert Python developer. Generate clean, well-documented, production-ready code.",
+                stream=False
             )
             
             if response:
@@ -346,10 +346,10 @@ This file will be saved as {spec.test_path}, NOT as implementation.
 """
         
         try:
-            response = self.agent.query_qwen(
+            response = self.agent.query_llm(
                 prompt=prompt,
-                stream=False,
-                system_prompt="You are an expert at writing comprehensive test suites. Generate thorough pytest tests."
+                system_prompt="You are an expert at writing comprehensive test suites. Generate thorough pytest tests.",
+                stream=False
             )
             
             if response:

@@ -1,0 +1,124 @@
+# Agent Configuration with LLM Provider Support
+# Deze configuratie toont hoe agents verschillende LLM providers kunnen gebruiken
+
+# ==================== CODING AGENT (GPT-4) ====================
+# Voor complexe code generatie - gebruikt OpenAI GPT-4
+agent_id: "coding-agent-gpt4"
+name: "GPT-4 Code Generator"
+role: "developer"
+model_provider: "openai"         # OpenAI provider
+model_name: "gpt-4"              # GPT-4 model
+api_key_name: "OPENAI_API_KEY"   # Key uit keys.json
+temperature: 0.7                 # Creativity level
+max_tokens: 4096                 # Max output
+
+capabilities:
+  - read_code
+  - write_code
+  - run_tests
+  - create_pr
+  
+permissions:
+  - code_read
+  - code_write
+  - git_commit
+  - git_push
+  - test_run
+
+# ==================== REVIEW AGENT (Claude 3.5) ====================
+# Voor code reviews - gebruikt Anthropic Claude
+agent_id: "review-agent-claude"
+name: "Claude Code Reviewer"
+role: "reviewer"
+model_provider: "anthropic"
+model_name: "claude-3-5-sonnet-20241022"
+api_key_name: "ANTHROPIC_API_KEY"
+temperature: 0.5                 # More conservative
+max_tokens: 8192                 # Longer context for reviews
+
+capabilities:
+  - read_code
+  - review_pr
+  - suggest_improvements
+
+permissions:
+  - code_read
+  - pr_review
+  - pr_comment
+
+# ==================== DOCUMENTATION AGENT (GPT-3.5) ====================
+# Voor documentatie - gebruikt goedkopere GPT-3.5
+agent_id: "docs-agent-gpt35"
+name: "Documentation Writer"
+role: "documentation"
+model_provider: "openai"
+model_name: "gpt-3.5-turbo"     # Goedkoper voor eenvoudige taken
+api_key_name: "OPENAI_API_KEY"
+temperature: 0.8                 # More creative for docs
+max_tokens: 2048
+
+capabilities:
+  - read_code
+  - write_docs
+
+permissions:
+  - code_read
+  - docs_write
+
+# ==================== LOCAL AGENT (Ollama Qwen) ====================
+# Voor testing en development - gebruikt lokale Ollama
+agent_id: "local-agent-qwen"
+name: "Local Development Agent"
+role: "developer"
+model_provider: "local"          # Local Ollama
+model_name: "qwen2.5-coder:7b"  # Qwen model
+temperature: 0.7
+max_tokens: 4096
+# api_key_name niet nodig voor lokale models
+
+capabilities:
+  - read_code
+  - write_code
+  - run_tests
+
+permissions:
+  - code_read
+  - code_write
+  - test_run
+
+# ==================== KOSTEN VERGELIJKING ====================
+# OpenAI GPT-4:
+#   Input: $0.03/1K tokens
+#   Output: $0.06/1K tokens
+#   Use case: Complexe code generatie, architectuur beslissingen
+#
+# OpenAI GPT-3.5 Turbo:
+#   Input: $0.0005/1K tokens
+#   Output: $0.0015/1K tokens
+#   Use case: Documentatie, eenvoudige refactoring
+#
+# Anthropic Claude 3.5 Sonnet:
+#   Input: $0.003/1K tokens
+#   Output: $0.015/1K tokens
+#   Use case: Code reviews, security analysis
+#
+# Ollama (Local):
+#   Kosten: €0 (eigen hardware)
+#   Use case: Development, testing, experimenten
+
+# ==================== USAGE VOORBEELDEN ====================
+
+# 1. Agent starten met OpenAI:
+#    python3 -m engine.runners.code_agent --llm-provider openai --model gpt-4
+#
+# 2. Agent via configuratie:
+#    python3 -m engine.runners.code_agent --config config/agents/coding-agent-gpt4.yaml
+#
+# 3. Issue Handler met OpenAI:
+#    agent = CodeAgent(llm_provider="openai")
+#    agent.issue_handler.assign_to_issue("m0nk111/agent-forge", 92)
+#
+# 4. Mixed usage (OpenAI voor complexe taken, Ollama voor simpele):
+#    - Primary: GPT-4 voor nieuwe features
+#    - Fallback: Ollama voor tests en documentatie
+#    - Review: Claude voor PR reviews

@@ -6,9 +6,10 @@ interval_seconds: 300
 
 # GitHub configuration
 github:
-  # Bot username (default: m0nk111-bot)
-  # Changed to m0nk111-qwen-agent to match issue assignments
-  username: "m0nk111-qwen-agent"
+  # Bot username for polling and general operations (not coding/dev)
+  # m0nk111-post handles issue detection, PR creation, comments
+  # m0nk111-qwen-agent (codeagent) only handles git commits/pushes
+  username: "m0nk111-post"
   
   # GitHub token (uses BOT_GITHUB_TOKEN or GITHUB_TOKEN env var if not specified)
   # token: "ghp_..."  # Uncomment and set if not using environment variable

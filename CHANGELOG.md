@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2025-01-XX
 
+### Added
+
+- **🌐 OpenAI GPT-4 Integration for Agent Roles** (2025-10-10)
+  - **Multi-Provider LLM Support**: Agents can now use commercial LLMs (OpenAI, Anthropic, Google) or local Ollama
+  - **New Features**:
+    - `CodeAgent.__init__()`: Added `llm_provider` and `api_key` parameters
+    - `CodeAgent._initialize_llm_provider()`: Automatic provider initialization with KeyManager
+    - `CodeAgent.query_llm()`: Unified LLM query method (replaces query_qwen)
+    - Priority: API key override → KeyManager (keys.json) → Environment → Fallback to Ollama
+  - **Updated Files**:
+    - engine/runners/code_agent.py: Multi-provider support (130 lines added)
+    - engine/operations/code_generator.py: Updated to use query_llm() instead of query_qwen()
+    - keys.json: OpenAI API key added (OPENAI_API_KEY)
+    - config/agents/llm-provider-examples.yaml: Configuration examples for different providers
+  - **Testing**:
+    - tests/test_openai_integration.py: OpenAI connection and API validation (✅ All passed)
+    - tests/test_code_agent_openai.py: CodeAgent with GPT-4 integration (✅ 3/4 passed)
+  - **Usage Examples**:
+    ```python
+    # OpenAI GPT-4 for coding
+    agent = CodeAgent(llm_provider="openai", model="gpt-4")
+    
+    # Anthropic Claude for reviews
+    agent = CodeAgent(llm_provider="anthropic", model="claude-3-5-sonnet-20241022")
+    
+    # Local Ollama (default fallback)
+    agent = CodeAgent(llm_provider="local", model="qwen2.5-coder:7b")
+    ```
+  - **Cost Optimization**:
+    - GPT-4: $0.03/$0.06 per 1K tokens (in/out) - Complex code generation
+    - GPT-3.5: $0.0005/$0.0015 per 1K tokens - Documentation, simple tasks
+    - Claude 3.5: $0.003/$0.015 per 1K tokens - Code reviews
+    - Ollama: €0 (local) - Development, testing
+  - **Agent Role Configuration**:
+    - Coding Agent: GPT-4 (best quality)
+    - Review Agent: Claude 3.5 Sonnet (strong analysis)
+    - Documentation Agent: GPT-3.5 (cost-effective)
+    - Local/Testing: Qwen 2.5 Coder (free)
+  
+  **Result**: Flexible LLM provider selection per agent role, enables cost-effective AI operations, maintains Ollama fallback for resilience.
+
 ### Changed
 
 - **🔧 Refactor: QWEN_GITHUB_TOKEN → CODEAGENT_GITHUB_TOKEN** (2025-10-10)
