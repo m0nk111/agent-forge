@@ -277,7 +277,7 @@ System Throughput:
 ### 1. Ollama Optimization
 
 ```yaml
-# config/agents.yaml
+# config/agents/*.yaml
 code_agent:
   model: "qwen2.5-coder:7b"  # Use 7B for speed
   num_ctx: 4096              # Reduce context window

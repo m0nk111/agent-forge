@@ -22,7 +22,7 @@ The Agent Forge Security Audit System provides mandatory security scanning for p
    - Posts detailed security reports as PR comments
 
 3. **Configuration Files**
-   - `config/agents.yaml` - Defines trusted agent accounts
+   - `config/agents/*.yaml` - Defines trusted agent accounts
    - `config/security_audit.yaml` - Audit behavior and thresholds
 
 ### Audit Flow
@@ -151,7 +151,7 @@ Static analysis for security-relevant issues:
 
 ### Trusted Agents
 
-Define accounts that bypass security audits in `config/agents.yaml`:
+Define accounts that bypass security audits in `config/agents/*.yaml`:
 
 ```yaml
 trusted_agents:
@@ -297,7 +297,7 @@ The PR cannot be merged until all critical and high-severity issues are resolved
 
 ### Adding a Trusted Agent
 
-1. Edit `config/agents.yaml`:
+1. Edit `config/agents/*.yaml`:
 ```yaml
 trusted_agents:
   - username: new-agent-account
@@ -308,7 +308,7 @@ trusted_agents:
 
 2. Commit and push:
 ```bash
-git add config/agents.yaml
+git add config/agents/*.yaml
 git commit -m "feat(security): add new-agent-account to trusted agents"
 git push
 ```
@@ -454,12 +454,12 @@ DEBUG=1 python agents/security_auditor.py
 **Diagnosis:**
 ```bash
 # Verify trusted agents list
-cat config/agents.yaml | grep -A10 'trusted_agents'
+cat config/agents/*.yaml | grep -A10 'trusted_agents'
 
 # Check exact username match
 python -c "
 import yaml
-with open('config/agents.yaml') as f:
+with open('config/agents/*.yaml') as f:
     config = yaml.safe_load(f)
     print([a['username'] for a in config.get('trusted_agents', [])])
 "
@@ -504,7 +504,7 @@ sudo systemctl restart agent-forge
 ## Related Documentation
 
 - [PR Review System](BOT_USAGE_GUIDE.md#pr-review) - Standard review process
-- [Agent Configuration](../config/agents.yaml) - Trusted agents list
+- [Agent Configuration](../config/agents/*.yaml) - Trusted agents list
 - [Security Config](../config/security_audit.yaml) - Audit behavior settings
 - [GitHub Issue #62](https://github.com/m0nk111/agent-forge/issues/62) - Original feature request
 

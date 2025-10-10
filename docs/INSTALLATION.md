@@ -753,7 +753,7 @@ sudo systemctl restart agent-forge-auth
 
 ## Next Steps
 
-1. **Configure Agents**: Edit `config/agents.yaml` with your project settings
+1. **Configure Agents**: Edit `config/agents/*.yaml` with your project settings
 2. **Add Repositories**: Edit `config/repositories.yaml` for GitHub monitoring
 3. **Review Docs**: 
    - [TOKEN_SECURITY.md](TOKEN_SECURITY.md) - Token security guide
