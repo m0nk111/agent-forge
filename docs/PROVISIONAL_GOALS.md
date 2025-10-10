@@ -340,30 +340,59 @@ Until all above works reliably, development continues.
 
 **Documentation**: [ASCII_AUTOMATION_WORKFLOW.md](ASCII_AUTOMATION_WORKFLOW.md)
 
-#### 3B: Code Module Generation 🔄 IN PROGRESS
+#### 3B: Code Module Generation ✅ FUNCTIONAL
 
-**Status**: 50% complete, needs integration
+**Status**: 85% complete - **Core infrastructure working, E2E validation pending**
 
-**TODO**:
-- [ ] Infer file paths and module structure from issue
-- [ ] Generate implementation with tests and documentation
-- [ ] Run static analysis (bandit, flake8) before commit
-- [ ] Execute test suite and validate coverage
-- [ ] Handle compilation errors and retry with fixes
+**Achievements** (2025-10-10):
+- [x] **Core Implementation**: `code_generator.py` (459 lines) with full workflow
+  - Module specification inference from issue text (regex + keyword matching)
+  - LLM-powered implementation generation with type hints and docstrings
+  - Automatic test suite generation (pytest, fixtures, >80% coverage target)
+  - Static analysis integration (bandit security, flake8 style)
+  - Automated test execution with pass/fail parsing
+  - Retry mechanism (max 3 attempts) with error feedback to LLM
+- [x] **Integration**: Connected to `issue_handler.py` workflow
+  - Code generation detection in `_task_to_action` (keywords: implement, module, function, class)
+  - Full execution in `_execute_plan` with result tracking
+  - Issue context passing (title, body, labels) for spec inference
+- [x] **Unit Tests**: 22 tests, all passing ✅
+  - ModuleSpec inference (7 tests): explicit paths, keywords, edge cases
+  - Code generation workflow (4 tests): success, retry, failures
+  - Static analysis (3 tests), test execution (3 tests), response cleaning (3 tests)
+  - GenerationResult dataclass (2 tests)
+- [x] **Integration Tests**: Real LLM validation ✅
+  - Calculator module: LLM generates complete implementation + tests
+  - Static analysis passed, retry mechanism functional
+  - Minor issue: generated tests use absolute imports (prompt tuning needed, not blocker)
+  - Test execution: 67 seconds with qwen2.5-coder:7b
+- [ ] **E2E Pipeline**: End-to-end issue → PR flow (not tested yet)
+- [ ] **Prompt Optimization**: Fix import patterns in generated tests
 
-**Key Files** (to implement):
-- `engine/operations/code_generator.py` - Code generation logic
-- `engine/operations/static_analyzer.py` - Wrapper for bandit/flake8
-- `engine/operations/test_runner.py` - Test execution and reporting
+**Key Files** (implemented):
+- `engine/operations/code_generator.py` - Code generation logic ✅
+- `tests/test_code_generator.py` - Unit tests (22 passing) ✅
+- `tests/test_code_generator_integration.py` - Integration tests ✅
+- Static analysis: uses existing bandit/flake8 tools ✅
+- Test runner: uses existing pytest integration ✅
 
-**Documentation**: [AGENT_DEVELOPMENT_GUIDE.md](AGENT_DEVELOPMENT_GUIDE.md), [TESTING.md](TESTING.md)
+**Documentation**: [CHANGELOG.md](../CHANGELOG.md#phase-3b-autonomous-code-module-generation) (comprehensive entry)
+
+**Known Limitations**:
+- Generated test imports need refinement (absolute vs relative paths)
+- Keyword-based path inference uses fixed mappings (helper → engine/operations/helper.py)
+- No coverage metric calculation yet (pytest-cov integration pending)
+- Retry mechanism error accumulation could be improved
 
 **Next Steps**:
-1. Design code generation prompt templates
-2. Implement file structure inference
-3. Add test generation logic
-4. Integrate with static analysis tools
-5. Create retry mechanism for failed generations
+1. ~~Design code generation prompt templates~~ ✅ **DONE**
+2. ~~Implement file structure inference~~ ✅ **DONE**
+3. ~~Add test generation logic~~ ✅ **DONE**
+4. ~~Integrate with static analysis tools~~ ✅ **DONE**
+5. ~~Create retry mechanism for failed generations~~ ✅ **DONE**
+6. **NEW**: End-to-end pipeline validation (create test GitHub issue, verify full flow)
+7. **NEW**: Prompt optimization for better import patterns
+8. **NEW**: Coverage metric integration (pytest-cov)
 
 #### 3C: Creative Text Generation 🔄 PLANNED
 
@@ -777,18 +806,6 @@ Ready to contribute? See **[CONTRIBUTING.md](CONTRIBUTING.md)** for detailed gui
 - 📚 Documentation: [Docs Issue](https://github.com/m0nk111/agent-forge/issues/new?labels=documentation)
 
 ---
-
-
-**Document Version**: 2.0 (2025-10-09)  
-**Last Updated**: 2025-10-09 by documentation consolidation effort  
-**Previous Version**: 1.0 (provisional goal structure)  
-**Status**: 🔄 Living document, updated as project evolves
-
-
-- [ ] Historical analytics (agents over time, repository activity heatmap)
-
----
-
 **Document Version**: 2.0 (2025-10-09)  
 **Last Updated**: 2025-10-09 by documentation consolidation effort  
 **Previous Version**: 1.0 (provisional goal structure)  
