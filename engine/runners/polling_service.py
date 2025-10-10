@@ -442,15 +442,39 @@ class PollingService:
                 logger.info(f"   Watch labels: {self.config.watch_labels}")
                 logger.info(f"   In state: {issue_key in self.state}")
                 
-                # Skip if already processing
-                if issue_key in self.state and not self.state[issue_key].completed:
-                    logger.info(f"   ❌ Skipping: already processing (not completed)")
-                    continue
-                
-                # Skip if completed recently
+                # Skip if completed
                 if issue_key in self.state and self.state[issue_key].completed:
                     logger.info(f"   ❌ Skipping: already completed")
                     continue
+                
+                # Check if already processing with valid claim
+                if issue_key in self.state and not self.state[issue_key].completed:
+                    issue_state = self.state[issue_key]
+                    
+                    # If no claim exists (claimed_by is None), allow processing
+                    if issue_state.claimed_by is None:
+                        logger.info(f"   ⚠️  Issue in state but no claim - allowing processing")
+                    # If claim exists, check if it's expired
+                    elif issue_state.claimed_at:
+                        try:
+                            claimed_at = _parse_iso_timestamp(issue_state.claimed_at)
+                            now = _utc_now()
+                            age_minutes = (now - claimed_at).total_seconds() / 60
+                            timeout_minutes = self.config.claim_timeout_minutes
+                            
+                            logger.info(f"   Claim age: {age_minutes:.1f} min (timeout: {timeout_minutes} min)")
+                            
+                            if age_minutes < timeout_minutes:
+                                logger.info(f"   ❌ Skipping: claim still valid (expires in {timeout_minutes - age_minutes:.1f} min)")
+                                continue
+                            else:
+                                logger.info(f"   ⚠️  Claim expired ({age_minutes:.1f} min > {timeout_minutes} min) - allowing re-processing")
+                                # Remove expired state to allow fresh claim
+                                del self.state[issue_key]
+                        except Exception as e:
+                            logger.warning(f"   ⚠️  Error parsing claim timestamp: {e} - allowing processing")
+                    else:
+                        logger.info(f"   ⚠️  Claim exists but no timestamp - allowing processing")
                 
                 # Check labels
                 issue_labels = [label['name'] for label in issue.get('labels', [])]
