@@ -405,7 +405,7 @@ ollama list
 
 2. **Use Alternative Model**:
    ```yaml
-   # config/agents.yaml
+   # config/agents/your-agent.yaml
    code_agent:
      model: "qwen2.5-coder:14b"  # Or other available model
    ```
@@ -437,7 +437,7 @@ nvidia-smi  # If using GPU
 
 1. **Use Smaller Model**:
    ```yaml
-   # config/agents.yaml
+   # config/agents/your-agent.yaml
    code_agent:
      model: "qwen2.5-coder:7b"  # Instead of 32b
    ```
@@ -455,7 +455,7 @@ nvidia-smi  # If using GPU
 
 3. **Increase Context Window**:
    ```yaml
-   # config/agents.yaml
+   # config/agents/your-agent.yaml
    code_agent:
      model: "qwen2.5-coder:7b"
      num_ctx: 4096  # Reduce from 8192 for faster inference
@@ -596,7 +596,7 @@ curl http://localhost:8080/agents
 
 3. **Increase Timeout**:
    ```yaml
-   # config/agents.yaml
+   # config/agents/your-agent.yaml
    bot_agent:
      task_timeout: 1800  # 30 minutes (increase from default)
    ```
@@ -647,15 +647,15 @@ curl -H "Authorization: Bearer $GITHUB_TOKEN" \
 # Test Ollama directly
 ollama run qwen2.5-coder:7b "Write a hello world function"
 
-# Check agent config
-cat config/agents.yaml | grep -A 10 code_agent
+# Check agent config  
+ls -la config/agents/
 ```
 
 **Solutions**:
 
 1. **Check Model Context**:
    ```yaml
-   # config/agents.yaml
+   # config/agents/your-agent.yaml
    code_agent:
      num_ctx: 8192  # Increase if truncated
      max_tokens: 4096  # Increase max response length

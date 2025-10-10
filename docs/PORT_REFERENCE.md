@@ -302,7 +302,7 @@ python -m agents.code_agent --api-mode --port 7996
 export OLLAMA_HOST=127.0.0.1:11434
 
 # Agent-Forge configuration
-# config/agents.yaml
+# config/agents/your-agent.yaml
 code_agent:
   model: "qwen2.5-coder:32b"
   base_url: "http://localhost:11434"  # Change port here if needed

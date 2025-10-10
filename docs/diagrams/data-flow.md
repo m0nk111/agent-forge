@@ -193,7 +193,7 @@ flowchart TD
     ERROR2 --> EDIT
     
     CHECK -->|Pass| BACKUP[Backup old config]
-    BACKUP --> SAVE[Save to config/agents.yaml]
+    BACKUP --> SAVE[Save to config/agents/*.yaml]
     SAVE --> RELOAD[Reload agents]
     
     RELOAD --> BA[Restart Bot Agent]
@@ -217,7 +217,7 @@ graph TD
     
     subgraph "Config Files"
         SYSTEM[config/system.yaml]
-        AGENTS[config/agents.yaml]
+        AGENTS[config/agents/*.yaml]
         BOT[config/bot_config.yaml]
         COORD[config/coordinator_config.yaml]
         REPOS[config/repositories.yaml]
@@ -389,7 +389,7 @@ flowchart TD
 graph TD
     subgraph "Configuration"
         C1[config/system.yaml]
-        C2[config/agents.yaml]
+        C2[config/agents/*.yaml]
         C3[config/bot_config.yaml]
     end
     
