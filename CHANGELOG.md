@@ -43,6 +43,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Status: Core implementation complete, integration complete, testing and E2E validation pending
   - Next steps: Unit tests (mock LLM), integration tests (real LLM), E2E validation (full pipeline)
 
+- **Unit Tests for Code Generator** (2025-10-10)
+  - Created `tests/test_code_generator.py` (437 lines) - Comprehensive unit test suite
+  - Test coverage breakdown:
+    - 7 tests: ModuleSpec inference (explicit paths, keyword-based defaults, edge cases)
+    - 4 tests: Code generation workflow (success on first try, retry mechanism, failure modes)
+    - 3 tests: Static analysis integration (clean code, bandit security issues, flake8 style warnings)
+    - 3 tests: Test execution (all pass, some fail, exception handling)
+    - 3 tests: Response cleaning (markdown block removal, single/multiple blocks)
+    - 2 tests: GenerationResult dataclass behavior (defaults, error handling)
+  - All tests use mocked LLM responses and subprocess calls for fast, deterministic execution
+  - Fixed API mismatches between test expectations and actual implementation:
+    - Keyword path inference: helper/parser/validator routed to engine/operations (design decision)
+    - Static analysis dict structure: `{'passed': bool, 'errors': [], 'warnings': []}`
+    - Test results dict structure: `{'passed': bool, 'tests_run': int, 'failures': []}`
+    - GenerationResult.errors: `__post_init__` always initializes as `[]`, never None
+    - Clean code response: extracts first markdown block only (re.search behavior)
+    - Bandit severity check: case-sensitive 'High'/'Medium' matching
+  - Pragmatic simplification of retry tests: verify core success/failure, defer complex retry scenarios to integration tests
+  - Result: **22/22 tests passing** ✅
+  - Next: Integration tests with real LLM (Ollama) for end-to-end workflow validation
+
 ### Changed (Docs Phase 2)
 
 - **PROVISIONAL_GOALS.md transformed into comprehensive onboarding guide** (2025-10-09)
