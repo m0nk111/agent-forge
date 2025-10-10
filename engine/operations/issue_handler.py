@@ -17,6 +17,7 @@ from typing import Dict, List, Optional
 from pathlib import Path
 from engine.runners.monitor_service import AgentStatus
 from engine.operations.llm_file_editor import LLMFileEditor
+from engine.operations.code_generator import CodeGenerator
 
 
 class IssueHandler:
@@ -43,6 +44,9 @@ class IssueHandler:
         
         # Initialize LLM-powered file editor
         self.llm_editor = LLMFileEditor(agent)
+        
+        # Initialize code generator for autonomous module creation
+        self.code_generator = CodeGenerator(agent)
         
         # Initialize instruction validator (optional)
         self.validator = None
@@ -110,7 +114,7 @@ class IssueHandler:
 #         
         # Step 3: Generate implementation plan
         print("\n🗺️  Step 3: Generating implementation plan...")
-        plan = self._generate_plan(requirements)
+        plan = self._generate_plan(requirements, issue)
         
         print(f"   📊 Phases: {len(plan['phases'])}")
         for phase in plan['phases']:
@@ -388,15 +392,25 @@ class IssueHandler:
         
         return requirements
     
-    def _generate_plan(self, requirements: Dict) -> Dict:
+    def _generate_plan(self, requirements: Dict, issue: Dict) -> Dict:
         """
         Generate implementation plan from requirements.
         
-        Returns structured plan with phases and actions.
+        Args:
+            requirements: Parsed requirements from issue
+            issue: Full issue dict with title, body, labels
+        
+        Returns:
+            Structured plan with phases and actions.
         """
         plan = {
             'title': requirements['title'],
-            'phases': []
+            'phases': [],
+            'issue_context': {  # Store issue context for action execution
+                'title': issue['title'],
+                'body': issue['body'],
+                'labels': issue['labels']
+            }
         }
         
         # Phase 1: Analysis
@@ -427,7 +441,7 @@ class IssueHandler:
         implementation_actions = []
         
         for task in requirements['tasks']:
-            action = self._task_to_action(task, issue_title=requirements['title'])
+            action = self._task_to_action(task, issue_title=requirements['title'], issue=issue)
             if action:
                 implementation_actions.append(action)
         
@@ -522,6 +536,62 @@ class IssueHandler:
                                 return result
                         else:
                             print(f"      ⚠️  Could not extract file path from: {description}")
+                    
+                    elif action_type == 'code_generation':
+                        # 🧠 CODE GENERATION: Autonomous module creation with tests
+                        print(f"      🔧 Generating code module with tests...")
+                        
+                        # Get issue context for spec inference
+                        task = action.get('task', {})
+                        issue_title = action.get('issue_title', '')
+                        issue_body = action.get('issue_body', '')
+                        labels = action.get('labels', [])
+                        
+                        # Infer module specification
+                        spec = self.code_generator.infer_module_spec(
+                            issue_title=issue_title,
+                            issue_body=issue_body,
+                            labels=labels
+                        )
+                        
+                        if not spec:
+                            print(f"      ⚠️  Could not infer module specification from issue")
+                            result['success'] = False
+                            result['error'] = "Failed to infer module spec from issue"
+                            return result
+                        
+                        print(f"      📝 Module: {spec.module_path}")
+                        print(f"      🧪 Tests: {spec.test_path}")
+                        
+                        # Generate module with tests
+                        gen_result = self.code_generator.generate_module(spec)
+                        
+                        if gen_result.success:
+                            # Track modified files
+                            result['files_modified'].append(spec.module_path)
+                            result['files_modified'].append(spec.test_path)
+                            
+                            # Build action summary
+                            action_summary = f"Generated {spec.module_path} with tests"
+                            if gen_result.retry_count > 0:
+                                action_summary += f" (succeeded after {gen_result.retry_count} retries)"
+                            result['actions'].append(action_summary)
+                            
+                            # Add analysis results
+                            if gen_result.static_analysis:
+                                result['actions'].append(f"Static analysis: {gen_result.static_analysis}")
+                            if gen_result.test_results:
+                                result['actions'].append(f"Test results: {gen_result.test_results}")
+                            
+                            print(f"      ✅ Code generation successful!")
+                        else:
+                            result['success'] = False
+                            error_msg = "Code generation failed"
+                            if gen_result.errors:
+                                error_msg += f": {', '.join(gen_result.errors)}"
+                            result['error'] = error_msg
+                            print(f"      ❌ {error_msg}")
+                            return result
                     
                     elif action_type == 'syntax_check':
                         # Check syntax of modified files
@@ -689,10 +759,13 @@ class IssueHandler:
                 base='main'
             )
             
-            return {
-                'url': pr_data.get('html_url'),
-                'number': pr_data.get('number')
-            }
+            if pr_data:
+                return {
+                    'url': pr_data.get('html_url'),
+                    'number': pr_data.get('number')
+                }
+            else:
+                return None
         
         except Exception as e:
             print(f"   ⚠️  Could not create PR: {e}")
@@ -706,13 +779,14 @@ class IssueHandler:
         keywords = [w for w in words if w not in stop_words and len(w) > 3]
         return keywords[0] if keywords else text
     
-    def _task_to_action(self, task: Dict, issue_title: str = "") -> Optional[Dict]:
+    def _task_to_action(self, task: Dict, issue_title: str = "", issue: Optional[Dict] = None) -> Optional[Dict]:
         """
         Convert task description to action.
         
         Args:
             task: Task dictionary with 'description' field
             issue_title: Issue title for context (used in smart fallback)
+            issue: Full issue dict with title, body, labels (for code generation)
             
         Returns:
             Action dictionary or None if task can't be converted
@@ -738,6 +812,23 @@ class IssueHandler:
             inferred_special = self._infer_special_file(original_desc, issue_title)
             if inferred_special:
                 file_path = inferred_special
+        
+        # 🧠 CODE GENERATION DETECTION: Detect if this requires autonomous module creation
+        # Check for code-related keywords or labels that indicate module generation
+        code_keywords = ['implement', 'module', 'function', 'class', 'utility', 'helper', 'parser', 'validator']
+        if any(keyword in description for keyword in code_keywords):
+            print(f"   🔧 Code generation detected: Task requires module implementation")
+            action = {
+                'type': 'code_generation',
+                'description': original_desc,
+                'task': task  # Pass full task context for spec inference
+            }
+            # Add issue context if available
+            if issue:
+                action['issue_title'] = issue.get('title', '')
+                action['issue_body'] = issue.get('body', '')
+                action['labels'] = issue.get('labels', [])
+            return action
         
         # Detect action type from description (explicit keywords)
         if 'add' in description or 'create' in description:

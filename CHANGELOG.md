@@ -7,7 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2025-01-XX
 
-### Changed
+### Added
+
+- **Phase 3B: Autonomous Code Module Generation** (2025-10-09)
+  - Created `engine/operations/code_generator.py` (459 lines) - Full autonomous code generation with tests
+    - `ModuleSpec` dataclass: Structured specification for module creation (paths, description, functions, dependencies)
+    - `GenerationResult` dataclass: Comprehensive result tracking with success state, content, analysis results, errors, retry count
+    - `CodeGenerator.infer_module_spec()`: Intelligent module specification inference from issue text
+      - Regex-based file path extraction from issue title and body
+      - Smart defaults for common module types (helpers, validators, parsers, utils)
+      - Support for explicit path specification and keyword-based inference
+    - `CodeGenerator.generate_module()`: Full 5-step generation workflow with retry loop
+      - LLM-powered implementation generation with error feedback
+      - Automatic test suite generation (pytest, >80% coverage target)
+      - Static analysis integration (bandit security scan, flake8 style check)
+      - Automated test execution with pass/fail parsing
+      - Retry mechanism: max 3 attempts with error context to LLM for self-correction
+    - Static analysis helpers: bandit (fail on High/Medium security issues), flake8 (warn on style issues)
+    - Test execution helpers: pytest subprocess with output parsing (pass/fail counts, failure details)
+    - Response cleaning: Strip markdown code blocks from LLM responses
+  - Integrated code generation into issue_handler workflow
+    - Added CodeGenerator instantiation in `IssueHandler.__init__`
+    - Enhanced `_task_to_action()` with code generation detection
+      - Detects code-related keywords: implement, module, function, class, utility, helper, parser, validator
+      - Returns `code_generation` action type with full issue context
+    - Added `code_generation` action handling in `_execute_plan()`
+      - Calls `code_generator.infer_module_spec()` with issue title, body, labels
+      - Executes full generation workflow via `code_generator.generate_module()`
+      - Tracks generated files (implementation + tests) in execution result
+      - Reports static analysis and test results in action summary
+      - Handles retry counts and failure modes with detailed error messages
+    - Updated `_generate_plan()` signature to pass full issue context to actions
+  - Fixed pre-existing type errors in `issue_handler.py`:
+    - Added None check for `pr_data` before calling `.get()` methods
+  - Status: Core implementation complete, integration complete, testing and E2E validation pending
+  - Next steps: Unit tests (mock LLM), integration tests (real LLM), E2E validation (full pipeline)
+
+### Changed (Docs Phase 2)
 
 - **PROVISIONAL_GOALS.md transformed into comprehensive onboarding guide** (2025-10-09)
   - Rewritten from simple provisional goal to central developer onboarding hub
@@ -73,6 +109,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Documentation metrics Phase 1: Created 1,463 lines new documentation, consolidated 608 lines duplicates
   - Documentation count Phase 1: Reduced from 38 to 36 markdown files (-5%)
 
+### Fixed (Coordinator)
+
+- Coordinator: prevent external list aliasing in `ExecutionPlan` to avoid mutation side-effects during plan adaptation (added `__post_init__` copying of lists/dicts). Verified via tests.
+
+### Added (Coordinator Tests)
+### Changed (Polling Service)
+
+- Polling Service: YAML-first configuratielading geïmplementeerd met fallback naar defaults en env vars; effectieve config wordt gelogd met gemaskeerde token.
+- Compatibiliteit met tests verbeterd: voorkeur voor `gh api` in testpaden met REST-API fallback; `IssueState.claimed_by/claimed_at` toegestaan als Optional voor claim release.
+
+### Fixed (Polling Service)
+
+- Corrupte docstring/indents in `engine/runners/polling_service.py` hersteld; type-issues met list defaults opgelost via `default_factory`.
+
+- Override-merge van YAML-config gefixt: `_apply_config_overrides` past nu alleen expliciet opgegeven waarden toe en behoudt YAML-waarden (voorkomt overschrijven van `github_username`/`repositories` door implicit defaults). Speciaal-casing voorkomt dat env-tokens ongemerkt YAML-tokens overschrijven. Gedekt door nieuwe test `tests/test_polling_yaml_config.py`.
+- Timestamps zijn nu timezone-aware: vervangen van `datetime.utcnow()` door `datetime.now(timezone.utc)` helpers in polling service en tests om deprecation-warnings te elimineren; inclusief robuuste parsing van historische timestamp-formaten.
+
+- Tests: Priority-queue assignment verification ensuring tasks from higher-priority plans (e.g., `security`/`critical`) are selected before lower-priority enhancements.
+
 ### Changed
 
 - **Documentation consolidation (Phase 2)** - Further reduced redundancy and improved organization
@@ -103,7 +158,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2025-10-09
 
-### Added
+### Added (Automation & Docs)
 
 - **Comprehensive PROVISIONAL_GOALS.md enhancement** - Complete automation roadmap with system context
   - Added detailed acceptance criteria for core automation, monitoring, artifact quality, and testing
@@ -125,6 +180,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fixes LLM file generation failures causing issues #81 and #82 to fail at final step
   - Production-tested: curl works but code was using wrong endpoint
   - Issues will now complete successfully with actual file creation
+
+- **Documentation polish**
+  - Fixed duplicated footer and stray character in `docs/PROVISIONAL_GOALS.md`
+  - Removed non-ASCII stray character from `docs/TOKEN_SECURITY.md` Quick Start heading
 
 ### Added
 
@@ -176,7 +235,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Task synthesis in `_parse_issue_requirements()`: Generates explicit tasks from implicit requirements
   - Checks both issue title AND body for filenames (body checked first as it's more common)
   - Handles descriptive tasks like "A circle in the center" without explicit "create" keywords
-  - Example: Issue titled "Create sun diagram" with body mentioning ` docs/sun.md` → synthesizes "Create docs/sun.md" task
+  - Example: Issue titled "Create sun diagram" with body mentioning `docs/sun.md` → synthesizes "Create docs/sun.md" task
   - Fallback keywords: create, add, new, generate, make
   - Enables autonomous file creation for issues that describe WHAT to include rather than HOW
 
@@ -192,7 +251,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Integrated into `GitHubAPIHelper` for automatic protection
   - Documentation: `docs/ANTI_SPAM_PROTECTION.md`
 
-### Changed
+### Changed (ASCII & Validator)
 
 - **Sun diagram makeover** - Reimagined deterministic output with a kid-drawn crayon aesthetic
   - Updated generator to produce playful rays, smiling face, and whimsical notes
@@ -215,7 +274,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated `.gitignore` to prevent token commits: `ghp_*`, `*github.env*`, `.config/gh/`
   - All tokens now loaded from `secrets/agents/{agent-id}.token` files only
 
-### Fixed
+### Fixed (Ollama API)
 
 - **Model configuration** - Corrected Qwen model from 32b to 7b
   - Fixed: `qwen2.5-coder:32b` (does not exist) → `qwen2.5-coder:7b` (available)
@@ -224,7 +283,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2025-10-07
 
-### Added
+### Added (Copilot Policies & Polling)
 
 - **LLM-powered file editing** - Real code generation replaces dummy implementation
   - New file: `engine/operations/llm_file_editor.py` - LLM-based code generation
@@ -324,50 +383,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Create Agent UI Modal with GitHub Integration** - Complete agent creation flow via dashboard
   - New "Create Agent ➕" button in dashboard header (green styling, positioned between view toggle and agent count)
   - Complete Create Agent modal form with fields:
-    * Agent ID (required, validated: lowercase, numbers, hyphens only)
-    * Agent Name (required, display name)
-    * GitHub Token (required, password field with validation button)
-    * GitHub Username (auto-detected readonly field)
-    * LLM Provider dropdown (local, openai, anthropic, google)
-    * Model dropdown (dynamic loading based on provider)
+    - Agent ID (required, validated: lowercase, numbers, hyphens only)
+    - Agent Name (required, display name)
+  - GitHub Token (required, password field with validation button)
+    - GitHub Username (auto-detected readonly field)
+    - LLM Provider dropdown (local, openai, anthropic, google)
+    - Model dropdown (dynamic loading based on provider)
   - GitHub token validation with auto-username detection:
-    * New backend endpoint: `POST /api/github/validate-token`
-    * Accepts `github_token` in request body
-    * Calls GitHub API: `GET https://api.github.com/user` with Bearer token
-    * Returns: `{is_valid: bool, username: str, name: str, email: str, avatar_url: str}`
-    * Error handling for 401 (invalid token), 403 (rate limit), 500 (network error)
-    * 10 second timeout for API calls
+    - New backend endpoint: `POST /api/github/validate-token`
+    - Accepts `github_token` in request body
+  - Calls GitHub API: `GET https://api.github.com/user` with Bearer token
+    - Returns: `{is_valid: bool, username: str, name: str, email: str, avatar_url: str}`
+    - Error handling for 401 (invalid token), 403 (rate limit), 500 (network error)
+    - 10 second timeout for API calls
   - JavaScript functions implemented:
-    * `openCreateAgentModal()` - Show modal, reset form, load default models
-    * `closeCreateAgentModal()` - Hide modal, restore body overflow
-    * `validateGithubToken()` - Validate token and auto-populate username field
-    * `updateNewAgentModels()` - Dynamic model loading from `/api/llm/providers/{provider}/models`
-    * `createNewAgent()` - Create agent via `POST /api/config/agents` with full validation
+    - `openCreateAgentModal()` - Show modal, reset form, load default models
+  - `closeCreateAgentModal()` - Hide modal, restore body overflow
+  - `validateGithubToken()` - Validate token and auto-populate username field
+  - `updateNewAgentModels()` - Dynamic model loading from `/api/llm/providers/{provider}/models`
+  - `createNewAgent()` - Create agent via `POST /api/config/agents` with full validation
   - Auto-refresh dashboard after successful agent creation
   - Complete validation: required fields, agent ID pattern, GitHub username detection
   - Integration with Issues #30 & #31: new agents get permissions and LLM provider config
 
 - **Agent Permissions System UI (Issue #30 - Complete)** - Full UI integration for permissions management
   - Updated `frontend/dashboard.html` with comprehensive permissions section:
-    * Permission preset selector (READ_ONLY 🔵, DEVELOPER 🟢, ADMIN 🔴, CUSTOM ⚙️)
-    * 15+ categorized permission checkboxes (File System, Terminal, GitHub, API, System)
-    * Danger level indicators (⚠️ Dangerous, 🚨 CRITICAL)
+  - Permission preset selector (READ_ONLY 🔵, DEVELOPER 🟢, ADMIN 🔴, CUSTOM ⚙️)
+    - 15+ categorized permission checkboxes (File System, Terminal, GitHub, API, System)
+    - Danger level indicators (⚠️ Dangerous, 🚨 CRITICAL)
     * Auto-switch to "custom" preset when manually changing checkboxes
   - JavaScript functions implemented:
     * `applyPermissionPreset()` - Apply read_only/developer/admin presets
     * `loadAgentPermissions(agentId)` - Load from `/api/config/agents/{id}/permissions`
-    * `saveAgentPermissions(agentId)` - Save via PATCH with preset and grant array
+  - `saveAgentPermissions(agentId)` - Save via PATCH with preset and grant array
   - Integrated into agent config modal:
-    * `openAgentConfigModal()` calls `loadAgentPermissions()` to load current settings
-    * `saveAgentConfig()` calls `saveAgentPermissions()` to persist changes
+  - `openAgentConfigModal()` calls `loadAgentPermissions()` to load current settings
+  - `saveAgentConfig()` calls `saveAgentPermissions()` to persist changes
   - Status: **COMPLETE** - Backend and UI fully integrated and tested
 
 - **Multi-Provider LLM UI (Issue #31 - Complete)** - Full UI integration for LLM provider management
   - Updated `frontend/dashboard.html` with LLM provider section:
-    * Provider dropdown (local 🏠, openai 🟢, anthropic 🟣, google 🔵)
+  - Provider dropdown (local 🏠, openai 🟢, anthropic 🟣, google 🔵)
     * Dynamic model dropdown (updates based on provider)
     * API key input field (password, hidden for local provider)
-    * Test connection button with status display (✅/❌/🔄)
+  - Test connection button with status display (✅/❌/🔄)
   - JavaScript functions implemented:
     * `updateProviderModels()` - Load models per provider, show/hide API key field
     * `testProviderConnection()` - Test API key via `/api/llm/test-connection`
