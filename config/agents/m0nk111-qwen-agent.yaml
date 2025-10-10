@@ -1,8 +1,15 @@
 # Qwen Main Agent Configuration
 # Primary code generation and development agent
 
+# Agent identification (root level for launcher compatibility)
+agent_id: m0nk111-qwen-agent
+name: M0nk111 Qwen Agent
+role: developer
+model_provider: local
+model_name: qwen2.5-coder:7b
+
 agent:
-  # Agent identification
+  # Agent identification (legacy nested format)
   agent_id: m0nk111-qwen-agent
   name: M0nk111 Qwen Agent
   role: developer

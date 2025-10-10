@@ -1,8 +1,15 @@
 # Bot Agent Configuration
 # Configuration for automated GitHub bot operations
 
+# Agent identification (root level for launcher compatibility)
+agent_id: m0nk111-bot
+name: M0nk111 Bot Agent
+role: bot
+model_provider: local
+model_name: qwen2.5-coder:7b
+
 bot:
-  # Bot identification
+  # Bot identification (legacy nested format)
   agent_id: m0nk111-bot
   username: m0nk111-bot
   role: bot

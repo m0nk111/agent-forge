@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **🚀 Universal Agent Launcher with Auto-Discovery** (2025-10-10)
+  - **New Universal Launcher**: `scripts/launch_agent.py` replaces agent-specific scripts
+  - **Auto-Discovery**: Scans `config/agents/` directory for all available agent profiles
+  - **Features**:
+    - `AgentProfileManager`: Automatic profile scanning and validation
+    - `--list`: List all available agents with provider/model info
+    - `--agent <id>`: Launch specific agent with fuzzy matching (e.g., "gpt4" → "gpt4-coding-agent")
+    - `--interactive`: Interactive mode with agent selection menu
+    - `--issue <number>`: Direct GitHub issue handling
+    - Profile validation with requirements checking (API keys, tokens)
+  - **Updated Configuration**:
+    - config/agents/m0nk111-qwen-agent.yaml: Added root-level agent_id for launcher compatibility
+    - config/agents/m0nk111-bot.yaml: Added root-level agent_id for launcher compatibility
+  - **Migration from Old Scripts**:
+    - Old: `python3 scripts/launch_gpt4_agent.py --issue 92`
+    - New: `python3 scripts/launch_agent.py --agent gpt4 --issue 92`
+  - **Benefits**:
+    - Single launcher for all agents (GPT-4, Claude, Gemini, Qwen, etc.)
+    - No need for separate scripts per agent
+    - Automatic discovery of new agent profiles
+    - Better error handling and validation
+  - **Documentation**: docs/AGENT_LAUNCHER_GUIDE.md (complete usage guide)
+
 - **🌐 OpenAI GPT-4 Integration for Agent Roles** (2025-10-10)
   - **Multi-Provider LLM Support**: Agents can now use commercial LLMs (OpenAI, Anthropic, Google) or local Ollama
   - **New Features**:
