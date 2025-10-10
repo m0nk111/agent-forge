@@ -200,7 +200,10 @@ class PipelineOrchestrator:
             logger.info("\n🔍 Phase 2: Parsing requirements...")
             
             requirements = await self._parse_requirements(issue_data)
-            logger.info(f"   ✅ Tasks identified: {len(requirements.get('tasks', []))}")
+            if not requirements.get('success'):
+                raise RuntimeError(f"Requirements parsing failed: {requirements.get('error')}")
+            
+            logger.info(f"   ✅ Module path: {requirements.get('module_path')}")
             
             # Phase 3: Generate code
             pipeline_state['phase'] = 'generate_code'
@@ -359,15 +362,50 @@ class PipelineOrchestrator:
             return None
     
     async def _parse_requirements(self, issue_data: Dict) -> Dict:
-        """Parse issue requirements (delegate to IssueHandler)."""
-        # TODO: Implement smart parsing using LLM
-        # For now, extract basic info
-        return {
-            'title': issue_data.get('title', ''),
-            'description': issue_data.get('body', ''),
-            'tasks': [],  # Will be populated by IssueHandler
-            'labels': issue_data.get('labels', [])
-        }
+        """Parse issue requirements using CodeGenerator's inference."""
+        try:
+            from engine.operations.code_generator import CodeGenerator
+            
+            # Use CodeGenerator's intelligent parsing
+            generator = CodeGenerator(self.agent)
+            
+            title = issue_data.get('title', '')
+            body = issue_data.get('body', '')
+            labels = issue_data.get('labels', [])
+            
+            # Infer module specification
+            module_spec = generator.infer_module_spec(title, body, labels)
+            
+            if not module_spec:
+                logger.error("❌ Could not infer module specification from issue")
+                return {
+                    'success': False,
+                    'error': 'Could not infer module specification from issue'
+                }
+            
+            logger.info(f"✅ Inferred module: {module_spec.module_path}")
+            
+            # Convert ModuleSpec to requirements dict
+            return {
+                'success': True,
+                'module_path': module_spec.module_path,
+                'module_name': module_spec.module_name,
+                'test_path': module_spec.test_path,
+                'description': module_spec.description,
+                'functions': module_spec.functions,
+                'dependencies': module_spec.dependencies,
+                'title': title,
+                'labels': labels
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ Error parsing requirements: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return {
+                'success': False,
+                'error': str(e)
+            }
     
     async def _generate_implementation(self, requirements: Dict, issue_data: Dict) -> Dict:
         """Generate code implementation (delegate to CodeGenerator)."""
