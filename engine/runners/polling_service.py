@@ -801,11 +801,12 @@ async def main():
     import argparse
     
     parser = argparse.ArgumentParser(description="Autonomous GitHub issue polling service")
-    parser.add_argument("--interval", type=int, default=300, help="Polling interval in seconds")
+    parser.add_argument("--interval", type=int, help="Polling interval in seconds")
     parser.add_argument("--once", action="store_true", help="Run once and exit")
     parser.add_argument("--repos", nargs="+", help="Repositories to monitor (owner/repo)")
     parser.add_argument("--labels", nargs="+", help="Labels to watch for")
-    parser.add_argument("--max-concurrent", type=int, default=3, help="Max concurrent issues")
+    parser.add_argument("--max-concurrent", type=int, help="Max concurrent issues")
+    parser.add_argument("--config", type=str, help="Path to YAML config file")
     
     args = parser.parse_args()
     
@@ -815,16 +816,19 @@ async def main():
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
     
-    # Create config
-    config = PollingConfig(
-        interval_seconds=args.interval,
-        repositories=args.repos or ["m0nk111/stepperheightcontrol", "m0nk111/agent-forge"],
-        watch_labels=args.labels or ["agent-ready", "auto-assign"],
-        max_concurrent_issues=args.max_concurrent
-    )
+    # Create service (loads from YAML by default, CLI args override)
+    config_path = Path(args.config) if args.config else None
+    service = PollingService(config_path=config_path)
     
-    # Create and run service
-    service = PollingService(config)
+    # Apply CLI overrides if provided
+    if args.interval is not None:
+        service.config.interval_seconds = args.interval
+    if args.repos:
+        service.config.repositories = args.repos
+    if args.labels:
+        service.config.watch_labels = args.labels
+    if args.max_concurrent is not None:
+        service.config.max_concurrent_issues = args.max_concurrent
     
     if args.once:
         await service.poll_once()
