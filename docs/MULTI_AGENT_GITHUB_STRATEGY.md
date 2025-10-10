@@ -82,7 +82,7 @@ Or use temporary email services for machine accounts.
 class CodeAgent:
     def __init__(self, config_path: str):
         # Load GitHub token from environment
-        self.github_token = os.getenv('QWEN_GITHUB_TOKEN')
+        self.github_token = os.getenv('CODEAGENT_GITHUB_TOKEN')
         self.github_username = 'm0nk111-qwen-agent'
     
     def commit_and_push(self, message: str):
@@ -104,9 +104,9 @@ class CodeAgent:
 #### 5. Environment Configuration
 ```bash
 # ~/.bashrc or per-project .env
-export QWEN_GITHUB_TOKEN="ghp_xxxxxxxxxxxxxxxxxxxx"
-export QWEN_GITHUB_USERNAME="m0nk111-qwen-agent"
-export QWEN_GITHUB_EMAIL="flip+qwen@domain.com"
+export CODEAGENT_GITHUB_TOKEN="ghp_xxxxxxxxxxxxxxxxxxxx"
+export CODEAGENT_GITHUB_USERNAME="m0nk111-qwen-agent"
+export CODEAGENT_GITHUB_EMAIL="flip+qwen@domain.com"
 ```
 
 ### Commit Signatures
@@ -169,7 +169,7 @@ Each agent:
 # Use environment variables or secret managers
 
 # Option 1: Environment file (gitignored)
-echo "QWEN_GITHUB_TOKEN=ghp_xxx" >> .env
+echo "CODEAGENT_GITHUB_TOKEN=ghp_xxx" >> .env
 echo ".env" >> .gitignore
 
 # Option 2: System keyring

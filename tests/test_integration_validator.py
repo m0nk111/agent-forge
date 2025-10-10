@@ -69,7 +69,8 @@ def test_git_operations_integration():
     print("=" * 60)
     
     import os
-    os.environ['QWEN_GITHUB_TOKEN'] = 'dummy_token_for_testing'
+    # Set up test environment
+    os.environ['CODEAGENT_GITHUB_TOKEN'] = 'dummy_token_for_testing'
     
     from engine.operations.git_operations import GitOperations
     

@@ -16,11 +16,11 @@ Environment="PATH=/usr/bin:/usr/local/bin"
 # GitHub tokens - Load from environment file
 # Create /etc/agent-forge/tokens.env with:
 #   BOT_GITHUB_TOKEN=your_token_here
-#   QWEN_GITHUB_TOKEN=your_token_here
+#   CODEAGENT_GITHUB_TOKEN=your_token_here
 #   BOT_GITHUB_USERNAME=your_bot_username
 #   BOT_GITHUB_EMAIL=your_bot_email
-#   QWEN_GITHUB_USERNAME=your_qwen_username
-#   QWEN_GITHUB_EMAIL=your_qwen_email
+#   CODEAGENT_GITHUB_USERNAME=your_codeagent_username
+#   CODEAGENT_GITHUB_EMAIL=your_codeagent_email
 #   GITHUB_TOKEN=${BOT_GITHUB_TOKEN}
 #   GITHUB_USERNAME=${BOT_GITHUB_USERNAME}
 EnvironmentFile=-/etc/agent-forge/tokens.env

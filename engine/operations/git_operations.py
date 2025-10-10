@@ -26,13 +26,15 @@ class GitOperations:
     
     def __init__(self):
         """Initialize with credentials from environment."""
-        self.username = os.getenv('QWEN_GITHUB_USERNAME', 'm0nk111-qwen-agent')
-        self.email = os.getenv('QWEN_GITHUB_EMAIL', 'aicodingtime@gmail.com')
-        self.token = os.getenv('QWEN_GITHUB_TOKEN')
+        """
+        super().__init__()
+        self.username = os.getenv('CODEAGENT_GITHUB_USERNAME', 'm0nk111-qwen-agent')
+        self.email = os.getenv('CODEAGENT_GITHUB_EMAIL', 'aicodingtime@gmail.com')
+        self.token = os.getenv('CODEAGENT_GITHUB_TOKEN')
         
         if not self.token:
             raise ValueError(
-                "QWEN_GITHUB_TOKEN not set in environment.\n"
+                "CODEAGENT_GITHUB_TOKEN not set in environment.\n"
                 "Run: source ~/.agent-forge.env"
             )
         

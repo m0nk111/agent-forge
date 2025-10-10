@@ -7,12 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2025-01-XX
 
+### Changed
+
+- **🔧 Refactor: QWEN_GITHUB_TOKEN → CODEAGENT_GITHUB_TOKEN** (2025-10-10)
+  - **Environment Variables**: Renamed for clarity and generic LLM support
+    - `QWEN_GITHUB_TOKEN` → `CODEAGENT_GITHUB_TOKEN`
+    - `QWEN_GITHUB_USERNAME` → `CODEAGENT_GITHUB_USERNAME`
+    - `QWEN_GITHUB_EMAIL` → `CODEAGENT_GITHUB_EMAIL`
+  - **Updated Files**:
+    - engine/operations/git_operations.py: Updated env var references
+    - systemd/agent-forge-polling.service: Updated documentation comments
+    - systemd/tokens.env.example: Updated variable names
+    - ~/.agent-forge-tokens.env: Updated user token file
+    - tests/test_integration_validator.py: Updated test env setup
+    - docs/MULTI_AGENT_GITHUB_STRATEGY.md: Updated examples
+  - **Rationale**: Generic naming for code agent (not LLM-specific), aligns with code_agent.py rename
+  - **Backward Compatibility**: No breaking changes, environment variable rename only
+  - **Security**: No token changes, same values with new variable names
+  
+  **Result**: Consistent naming convention throughout codebase, better reflects purpose (code generation agent) rather than specific LLM (Qwen)
+
 ### Added
 
 - **🚀 SystemD Service Deployment - 24/7 Autonomous Operation** (2025-10-10)
   - **Service Configuration**: Configured systemd/agent-forge-polling.service with bot tokens
     - BOT_GITHUB_TOKEN: m0nk111-post for general operations
-    - QWEN_GITHUB_TOKEN: m0nk111-qwen-agent for dev/coding
+    - CODEAGENT_GITHUB_TOKEN: m0nk111-qwen-agent for dev/coding
     - GITHUB_TOKEN: defaults to BOT_GITHUB_TOKEN
     - POLLING_INTERVAL: 300 seconds (5 minutes)
     - POLLING_REPOS: m0nk111/agent-forge
