@@ -6,7 +6,7 @@
 
 ---
 
-## � Quick Start (Emergency Response)
+## Quick Start (Emergency Response)
 
 **If you need to secure tokens RIGHT NOW, follow these steps first:**
 
