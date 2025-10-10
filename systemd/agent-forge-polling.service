@@ -13,17 +13,21 @@ WorkingDirectory=/home/flip/agent-forge
 Environment="PYTHONPATH=/home/flip/agent-forge"
 Environment="PATH=/usr/bin:/usr/local/bin"
 
-# GitHub tokens (configure these!)
-# Option 1: Bot-specific token (recommended for automated operations)
-Environment="BOT_GITHUB_TOKEN=your_bot_token_here"
+# GitHub tokens - Load from environment file
+# Create /etc/agent-forge/tokens.env with:
+#   BOT_GITHUB_TOKEN=your_token_here
+#   QWEN_GITHUB_TOKEN=your_token_here
+#   BOT_GITHUB_USERNAME=your_bot_username
+#   BOT_GITHUB_EMAIL=your_bot_email
+#   QWEN_GITHUB_USERNAME=your_qwen_username
+#   QWEN_GITHUB_EMAIL=your_qwen_email
+#   GITHUB_TOKEN=${BOT_GITHUB_TOKEN}
+#   GITHUB_USERNAME=${BOT_GITHUB_USERNAME}
+EnvironmentFile=-/etc/agent-forge/tokens.env
 
-# Option 2: Standard GitHub token (fallback)
-# Environment="GITHUB_TOKEN=your_token_here"
-
-# Polling configuration
-Environment="POLLING_INTERVAL=300"  # 5 minutes
+# Polling configuration (5 minutes interval)
+Environment="POLLING_INTERVAL=300"
 Environment="POLLING_REPOS=m0nk111/agent-forge"
-Environment="GITHUB_USERNAME=m0nk111-bot"  # Or your bot account name
 
 # Logging
 StandardOutput=journal

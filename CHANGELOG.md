@@ -9,6 +9,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **🚀 SystemD Service Deployment - 24/7 Autonomous Operation** (2025-10-10)
+  - **Service Configuration**: Configured systemd/agent-forge-polling.service with bot tokens
+    - BOT_GITHUB_TOKEN: m0nk111-post for general operations
+    - QWEN_GITHUB_TOKEN: m0nk111-qwen-agent for dev/coding
+    - GITHUB_TOKEN: defaults to BOT_GITHUB_TOKEN
+    - POLLING_INTERVAL: 300 seconds (5 minutes)
+    - POLLING_REPOS: m0nk111/agent-forge
+    - GITHUB_USERNAME: m0nk111-post
+  - **Service Installation**: Installed via scripts/install-polling-service.sh
+    - Copied service file to /etc/systemd/system/
+    - Reloaded systemd daemon, enabled auto-start on boot
+    - Started service successfully
+  - **Service Status**: Active and running (PID: 4126125)
+    - Memory: 33.8M (max: 512.0M), CPU: 681ms
+    - Monitoring: m0nk111/stepperheightcontrol, m0nk111/agent-forge
+    - Watching labels: agent-ready, auto-assign
+    - Max concurrent issues: 3, claim timeout: 60 minutes
+    - Rate limiting: Active (anti-spam protection)
+  - **Systemd Config Fix**: Removed inline comments from Environment variables
+    - Fixed: Invalid environment assignment warnings
+  - **Logging**: Integrated with systemd journal (journalctl -u agent-forge-polling -f)
+  - **Result**: Autonomous polling service now running 24/7, detecting issues with agent-ready/auto-assign labels, executing full pipeline without human intervention
+
+- **🔒 Bot Token Configuration** (2025-10-10)
+  - **Token Storage**: Created ~/.agent-forge-tokens.env for secure bot token storage
+  - **Role Separation**: m0nk111-qwen-agent (dev/coding), m0nk111-post (general operations)
+  - **Security**: chmod 600 for owner-only read/write access
+  - **Backend Integration**: Tokens loaded for subprocess operations
+  - **Result**: Proper token authentication with role separation, no more suspended account errors
+
+- **✅ Issue #85 Resolution - Health Checker Module** (2025-10-10)
+  - **Implementation**: Created engine/operations/health_checker.py (104 lines)
+    - Function: check_service_health() with socket-based TCP testing
+    - 5-second timeout, latency measurement, comprehensive error handling
+  - **Testing**: Created tests/test_health_checker.py (180 lines)
+    - Test results: 11/11 passed in 0.09s ✅
+  - **Branch**: fix-issue-85-health-checker (commit 618c864)
+  - **PR**: #90 - https://github.com/m0nk111/agent-forge/pull/90
+  - **Result**: Complete health checker implementation with 100% test pass rate
+
+- **✅ Issue #84 Resolution - String Utils Module** (2025-10-10)
+  - **Implementation**: engine/operations/string_utils.py (71 lines)
+    - Functions: capitalize_words(), reverse_string(), count_vowels()
+  - **Testing**: Created tests/test_string_utils.py (111 lines)
+    - Bug fix: 'python programming' has 4 vowels, not 3
+    - Test results: 13/13 passed in 0.06s ✅
+  - **Branch**: fix-issue-84-string-utils (commit a38af71)
+  - **PR**: #91 - https://github.com/m0nk111/agent-forge/pull/91
+  - **Result**: Complete string utils testing with bug fix, 100% test pass rate
+
 - **� Component Integration - Autonomous Pipeline Complete** (2025-10-10)
   - **CodeGenerator Integration**: Updated `_generate_implementation()` to call CodeGenerator.generate_module()
     - Creates ModuleSpec from parsed requirements
