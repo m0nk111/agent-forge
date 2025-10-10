@@ -9,6 +9,77 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Creative Status Generator** (2025-10-10)
+  - Created `engine/operations/creative_status.py` - Deterministic creative motif generator for issue logging
+  - Generates 3-line creative motifs based on issue titles and labels
+  - Theme selection: bug, docs, ops, default with emoji prefixes (🐛, 📚, 🛠️, ✨)
+  - Deterministic output (same title/labels = same motif) for stable logs
+  - Debug mode via `CREATIVE_STATUS_DEBUG` environment variable
+  - Full test coverage in `tests/test_creative_status.py` (8 tests)
+
+- **Polling Service Creative Logging** (2025-10-10)
+  - Added optional creative motif logging when issues are detected as actionable
+  - Enable via `POLLING_CREATIVE_LOGS=1` environment variable
+  - Displays 3-line artistic status for each issue processed
+
+- **Coordinator Agent Priority Queue** (2025-10-10)
+  - Added `plan_priority` field to ExecutionPlan (1-5 scale based on labels)
+  - Priority mapping: critical/security→5, bug/urgent→4, enhancement→3, docs→2, low→1
+  - Implemented `get_next_task_assignment()` - selects highest priority task across all active plans
+  - Priority queue considers plan priority first, then task priority within plan
+  - Added `labels` field to ExecutionPlan for priority computation
+  - New test: `test_priority_queue_assignment` validates security issues take precedence
+
+- **Polling Service YAML Configuration** (2025-10-10)
+  - Implemented YAML-first configuration loading from `config/services/polling.yaml`
+  - Configuration priority: explicit override → YAML file → defaults
+  - Added `_load_config_from_yaml()` and `_apply_config_overrides()` methods
+  - Supports environment variables as fallback for tokens
+  - New test: `test_polling_yaml_config.py` validates YAML loading and overrides
+
+- **Polling Service Timezone Awareness** (2025-10-10)
+  - All timestamps now timezone-aware (UTC) for consistent claim timeout calculations
+  - Added `_utc_now()`, `_utc_iso()`, `_parse_iso_timestamp()` helper functions
+  - Fixes claim timeout comparison issues across different timezone contexts
+  - Backward compatible with legacy naive timestamps
+
+### Fixed
+
+- **Test Path References** (2025-10-10)
+  - Fixed `tests/test_workspace_tools.py` to use correct import path `engine/operations/workspace_tools`
+  - Updated integration test to reference correct file location
+  - Fixed project root path resolution
+
+- **Polling Service Configuration** (2025-10-10)
+  - Fixed `PollingConfig` default values using `field(default_factory=...)` for mutable types
+  - Prevents shared mutable default issues (lists)
+  - Fixed claim timeout calculation with timezone-aware datetime objects
+
+- **Coordinator Agent Plan Mutation** (2025-10-10)
+  - Added `__post_init__()` to ExecutionPlan to detach from externally provided mutable objects
+  - Prevents test fixture aliasing issues where mutations affect caller-owned data
+  - Shallow copies: sub_tasks, dependencies_graph values, required_roles, labels
+
+- **Documentation Formatting** (2025-10-10)
+  - Fixed non-ASCII character in `docs/TOKEN_SECURITY.md` heading
+  - Updated `docs/DOCS_CHANGELOG.md` with recent formatting fixes
+
+### Changed
+
+- **Polling Service Configuration Strategy** (2025-10-10)
+  - Changed initialization to support explicit `config_path` parameter
+  - Configuration resolution: explicit config without path → use directly (no YAML load)
+  - Config is None → load from YAML (explicit path or default)
+  - Both provided → load YAML first, apply overrides
+  - Logs effective configuration at startup (with sanitized tokens)
+
+- **Polling Service Process Metrics** (2025-10-10)
+  - Added graceful handling when `psutil` is not available
+  - Metrics collection only enabled when `psutil` successfully imports and process is available
+  - Warning logged when metrics unavailable but service continues normally
+
+### Phase 3B E2E Validation
+
 - **Phase 3B E2E Validation** (2025-10-10)
   - Completed end-to-end validation of autonomous code generation pipeline with Issue #84
   - **Test Case**: "Create string_utils.py helper module" with 3 functions (capitalize_words, reverse_string, count_vowels)
