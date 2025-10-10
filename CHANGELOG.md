@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2025-01-XX
 
+### Added
+
+- **PR Review Agent - LLM Integration & GitHub Posting** (2025-10-10)
+  - Added comprehensive LLM review prompts with language-specific guidelines
+  - Implemented `_generate_review_prompt()` with focus on logic, security, performance, best practices
+  - Added language detection from file extensions (Python, JS, TS, Go, Rust, etc.)
+  - Implemented `post_review_to_github()` method to post reviews via GitHub API
+  - Added GitHub PR review API methods: `get_pull_request()`, `get_pull_request_files()`, `create_pull_request_review()`, `create_pull_request_review_comment()`
+  - Added comprehensive test coverage: 7 new tests for LLM integration and GitHub posting
+  - All 34 PR reviewer tests passing
+  - Supports APPROVE, REQUEST_CHANGES, and line-specific comments
+  - Automatically limits review to 10 comments per PR to avoid spam
+  - Intelligent prompt engineering: structured review format, actionable feedback, language-specific best practices
+
 ### Fixed
 
 - **Documentation Cleanup - Misleading Planning Docs** (2025-10-10)
