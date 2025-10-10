@@ -384,45 +384,60 @@ This file will be saved as {spec.test_path}, NOT as implementation.
             'warnings': []
         }
         
+        # Find tools in venv or system PATH
+        def find_tool(name: str) -> Optional[str]:
+            """Find tool in venv/bin or system PATH"""
+            # Try venv first
+            venv_tool = self.project_root / 'venv' / 'bin' / name
+            if venv_tool.exists():
+                return str(venv_tool)
+            # Try system
+            import shutil
+            return shutil.which(name)
+        
         # Run bandit (security)
-        try:
-            bandit_output = subprocess.run(
-                ['bandit', '-r', str(module_path)],
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
-            
-            if bandit_output.returncode != 0:
-                # Parse bandit output for issues
-                if 'High' in bandit_output.stdout or 'Medium' in bandit_output.stdout:
-                    result['passed'] = False
-                    result['errors'].append(f"Bandit security issues: {bandit_output.stdout[:200]}")
-                else:
-                    result['warnings'].append("Bandit low severity warnings")
-                    
-        except FileNotFoundError:
-            logger.warning("⚠️ bandit not installed, skipping security check")
-        except Exception as e:
-            logger.warning(f"⚠️ bandit error: {e}")
+        bandit_cmd = find_tool('bandit')
+        if bandit_cmd:
+            try:
+                bandit_output = subprocess.run(
+                    [bandit_cmd, '-r', str(module_path)],
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+                
+                if bandit_output.returncode != 0:
+                    # Parse bandit output for issues
+                    if 'High' in bandit_output.stdout or 'Medium' in bandit_output.stdout:
+                        result['passed'] = False
+                        result['errors'].append(f"Bandit security issues: {bandit_output.stdout[:200]}")
+                    else:
+                        result['warnings'].append("Bandit low severity warnings")
+                        
+            except Exception as e:
+                logger.warning(f"⚠️ bandit error: {e}")
+        else:
+            logger.debug("⚠️ bandit not found, skipping security check")
         
         # Run flake8 (style)
-        try:
-            flake8_output = subprocess.run(
-                ['flake8', '--max-line-length=120', str(module_path)],
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
-            
-            if flake8_output.returncode != 0:
-                result['warnings'].append(f"Flake8 style issues: {flake8_output.stdout[:200]}")
-                # Don't fail on style issues, just warn
+        flake8_cmd = find_tool('flake8')
+        if flake8_cmd:
+            try:
+                flake8_output = subprocess.run(
+                    [flake8_cmd, '--max-line-length=120', str(module_path)],
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
                 
-        except FileNotFoundError:
-            logger.warning("⚠️ flake8 not installed, skipping style check")
-        except Exception as e:
-            logger.warning(f"⚠️ flake8 error: {e}")
+                if flake8_output.returncode != 0:
+                    result['warnings'].append(f"Flake8 style issues: {flake8_output.stdout[:200]}")
+                    # Don't fail on style issues, just warn
+                    
+            except Exception as e:
+                logger.warning(f"⚠️ flake8 error: {e}")
+        else:
+            logger.debug("⚠️ flake8 not found, skipping style check")
         
         return result
     
@@ -435,9 +450,24 @@ This file will be saved as {spec.test_path}, NOT as implementation.
             'coverage': None
         }
         
+        # Find pytest in venv or system PATH
+        def find_pytest() -> Optional[str]:
+            """Find pytest in venv/bin or system PATH"""
+            venv_pytest = self.project_root / 'venv' / 'bin' / 'pytest'
+            if venv_pytest.exists():
+                return str(venv_pytest)
+            import shutil
+            return shutil.which('pytest')
+        
+        pytest_cmd_path = find_pytest()
+        if not pytest_cmd_path:
+            logger.warning("⚠️ pytest not found, skipping tests")
+            result['failures'].append("pytest not installed")
+            return result
+        
         try:
             # Run pytest with coverage if available
-            pytest_cmd = ['pytest', str(test_path), '-v', '--tb=short']
+            pytest_cmd = [pytest_cmd_path, str(test_path), '-v', '--tb=short']
             
             # Try to add coverage if pytest-cov is installed
             try:
