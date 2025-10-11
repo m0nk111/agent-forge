@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Bug #1 - Token Authentication**: Fixed 401 Unauthorized errors in test mode by creating startup script with proper BOT_GITHUB_TOKEN environment variable loading
 - **Bug #2 - GitHubAPIClient TypeError**: Fixed `GitHubAPIClient.__init__()` unexpected keyword argument 'bot_account' error by removing parameter from PR Review Agent
 - **Bug #3 - Coordinator Agent Startup**: Temporarily disabled coordinator agents (enabled: false) until implementation is complete, preventing startup errors
+- **Bug #5 - Polling Assignee Filter**: Fixed polling service to search ALL issues with agent-ready labels instead of only issues assigned to bot username
+  * Changed: `check_assigned_issues()` now searches by labels instead of assignee
+  * Impact: Polling service can now pick up unassigned issues with agent-ready label
+  * Benefit: Any agent can claim and work on agent-ready issues
 
 ### Added
 - `scripts/run-test-mode.sh`: Startup script for test mode with automatic environment variable setup (BOT_GITHUB_TOKEN, AGENT_FORGE_ENV, PYTHONPATH)
@@ -19,15 +23,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **PR Review Agent** (`engine/operations/pr_review_agent.py`): Removed unsupported `bot_account` parameter from GitHubAPIClient initialization
 - **Coordinator Agents**: All three coordinator agent configs marked as disabled with explanation comments
+- **Polling Service** (`engine/runners/polling_service.py`): 
+  * `check_assigned_issues()` renamed conceptually (still same name but different behavior)
+  * Now searches by labels (`agent-ready`, `auto-assign`) instead of assignee
+  * Allows any agent to pick up unclaimed issues
 
 ### Documentation
 - **Bug #4 Discovered**: Phantom bot accounts identified - m0nk111-coder1, m0nk111-coder2, m0nk111-reviewer have token files but GitHub accounts don't exist
   * Only valid bots: m0nk111 (admin), m0nk111-post (bot), m0nk111-qwen-agent (coder)
   * Invalid tokens should be cleaned up or accounts created
-- **Bug #5 Discovered**: Polling service searches for wrong assignee (assignee=m0nk111-post) instead of searching ALL agent-ready labeled issues
-  * Current: Checks issues assigned to bot username
-  * Should: Check ALL open issues with agent-ready label regardless of assignee
-  * Impact: Agent-ready issues not being picked up for processing
 
 ### Added
 - **Test Repository & Environment Management** (October 11, 2025)

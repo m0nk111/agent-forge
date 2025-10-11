@@ -411,21 +411,30 @@ class PollingService:
         return f"{repo}#{issue_number}"
     
     async def check_assigned_issues(self) -> List[Dict]:
-        """Query GitHub API for assigned issues.
+        """Query GitHub API for issues with agent-ready labels.
+        
+        This method searches for ALL open issues with watch labels (agent-ready, auto-assign)
+        regardless of assignee. The polling service will then check if they're actionable
+        based on claim status and other criteria.
         
         Returns:
-            List of assigned issue dictionaries
+            List of issue dictionaries with agent-ready labels
         """
-        logger.info("Checking for assigned issues...")
+        logger.info("Checking for issues with agent-ready labels...")
         
         all_issues = []
         
         for repo in self.config.repositories:
             try:
                 owner, repo_name = repo.split('/')
-                # Prefer gh CLI for tests and portability; fallback to REST helper
+                
+                # Get ALL open issues with watch labels (not filtered by assignee)
+                # This allows any agent to pick up unclaimed agent-ready issues
                 try:
-                    path = f"/repos/{owner}/{repo_name}/issues?state=open&per_page=100&assignee={self.config.github_username}"
+                    # Use GitHub API to search by labels
+                    # Note: We check for issues with ANY of the watch labels
+                    label_query = ','.join(self.config.watch_labels)
+                    path = f"/repos/{owner}/{repo_name}/issues?state=open&per_page=100&labels={label_query}"
                     stdout = subprocess.run(
                         ["gh", "api", path],
                         text=True,
@@ -435,10 +444,12 @@ class PollingService:
                         raise RuntimeError(stdout.stderr.strip() or "gh api failed")
                     issues = json.loads(stdout.stdout or "[]")
                 except Exception:
+                    # Fallback to REST API helper
+                    # Get issues with any of the watch labels
                     issues = self.github_api.list_issues(
                         owner=owner,
                         repo=repo_name,
-                        assignee=self.config.github_username,
+                        labels=self.config.watch_labels,
                         state="open",
                         per_page=100,
                         bypass_rate_limit=True
@@ -451,12 +462,12 @@ class PollingService:
                     issue['repository'] = repo
                 all_issues.extend(issues)
                 
-                logger.info(f"Found {len(issues)} assigned issues in {repo}")
+                logger.info(f"Found {len(issues)} issues with agent-ready labels in {repo}")
                 
             except Exception as e:
                 logger.error(f"Failed to query issues for {repo}: {e}")
         
-        logger.info(f"Total assigned issues found: {len(all_issues)}")
+        logger.info(f"Total issues with agent-ready labels found: {len(all_issues)}")
         return all_issues
     
     def filter_actionable_issues(self, issues: List[Dict]) -> List[Dict]:
