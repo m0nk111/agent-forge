@@ -34,6 +34,43 @@ max_concurrent_issues: 3
 # Increased to 24 hours to prevent spam when workflow fails
 claim_timeout_minutes: 1440
 
+# PR Monitoring & Auto-Review (NEW)
+# Monitor pull requests and trigger reviewer agent
+pr_monitoring:
+  enabled: true
+  # Check for new PRs every N seconds (default: 600 = 10 minutes)
+  interval_seconds: 600
+  # Auto-review PRs from these users (whitelist)
+  auto_review_users:
+    - "m0nk111-post"      # Bot agent PRs
+    - "m0nk111-qwen-agent" # Code agent PRs
+  # Skip auto-review for PRs from these trusted users
+  skip_review_users:
+    - "m0nk111"  # Admin account (trusted)
+  # Only auto-review PRs with these labels
+  review_labels:
+    - "auto-review"
+    - "bot-created"
+  # Reviewer agent to trigger
+  reviewer_agent_id: "reviewer-agent"
+
+# Issue Opener Integration (NEW)
+# Automatically process new issues with issue-opener agent
+issue_opener:
+  enabled: true
+  # Trigger issue-opener for issues with these labels
+  trigger_labels:
+    - "good first issue"
+    - "enhancement"
+    - "feature"
+  # Skip issues with these labels
+  skip_labels:
+    - "question"
+    - "discussion"
+    - "needs-design"
+  # Issue opener agent ID
+  agent_id: "issue-opener-agent"
+
 # State file path (tracks processing issues)
 state_file: "polling_state.json"
 

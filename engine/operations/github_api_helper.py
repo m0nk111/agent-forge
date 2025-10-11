@@ -534,4 +534,188 @@ class GitHubAPIHelper:
             logger.error(f"Failed to create PR in {owner}/{repo}: {e}")
             raise
 
+    def get_pull_request(self, owner: str, repo: str, pr_number: int) -> Dict:
+        """
+        Get pull request details.
+        
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            pr_number: Pull request number
+            
+        Returns:
+            Dict with PR details
+        """
+        target = f"{owner}/{repo}"
+        
+        if not self.rate_limiter.can_proceed(OperationType.ISSUE_COMMENT):
+            raise RuntimeError(f"Rate limit exceeded for {target}")
+        
+        url = f"{self.BASE_URL}/repos/{owner}/{repo}/pulls/{pr_number}"
+        
+        try:
+            response = self.session.get(url, timeout=30)
+            response.raise_for_status()
+            self._update_rate_limit_from_response(response)
+            
+            pr_data = response.json()
+            logger.info(f"✅ Fetched PR #{pr_number}: {pr_data['title']}")
+            return pr_data
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to fetch PR #{pr_number} from {owner}/{repo}: {e}")
+            raise
+
+    def get_pr_files(self, owner: str, repo: str, pr_number: int) -> List[Dict]:
+        """
+        Get files changed in a pull request.
+        
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            pr_number: Pull request number
+            
+        Returns:
+            List of file change dicts
+        """
+        target = f"{owner}/{repo}"
+        
+        if not self.rate_limiter.can_proceed(OperationType.ISSUE_COMMENT):
+            raise RuntimeError(f"Rate limit exceeded for {target}")
+        
+        url = f"{self.BASE_URL}/repos/{owner}/{repo}/pulls/{pr_number}/files"
+        
+        try:
+            response = self.session.get(url, timeout=30)
+            response.raise_for_status()
+            self._update_rate_limit_from_response(response)
+            
+            files = response.json()
+            logger.info(f"✅ Fetched {len(files)} changed files from PR #{pr_number}")
+            return files
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to fetch PR files from {owner}/{repo}#{pr_number}: {e}")
+            raise
+
+    def get_pr_diff(self, owner: str, repo: str, pr_number: int) -> str:
+        """
+        Get unified diff for a pull request.
+        
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            pr_number: Pull request number
+            
+        Returns:
+            Diff string
+        """
+        target = f"{owner}/{repo}"
+        
+        if not self.rate_limiter.can_proceed(OperationType.ISSUE_COMMENT):
+            raise RuntimeError(f"Rate limit exceeded for {target}")
+        
+        url = f"{self.BASE_URL}/repos/{owner}/{repo}/pulls/{pr_number}"
+        headers = {**self.session.headers, "Accept": "application/vnd.github.v3.diff"}
+        
+        try:
+            response = self.session.get(url, headers=headers, timeout=30)
+            response.raise_for_status()
+            self._update_rate_limit_from_response(response)
+            
+            diff = response.text
+            logger.info(f"✅ Fetched diff for PR #{pr_number} ({len(diff)} bytes)")
+            return diff
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to fetch PR diff from {owner}/{repo}#{pr_number}: {e}")
+            raise
+
+    def add_pr_comment(self, owner: str, repo: str, pr_number: int, body: str) -> Dict:
+        """
+        Add a general comment to a pull request.
+        
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            pr_number: Pull request number
+            body: Comment text
+            
+        Returns:
+            Dict with comment details
+        """
+        target = f"{owner}/{repo}"
+        
+        if not self.rate_limiter.can_proceed(OperationType.ISSUE_COMMENT):
+            raise RuntimeError(f"Rate limit exceeded for {target}")
+        
+        url = f"{self.BASE_URL}/repos/{owner}/{repo}/issues/{pr_number}/comments"
+        payload = {"body": body}
+        
+        try:
+            response = self.session.post(url, json=payload, timeout=30)
+            response.raise_for_status()
+            self._update_rate_limit_from_response(response)
+            
+            self._record_operation(OperationType.ISSUE_COMMENT, target,
+                                 f"Posted comment on PR #{pr_number}", success=True)
+            
+            comment_data = response.json()
+            logger.info(f"✅ Posted comment on PR #{pr_number}")
+            return comment_data
+            
+        except requests.exceptions.RequestException as e:
+            self._record_operation(OperationType.ISSUE_COMMENT, target,
+                                 f"Failed to post comment on PR #{pr_number}", success=False)
+            logger.error(f"Failed to post PR comment to {owner}/{repo}#{pr_number}: {e}")
+            raise
+
+    def submit_pr_review(self, owner: str, repo: str, pr_number: int, 
+                        event: str, body: str, commit_id: Optional[str] = None) -> Dict:
+        """
+        Submit a pull request review.
+        
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            pr_number: Pull request number
+            event: Review event (APPROVE, REQUEST_CHANGES, COMMENT)
+            body: Review body text
+            commit_id: Optional specific commit SHA to review
+            
+        Returns:
+            Dict with review details
+        """
+        target = f"{owner}/{repo}"
+        
+        if not self.rate_limiter.can_proceed(OperationType.ISSUE_COMMENT):
+            raise RuntimeError(f"Rate limit exceeded for {target}")
+        
+        url = f"{self.BASE_URL}/repos/{owner}/{repo}/pulls/{pr_number}/reviews"
+        payload = {
+            "body": body,
+            "event": event
+        }
+        
+        if commit_id:
+            payload["commit_id"] = commit_id
+        
+        try:
+            response = self.session.post(url, json=payload, timeout=30)
+            response.raise_for_status()
+            self._update_rate_limit_from_response(response)
+            
+            self._record_operation(OperationType.ISSUE_COMMENT, target,
+                                 f"Submitted {event} review on PR #{pr_number}", success=True)
+            
+            review_data = response.json()
+            logger.info(f"✅ Submitted {event} review on PR #{pr_number}")
+            return review_data
+            
+        except requests.exceptions.RequestException as e:
+            self._record_operation(OperationType.ISSUE_COMMENT, target,
+                                 f"Failed to submit review on PR #{pr_number}", success=False)
+            logger.error(f"Failed to submit PR review to {owner}/{repo}#{pr_number}: {e}")
+            raise
+
 

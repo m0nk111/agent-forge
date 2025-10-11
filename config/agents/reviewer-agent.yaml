@@ -1,17 +1,17 @@
 # Reviewer Agent Configuration
 # Role: Code review and quality assurance
-# Recommended Model: GPT-4 (needs thorough analysis)
+# Recommended Model: GPT-5 Pro (best reasoning for thorough analysis)
 
 agent_id: "reviewer-agent"
 name: "Code Reviewer Agent"
 role: "reviewer"
 
-# Model configuration - GPT-4 for thorough reviews
+# Model configuration - GPT-5 Pro for deep code analysis
 model_provider: "openai"
-model_name: "gpt-4"
+model_name: "gpt-5-pro"  # Best reasoning model for code review
 api_key_name: "OPENAI_API_KEY"
-temperature: 0.5  # Lower temp for consistent reviews
-max_tokens: 4096
+temperature: 0.3  # Lower temp for consistent, deterministic reviews
+max_tokens: 8192  # Larger context for reviewing big PRs
 
 # Capabilities
 capabilities:
