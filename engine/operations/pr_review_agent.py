@@ -64,8 +64,8 @@ class PRReviewAgent:
     
     def _load_github_token(self) -> str:
         """Load GitHub token from secrets."""
-        # Use dedicated reviewer bot account to avoid spam to admin email
-        token_path = self.project_root / 'secrets' / 'agents' / 'm0nk111-reviewer.token'
+        # Use m0nk111-post bot account (reviewer had rate limit issues)
+        token_path = self.project_root / 'secrets' / 'agents' / 'm0nk111-post.token'
         
         if not token_path.exists():
             raise FileNotFoundError(f"GitHub token not found: {token_path}")
@@ -524,7 +524,7 @@ Be concise. Only report real issues, not nitpicks."""
         lines.extend([
             "",
             "---",
-            f"*Automated review by Agent-Forge PR Review Bot (m0nk111-reviewer)*"
+            f"*Automated review by Agent-Forge PR Review Bot (m0nk111-post)*"
         ])
         
         return '\n'.join(lines)
