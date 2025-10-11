@@ -35,29 +35,61 @@ max_concurrent_issues: 3
 claim_timeout_minutes: 1440
 
 # PR Monitoring & Auto-Review (NEW)
-# Monitor pull requests and trigger reviewer agent
+# Monitor pull requests and trigger reviewer agent with intelligent merge
 pr_monitoring:
   enabled: true
   # Check for new PRs every N seconds (default: 600 = 10 minutes)
   interval_seconds: 600
+  
   # Auto-review PRs from these users (whitelist)
   auto_review_users:
     - "m0nk111-post"       # Bot agent PRs
     - "m0nk111-coder1"     # Primary GPT-5 coder
     - "m0nk111-coder2"     # Primary GPT-4o coder
     - "m0nk111-qwen-agent" # Reserve/fallback Qwen coder
+  
   # Skip auto-review for PRs from these trusted users
   skip_review_users:
     - "m0nk111"  # Admin account (trusted)
+  
   # Only auto-review PRs with these labels (empty = all PRs)
   review_labels: []
+  
+  # Review configuration
+  review_config:
+    # Use LLM for deep code analysis (true = Ollama, false = static checks only)
+    use_llm: true
+    # LLM model for code review (requires Ollama)
+    llm_model: "qwen2.5-coder:7b"
+    # Bot account for posting reviews (use 'admin' for visibility)
+    bot_account: "admin"
+    # Enable full workflow (assign reviewers, add labels, assign PR)
+    full_workflow: true
+    # Post review comments to GitHub
+    post_comments: true
+  
+  # Automated merge configuration
+  merge_config:
+    # Enable automated merging based on review results
+    enabled: true
+    # Auto-merge PRs with NO issues (0 critical, 0 warnings, 0 suggestions)
+    auto_merge_if_approved: true
+    # Merge PRs with suggestions/warnings (requires manual consideration)
+    merge_with_suggestions: false
+    # Default merge method: merge, squash, or rebase
+    merge_method: "squash"
+    # Merge timeout: wait N seconds after review before merging (safety delay)
+    merge_delay_seconds: 30
+  
   # Reviewer selection strategy:
   # - "dedicated": Use dedicated reviewer_agent_id (single reviewer)
   # - "round-robin": Rotate between available code agents (avoid self-review)
   # - "all": All code agents review (except author)
   strategy: "round-robin"
+  
   # Reviewer agent ID (used when strategy="dedicated")
   reviewer_agent_id: "reviewer-agent"
+  
   # Available reviewer agents (used for round-robin/all strategies)
   # Each code agent can review, but won't review their own PRs
   # Priority order: reviewer > coder1 > coder2 > qwen (reserve)

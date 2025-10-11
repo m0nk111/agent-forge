@@ -117,6 +117,20 @@ class PollingConfig:
     reviewer_agent_id: str = "reviewer-agent"
     reviewer_agents: List[Dict[str, str]] = field(default_factory=list)  # [{"agent_id": "...", "username": "...", "llm_model": "..."}]
     
+    # PR Review Configuration (NEW)
+    pr_use_llm: bool = True
+    pr_llm_model: str = "qwen2.5-coder:7b"
+    pr_bot_account: str = "admin"
+    pr_full_workflow: bool = True
+    pr_post_comments: bool = True
+    
+    # PR Merge Configuration (NEW)
+    pr_merge_enabled: bool = True
+    pr_auto_merge_if_approved: bool = True
+    pr_merge_with_suggestions: bool = False
+    pr_merge_method: str = "squash"  # merge, squash, rebase
+    pr_merge_delay_seconds: int = 30
+    
     # Issue Opener Integration (NEW)
     issue_opener_enabled: bool = False
     issue_opener_trigger_labels: List[str] = field(default_factory=list)
@@ -284,6 +298,22 @@ class PollingService:
             strategy = pr_mon.get('strategy')
             if isinstance(strategy, str) and strategy.strip():
                 cfg.pr_review_strategy = strategy.strip()
+            
+            # PR Review Configuration (NEW)
+            review_config = pr_mon.get('review_config', {}) or {}
+            cfg.pr_use_llm = bool(review_config.get('use_llm', True))
+            cfg.pr_llm_model = str(review_config.get('llm_model', 'qwen2.5-coder:7b'))
+            cfg.pr_bot_account = str(review_config.get('bot_account', 'admin'))
+            cfg.pr_full_workflow = bool(review_config.get('full_workflow', True))
+            cfg.pr_post_comments = bool(review_config.get('post_comments', True))
+            
+            # PR Merge Configuration (NEW)
+            merge_config = pr_mon.get('merge_config', {}) or {}
+            cfg.pr_merge_enabled = bool(merge_config.get('enabled', True))
+            cfg.pr_auto_merge_if_approved = bool(merge_config.get('auto_merge_if_approved', True))
+            cfg.pr_merge_with_suggestions = bool(merge_config.get('merge_with_suggestions', False))
+            cfg.pr_merge_method = str(merge_config.get('merge_method', 'squash'))
+            cfg.pr_merge_delay_seconds = int(merge_config.get('merge_delay_seconds', 30))
             
             reviewer_id = pr_mon.get('reviewer_agent_id')
             if isinstance(reviewer_id, str) and reviewer_id.strip():
@@ -838,12 +868,16 @@ class PollingService:
                 logger.error(f"❌ Error checking issues for {repo}: {e}", exc_info=True)
     
     async def trigger_pr_review(self, repo: str, pr_number: int, pr_data: Dict):
-        """Trigger PR Reviewer Agent for a pull request.
+        """Trigger PR Reviewer Agent for a pull request with intelligent merge.
         
-        Uses intelligent reviewer selection:
+        Uses intelligent reviewer selection and automated merge based on config:
         - dedicated: Always use configured reviewer_agent_id
         - round-robin: Rotate between available code agents (skip PR author)
         - all: All code agents review (except PR author)
+        
+        After review, optionally merges PR based on merge_config settings:
+        - auto_merge_if_approved: Merge if 0 issues found
+        - merge_with_suggestions: Merge if only suggestions/warnings (no critical)
         
         Args:
             repo: Repository (owner/repo)
@@ -851,42 +885,64 @@ class PollingService:
             pr_data: PR data dictionary from GitHub API
         """
         try:
+            from engine.operations.pr_review_agent import PRReviewAgent
+            
             pr_key = f"{repo}#{pr_number}"
             pr_author = pr_data.get('user', {}).get('login', '')
             
-            # Get reviewer agent(s) based on strategy
-            if not self.agent_registry:
-                logger.warning(f"⚠️ Agent registry not available, cannot trigger review for {pr_key}")
-                return
+            logger.info(f"🤖 Starting automated PR review for {pr_key} (author: {pr_author})")
             
-            reviewers = self._select_reviewers(pr_author)
-            if not reviewers:
-                logger.warning(f"⚠️ No suitable reviewers found for {pr_key} (author: {pr_author})")
-                return
+            # Initialize PR review agent with config
+            review_agent = PRReviewAgent(
+                use_llm=self.config.pr_use_llm,
+                llm_model=self.config.pr_llm_model,
+                bot_account=self.config.pr_bot_account
+            )
             
-            # Trigger review(s)
-            for reviewer_info in reviewers:
-                reviewer_id = reviewer_info['agent_id']
-                llm_model = reviewer_info.get('llm_model', 'unknown')
+            # Perform complete review + merge workflow
+            if self.config.pr_merge_enabled:
+                logger.info(f"🔀 Running complete review + merge workflow for {pr_key}")
                 
-                reviewer_agent = self.agent_registry.get_agent(reviewer_id)
-                if not reviewer_agent:
-                    logger.warning(f"⚠️ Reviewer agent '{reviewer_id}' not found in registry")
-                    continue
+                # Add delay before merge (safety)
+                merge_delay = self.config.pr_merge_delay_seconds
                 
-                logger.info(f"🤖 Starting PR review with agent {reviewer_id} (model: {llm_model}, strategy: {self.config.pr_review_strategy})")
-                
-                # Call reviewer agent (assumes it has a review_pr method)
-                # Pass LLM model info for transparency in review comments
-                result = await reviewer_agent.review_pr(
+                result = review_agent.complete_pr_review_and_merge_workflow(
                     repo=repo,
                     pr_number=pr_number,
-                    pr_data=pr_data,
-                    llm_model=llm_model,  # Pass model info for review footer
-                    agent_id=reviewer_id  # Pass agent ID for attribution
+                    post_comment=self.config.pr_post_comments,
+                    auto_merge_if_approved=self.config.pr_auto_merge_if_approved,
+                    merge_with_suggestions=self.config.pr_merge_with_suggestions,
+                    merge_method=self.config.pr_merge_method
                 )
                 
-                logger.info(f"✅ PR review completed by {reviewer_id} (model: {llm_model}) for {pr_key}: {result.get('decision', 'UNKNOWN')}")
+                # Log merge decision
+                merge_decision = result.get('merge_decision', {})
+                recommendation = merge_decision.get('recommendation', 'UNKNOWN')
+                merged = result.get('merged', False)
+                
+                logger.info(f"📊 Merge decision for {pr_key}: {recommendation}")
+                if merged:
+                    logger.info(f"✅ Successfully merged {pr_key} using {self.config.pr_merge_method}")
+                else:
+                    reasoning = merge_decision.get('reasoning', 'No reasoning provided')
+                    logger.info(f"⏸️ PR {pr_key} not merged: {reasoning}")
+                
+            else:
+                # Review only, no merge
+                logger.info(f"🔍 Running review-only workflow for {pr_key} (merge disabled)")
+                
+                result = review_agent.complete_pr_review_workflow(
+                    repo=repo,
+                    pr_number=pr_number,
+                    post_comment=self.config.pr_post_comments
+                )
+            
+            # Log review results
+            review_result = result.get('review_result', {})
+            decision = review_result.get('decision', 'UNKNOWN')
+            issue_count = len(review_result.get('issues', []))
+            
+            logger.info(f"✅ PR review completed for {pr_key}: {decision} ({issue_count} issues found)")
             
             # Mark as reviewed
             self.reviewed_prs.add(pr_key)
