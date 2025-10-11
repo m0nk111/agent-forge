@@ -8,7 +8,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **🚀 GitHub Actions Workflow for PR Review** (October 11, 2025)
+- **� Intelligent PR Lifecycle Management** (October 11, 2025)
+  - Auto-draft conversion for critical issues and merge conflicts
+  - New helper methods in `PRReviewAgent`:
+    - `convert_to_draft()`: Convert PR to draft via GraphQL API
+    - `add_pr_comment()`: Add explanatory comments (not review comments)
+    - `remove_label()`: Remove labels from PRs
+  - Enhanced `complete_pr_review_and_merge_workflow()`:
+    - Detects critical issues after review
+    - Auto-converts to draft when critical issues found
+    - Adds explanatory comment with fix instructions
+    - Detects merge conflicts before merge attempt
+    - Auto-converts to draft when conflicts detected
+    - Adds conflict resolution instructions with git commands
+    - Mentions PR author for notification
+    - Manages labels: adds 'has-conflicts', removes 'ready-for-merge'
+  - GitHub Actions workflow updates:
+    - Added `ready_for_review` trigger for auto-review of fixed drafts
+    - Skip draft PRs unless ready_for_review event
+  - Configuration updates in `polling.yaml`:
+    - Changed `merge_with_suggestions` to `true` (faster iteration)
+    - Added `lifecycle_management` section for advanced features
+  - **Decision Matrix**:
+    - 1+ critical → Convert to draft + block merge
+    - Has conflicts → Convert to draft + resolution guide
+    - 0 issues → Auto-merge immediately
+    - 1-5 suggestions → Merge with config setting
+    - 3+ warnings → Manual review required
+  - **Impact**: Prevents accidental merge of broken PRs, provides clear guidance for fixes, automatic re-review when draft marked ready
+
+- **�🚀 GitHub Actions Workflow for PR Review** (October 11, 2025)
   - Created `.github/workflows/pr-review.yml` for event-driven PR reviews
   - Auto-triggers on PRs from bot accounts (m0nk111-post, coder1, coder2, qwen-agent)
   - Manual trigger via workflow_dispatch for any PR with custom merge strategy
