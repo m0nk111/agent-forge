@@ -35,6 +35,87 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Status**: ✅ Report completed and committed
 
 ### Fixed
+- **Bug #12: No configuration validation** (FIXED)
+  - **Problem**: Invalid configuration values (ports, intervals) cause runtime errors instead of failing at startup
+  - **Root cause**: No validation in ServiceConfig.__post_init__() or ConfigManager
+  - **Impact**: Confusing error messages when service fails to start with invalid config
+  - **Examples of unvalidated inputs**:
+    * Port out of range (e.g., port 70000)
+    * Negative intervals (e.g., polling_interval=-10)
+    * Port conflicts (monitoring and web UI using same port)
+    * Invalid URLs (missing http:// prefix)
+    * Empty repository lists when polling enabled
+  - **Fix**: Added comprehensive `_validate()` method to ServiceConfig:
+    ```python
+    def _validate(self):
+        # Validate ports (1024-65535)
+        # Check port conflicts
+        # Validate positive intervals
+        # Validate URL format
+        # Validate repository list
+    ```
+  - **Benefits**:
+    * Fail fast on startup with clear error messages
+    * Port range validation (1024-65535)
+    * Port conflict detection
+    * Positive interval validation
+    * URL format validation
+    * Warning for empty repo lists
+  - **File**: `engine/core/service_manager.py` lines 75-112
+  - **Status**: FIXED - Configuration now validated at startup
+
+- **Bug #11: Inconsistent default ports between ServiceConfig and CLI** (FIXED)
+  - **Problem**: ServiceConfig class defaults don't match command-line argument defaults
+  - **Root cause**: Hardcoded defaults in two different places with different values
+  - **Impact**: Confusing behavior - different ports used depending on how service is started
+  - **Details**:
+    * ServiceConfig defaults: `monitoring_port=7997`, `web_ui_port=8897`
+    * CLI argument defaults: `--monitor-port=8765`, `--web-port=8080`
+    * Result: Without CLI args → 7997/8897, with args → 8765/8080
+  - **Fix**: Updated CLI argument defaults to match ServiceConfig:
+    ```python
+    parser.add_argument("--web-port", type=int, default=8897, help="...")
+    parser.add_argument("--monitor-port", type=int, default=7997, help="...")
+    ```
+  - **Benefits**:
+    * Consistent port usage regardless of startup method
+    * Matches documented port assignments (7997 for monitoring, 8897 for web UI)
+    * Reduces confusion for users and developers
+  - **File**: `engine/core/service_manager.py` lines 595-596
+  - **Status**: FIXED - CLI defaults now match ServiceConfig defaults
+
+- **Bug #10: Race condition in state file without file locking** (FIXED - CRITICAL)
+  - **Problem**: Multiple polling services can corrupt state file due to concurrent read/write
+  - **Root cause**: StateManager.save() and load() have no file locking mechanism
+  - **Impact**: Lost updates, state corruption, duplicate issue processing
+  - **Discovery**: During testing, observed multiple polling services running simultaneously (PIDs: 228353, 229990, 230500, 231300, 231917)
+  - **Race condition scenario**:
+    1. Service A reads state file
+    2. Service B reads state file (same data)
+    3. Service A writes changes
+    4. Service B writes changes (overwrites A's changes) ← Data loss!
+  - **Fix**: Implemented file locking with fcntl and atomic writes:
+    * `load()`: Uses shared lock (LOCK_SH) for concurrent reads
+    * `save()`: Uses exclusive lock (LOCK_EX) for writes
+    * Atomic write pattern: write to temp file → flush → rename
+    * Prevents corruption if process crashes during write
+  - **Implementation**:
+    ```python
+    # In load(): Shared lock for reading
+    fcntl.flock(f.fileno(), fcntl.LOCK_SH)
+    
+    # In save(): Exclusive lock + atomic write
+    fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+    temp_file.replace(self.state_file)  # Atomic rename
+    ```
+  - **Benefits**:
+    * Prevents concurrent write corruption
+    * Allows multiple readers (shared lock)
+    * Atomic writes prevent partial corruption on crash
+    * Proper cleanup of temp files on error
+  - **File**: `engine/runners/state_manager.py` lines 1-118
+  - **Status**: FIXED - File locking prevents race conditions
+
 - **Bug #9: No developer agents available in registry** (FIXED)
   - **Problem**: Pipeline workflow fails silently after 39 seconds with `completed: False` and no error message
   - **Root cause**: Startup script (`scripts/run-test-mode.sh`) only started polling service, never initialized agent registry

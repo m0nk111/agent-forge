@@ -71,9 +71,47 @@ class ServiceConfig:
     watchdog_enabled: bool = True
     
     def __post_init__(self):
-        """Initialize default values."""
+        """Initialize default values and validate configuration."""
         if self.polling_repos is None:
             self.polling_repos = ["m0nk111/agent-forge", "m0nk111/stepperheightcontrol"]
+        
+        # Validate configuration
+        self._validate()
+    
+    def _validate(self):
+        """Validate configuration values.
+        
+        Raises:
+            ValueError: If configuration is invalid
+        """
+        # Validate ports (must be in valid range)
+        if not (1024 <= self.monitoring_port <= 65535):
+            raise ValueError(f"Invalid monitoring_port: {self.monitoring_port} (must be 1024-65535)")
+        
+        if not (1024 <= self.web_ui_port <= 65535):
+            raise ValueError(f"Invalid web_ui_port: {self.web_ui_port} (must be 1024-65535)")
+        
+        # Check for port conflicts
+        if self.monitoring_port == self.web_ui_port:
+            raise ValueError(f"Port conflict: monitoring_port and web_ui_port cannot be the same ({self.monitoring_port})")
+        
+        # Validate intervals (must be positive)
+        if self.polling_interval <= 0:
+            raise ValueError(f"Invalid polling_interval: {self.polling_interval} (must be > 0)")
+        
+        if self.health_check_interval <= 0:
+            raise ValueError(f"Invalid health_check_interval: {self.health_check_interval} (must be > 0)")
+        
+        # Validate model URL
+        if not self.qwen_base_url.startswith(('http://', 'https://')):
+            raise ValueError(f"Invalid qwen_base_url: {self.qwen_base_url} (must start with http:// or https://)")
+        
+        # Validate repos list
+        if not isinstance(self.polling_repos, list):
+            raise ValueError(f"Invalid polling_repos: must be a list, got {type(self.polling_repos)}")
+        
+        if self.enable_polling and len(self.polling_repos) == 0:
+            logger.warning("⚠️ Polling enabled but no repositories configured")
 
 
 class ServiceManager:
@@ -554,8 +592,8 @@ async def main():
     parser.add_argument("--no-agent-runtime", action="store_true", help="Disable agent runtime")
     parser.add_argument("--no-qwen", action="store_true", help="Disable agent runtime (deprecated, use --no-agent-runtime)")
     parser.add_argument("--polling-interval", type=int, default=300, help="Polling interval (seconds)")
-    parser.add_argument("--web-port", type=int, default=8080, help="Web UI port")
-    parser.add_argument("--monitor-port", type=int, default=8765, help="Monitoring WebSocket port")
+    parser.add_argument("--web-port", type=int, default=8897, help="Web UI port (default: 8897)")
+    parser.add_argument("--monitor-port", type=int, default=7997, help="Monitoring WebSocket port (default: 7997)")
     
     args = parser.parse_args()
     
