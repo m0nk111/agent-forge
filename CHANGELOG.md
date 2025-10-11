@@ -8,14 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **GPT-5 Pro Support**: Implemented /v1/responses endpoint support (Issue #gpt5-pro)
+  - New `_responses_completion()` method in OpenAIProvider
+  - Automatic endpoint selection based on model name
+  - Response parsing for GPT-5 Pro's list-based JSON format
+  - Token usage tracking with new format (input_tokens/output_tokens)
+  - Models: gpt-5-pro, gpt-5-pro-2025-10-06, gpt-5-codex
+  - **Status**: ✅ Works but ⚠️ very slow (40-70s vs 2s for Chat Latest)
+  - **Decision Pending**: Performance evaluation before making default
 - **GPT-5 Pro Discovery**: Test scripts to check GPT-5 Pro availability (Issue #discovery)
   - `scripts/get_openai_org.py` - Get OpenAI account and model access info
   - `scripts/check_gpt5_pro.py` - Check GPT-5 Pro availability with org ID support
   - `scripts/test_gpt5_pro_responses.py` - Test GPT-5 Pro with /v1/responses endpoint
   - `scripts/quick_test_gpt5_pro.py` - Quick GPT-5 Pro connectivity test
+  - `scripts/test_gpt5_pro_working.py` - Comprehensive GPT-5 Pro test suite
   - **Discovery**: GPT-5 Pro IS available (created 2025-10-03)!
   - **Note**: Requires new /v1/responses endpoint (not /v1/chat/completions)
-  - **Next**: Implement /v1/responses endpoint support for GPT-5 Pro access
 
 ### Changed - BREAKING
 - **Default Coordinator: GPT-5 Chat Latest** ⭐ **MAJOR UPGRADE**
