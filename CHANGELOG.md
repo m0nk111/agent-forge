@@ -28,6 +28,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Comprehensive E2E Testing Report** (docs/TEST_REPORT_2025-10-11.md)
   - Complete autonomous testing session documentation
+
+### Removed
+
+- **Bug #4: Phantom GitHub accounts cleanup** (FIXED - 2025-10-11)
+  - **Problem**: Token files exist for GitHub accounts that don't exist
+  - **Phantom accounts identified**:
+    * m0nk111-coder1 (404 Not Found)
+    * m0nk111-coder2 (404 Not Found)
+    * m0nk111-reviewer (404 Not Found)
+  - **Root cause**: Token files created before GitHub accounts, accounts never created
+  - **Impact**: 
+    * Token files in secrets/agents/ for non-existent accounts
+    * API calls would fail if these accounts were ever selected
+    * No operational impact (accounts never used due to priority logic)
+    * Confusing documentation references
+  - **Valid accounts verified**:
+    * ✅ m0nk111 (admin, created 2019-02-15)
+    * ✅ m0nk111-post (bot agent, created 2025-10-08)
+    * ✅ m0nk111-qwen-agent (developer agent, created 2025-10-05)
+  - **Fix implemented**:
+    * Removed phantom token files:
+      - secrets/agents/m0nk111-coder1.token (deleted)
+      - secrets/agents/m0nk111-coder2.token (deleted)
+      - secrets/agents/m0nk111-reviewer.token (deleted)
+    * Updated ARCHITECTURE.md to reflect actual agent lineup
+    * Cleaned up agent references in documentation
+  - **Files modified**:
+    * secrets/agents/ (3 token files deleted)
+    * ARCHITECTURE.md (agent list cleaned up)
+    * CHANGELOG.md (this entry)
+  - **Status**: ✅ FIXED - Only valid GitHub accounts remain
   - 8 bugs discovered through systematic layer-by-layer testing
   - Detailed fix implementations with root cause analysis
   - Pipeline validation results from issue detection to code generation

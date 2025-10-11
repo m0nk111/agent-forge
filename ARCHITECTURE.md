@@ -246,10 +246,7 @@ Each agent has individual config:
 
 **Agents** (AI Workers):
 - `m0nk111-post` - Bot agent for orchestration (role: bot)
-- `m0nk111-coder1` - Primary GPT-5 developer agent (role: developer)
-- `m0nk111-coder2` - Primary GPT-4o developer agent (role: developer)
-- `m0nk111-reviewer` - Dedicated PR reviewer (role: reviewer)
-- `m0nk111-qwen-agent` - Reserve Qwen developer agent (role: developer)
+- `m0nk111-qwen-agent` - Primary developer agent (role: developer)
 
 **Key Differences**:
 - **Services** are managed by `service_manager` and register via `self.services` dict
@@ -1041,10 +1038,7 @@ agent-forge/
 ├── config/                  # ⭐ CONFIGURATION (YAML files)
 │   ├── agents/              # Agent configurations
 │   │   ├── m0nk111-post.yaml         # Bot agent
-│   │   ├── m0nk111-coder1.yaml       # GPT-5 coder
-│   │   ├── m0nk111-coder2.yaml       # GPT-4o coder
-│   │   ├── m0nk111-reviewer.yaml     # Dedicated reviewer
-│   │   └── m0nk111-qwen-agent.yaml   # Reserve coder
+│   │   └── m0nk111-qwen-agent.yaml   # Developer agent
 │   │
 │   ├── services/            # Service configurations
 │   │   ├── coordinator.yaml          # Coordinator settings
@@ -1067,10 +1061,8 @@ agent-forge/
 ├── secrets/                 # ⭐ SECRETS (DO NOT COMMIT)
 │   └── agents/              # Agent tokens (600 permissions)
 │       ├── m0nk111-post.token        # Bot orchestrator
-│       ├── m0nk111-coder1.token      # GPT-5 primary coder
-│       ├── m0nk111-coder2.token      # GPT-4o primary coder
-│       ├── m0nk111-reviewer.token    # Dedicated reviewer
-│       └── m0nk111-qwen-agent.token  # Reserve coder
+│       ├── m0nk111-qwen-agent.token  # Developer agent
+│       └── m0nk111.token             # Admin account (emergency only)
 │
 ├── frontend/                # Web dashboards
 │   ├── dashboard.html              # ⭐ DEFAULT DASHBOARD
