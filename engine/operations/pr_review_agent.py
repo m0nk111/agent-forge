@@ -112,6 +112,8 @@ class PRReviewAgent:
             Dictionary with review results and summary
         """
         logger.info(f"🔍 Starting automated review for {repo}#{pr_number}")
+        logger.info("📊 Review Type: Static Code Analysis (No LLM)")
+        logger.info("🔍 Checks: File size, print statements, TODOs, exceptions, docstrings, tests")
         
         review_result = {
             'pr': f"{repo}#{pr_number}",
@@ -416,6 +418,13 @@ def main():
     
     try:
         reviewer = PRReviewAgent()
+        
+        # Print review type info
+        print("📊 PR Review Agent - Static Code Analysis")
+        print("🔧 Review Method: Rule-based checks (No LLM)")
+        print("✓ Fast • ✓ Deterministic • ✓ Zero cost")
+        print()
+        
         result = reviewer.review_pr(args.repo, args.pr_number)
         
         print(f"\n{'='*60}")
