@@ -688,6 +688,67 @@ Be concise. Only report real issues, not nitpicks."""
             logger.error(f"❌ Error converting to draft: {e}")
             return False
     
+    def mark_ready_for_review(self, repo: str, pr_number: int, reason: str = "issues resolved") -> bool:
+        """Mark draft PR as ready for review.
+        
+        Args:
+            repo: Repository in owner/name format
+            pr_number: Pull request number
+            reason: Reason for marking ready (for logging)
+        
+        Returns:
+            True if marked ready successfully
+        """
+        try:
+            owner, repo_name = repo.split('/')
+            
+            # GraphQL is required for marking ready
+            # First get the PR node_id
+            pr_url = f"https://api.github.com/repos/{owner}/{repo_name}/pulls/{pr_number}"
+            pr_status, pr_data = self._github_request('GET', pr_url)
+            
+            if pr_status != 200 or not pr_data:
+                logger.error(f"❌ Could not fetch PR #{pr_number} for ready conversion")
+                return False
+            
+            # Check if already ready
+            if not pr_data.get('draft', False):
+                logger.info(f"ℹ️ PR #{pr_number} is already ready for review")
+                return True
+            
+            node_id = pr_data.get('node_id')
+            if not node_id:
+                logger.error(f"❌ PR #{pr_number} missing node_id")
+                return False
+            
+            # Mark ready via GraphQL
+            graphql_url = "https://api.github.com/graphql"
+            query = """
+            mutation($pullRequestId: ID!) {
+              markPullRequestReadyForReview(input: {pullRequestId: $pullRequestId}) {
+                pullRequest {
+                  isDraft
+                }
+              }
+            }
+            """
+            variables = {"pullRequestId": node_id}
+            graphql_data = {"query": query, "variables": variables}
+            
+            status, response = self._github_request('POST', graphql_url, json_data=graphql_data)
+            
+            if status == 200 and response and not response.get('errors'):
+                logger.info(f"✅ Marked PR #{pr_number} ready for review ({reason})")
+                return True
+            else:
+                errors = response.get('errors', []) if response else []
+                logger.warning(f"⚠️ Could not mark ready (status {status}): {errors}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"❌ Error marking ready for review: {e}")
+            return False
+    
     def add_pr_comment(self, repo: str, pr_number: int, comment: str) -> bool:
         """Add a simple comment to a PR (not a review comment).
         

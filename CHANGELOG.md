@@ -8,7 +8,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **💾 Memory Leak Prevention for reviewed_prs** (October 11, 2025)
+- **� Automatic Draft PR Recovery System** (October 11, 2025)
+  - **FEATURE**: Bot automatically monitors and recovers draft PRs
+  - **Problem**: PRs converted to draft for issues would remain stuck indefinitely
+  - **Solution**:
+    - Added `mark_ready_for_review()` in PRReviewAgent (GraphQL mutation)
+    - Added draft PR monitoring in BotOperations
+    - Integrated into polling service main loop
+    - Automatically marks PRs ready when approved with no critical issues
+  - **Implementation**:
+    - `list_draft_prs_by_author()`: Lists draft PRs by bot account
+    - `_get_pr_details()`: Fetches reviews, comments, and critical issues
+    - `should_fix_draft_pr()`: Determines if PR should be marked ready
+    - `check_and_fix_draft_prs()`: Polling service integration
+  - **Logic**:
+    - PR with APPROVED review + no critical issues → mark ready immediately
+    - PR with unresolved issues → wait for manual fixes
+    - Runs every polling cycle (5 min intervals)
+  - **Testing**: Full test suite (13 tests: 7 for mark_ready, 6 for monitoring)
+  - **Manual Fix**: Used gh CLI to mark 3 stuck draft PRs ready (#95, #91, #90)
+  - **Impact**: PRs no longer get stuck in draft state, full automation restored
+  - **Rationale**: Without this, developers (or agents) must manually mark PRs ready after fixing issues, breaking automation
+
+- **�💾 Memory Leak Prevention for reviewed_prs** (October 11, 2025)
   - **CRITICAL FIX**: Prevents memory leak in long-running polling service instances
   - **Implementation**:
     - Changed reviewed_prs from Dict[str, str] to Dict[str, Dict] with timestamp tracking

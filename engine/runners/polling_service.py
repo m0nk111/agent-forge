@@ -991,6 +991,61 @@ class PollingService:
         except Exception as e:
             logger.error(f"❌ Failed to trigger PR review for {repo}#{pr_number}: {e}", exc_info=True)
     
+    async def check_and_fix_draft_prs(self):
+        """Check draft PRs created by bot and mark ready if approved."""
+        try:
+            from engine.operations.bot_operations import BotOperations
+            from engine.operations.pr_review_agent import PRReviewAgent
+            
+            # Initialize bot operations
+            bot = BotOperations()
+            
+            # Initialize PR review agent to access mark_ready_for_review
+            pr_agent = PRReviewAgent(
+                github_token=self.config.github_token,
+                bot_account=self.config.pr_bot_account
+            )
+            
+            # Check each monitored repo
+            for repo in self.config.repositories:
+                logger.info(f"🔍 Checking draft PRs in {repo}...")
+                
+                # List draft PRs by bot account
+                draft_prs = bot.list_draft_prs_by_author(repo)
+                
+                if not draft_prs:
+                    logger.debug(f"   No draft PRs found in {repo}")
+                    continue
+                
+                logger.info(f"   Found {len(draft_prs)} draft PR(s)")
+                
+                for pr in draft_prs:
+                    pr_number = pr.get('number')
+                    if not pr_number:
+                        logger.warning(f"⚠️ PR missing number: {pr}")
+                        continue
+                    
+                    # Check if should mark ready
+                    if bot.should_fix_draft_pr(pr):
+                        logger.info(f"✅ PR #{pr_number} is approved with no issues - marking ready")
+                        
+                        # Mark ready for review
+                        success = pr_agent.mark_ready_for_review(
+                            repo=repo,
+                            pr_number=pr_number,
+                            reason="approved with no critical issues"
+                        )
+                        
+                        if success:
+                            logger.info(f"✅ Marked PR #{pr_number} ready for review")
+                        else:
+                            logger.warning(f"⚠️ Failed to mark PR #{pr_number} ready")
+                    else:
+                        logger.info(f"⏭️ PR #{pr_number} not ready yet (review: {pr.get('latest_review_state')}, issues: {len(pr.get('critical_issues', []))})")
+        
+        except Exception as e:
+            logger.error(f"❌ Error checking draft PRs: {e}", exc_info=True)
+    
     async def trigger_issue_opener(self, repo: str, issue_number: int, issue_data: Dict):
         """Trigger Issue Opener Agent for an issue.
         
@@ -1248,6 +1303,10 @@ class PollingService:
             if self.config.issue_opener_enabled:
                 logger.info("🔍 Checking for issues to auto-open...")
                 await self.check_new_issues_for_opener()
+            
+            # Check and fix draft PRs (if enabled)
+            if self.config.pr_monitoring_enabled:
+                await self.check_and_fix_draft_prs()
             
         except Exception as e:
             logger.error(f"Error in polling cycle: {e}")

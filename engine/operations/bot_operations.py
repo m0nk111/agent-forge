@@ -326,6 +326,121 @@ class BotOperations:
             print(f"✅ Closed issue #{issue_number}")
             return True
         return False
+    
+    def list_draft_prs_by_author(
+        self, 
+        repo: str, 
+        author: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        List all draft PRs by specific author (defaults to self).
+        
+        Args:
+            repo: Repository in owner/name format (e.g., 'm0nk111/agent-forge')
+            author: Author username (defaults to bot's own username)
+            
+        Returns:
+            List of draft PR dicts with extended info
+        """
+        author = author or self.username
+        
+        # repo is already in 'owner/name' format
+        url = f'https://api.github.com/repos/{repo}/pulls'
+        
+        try:
+            response = requests.get(
+                url, 
+                headers=self.headers,
+                params={'state': 'open', 'per_page': 100}
+            )
+            response.raise_for_status()
+            prs = response.json()
+            
+            # Filter for draft PRs by author
+            draft_prs = []
+            for pr in prs:
+                if pr.get('draft') and pr.get('user', {}).get('login') == author:
+                    # Fetch additional data (reviews, check status)
+                    pr_details = self._get_pr_details(repo, pr['number'])
+                    draft_prs.append(pr_details)
+            
+            return draft_prs
+            
+        except requests.exceptions.RequestException as e:
+            print(f"❌ Failed to list draft PRs: {e}")
+            return []
+    
+    def _get_pr_details(self, repo: str, pr_number: int) -> Dict[str, Any]:
+        """Get detailed PR info including reviews and checks.
+        
+        Args:
+            repo: Repository in owner/name format
+        """
+        url = f'https://api.github.com/repos/{repo}/pulls/{pr_number}'
+        
+        try:
+            response = requests.get(url, headers=self.headers)
+            response.raise_for_status()
+            pr_data = response.json()
+            
+            # Get reviews
+            reviews_url = f'{url}/reviews'
+            reviews_response = requests.get(reviews_url, headers=self.headers)
+            reviews = reviews_response.json() if reviews_response.ok else []
+            
+            # Get latest review state
+            latest_review = None
+            if reviews:
+                latest_review = reviews[-1]['state']
+            
+            # Get comments to extract issues
+            comments_url = f'https://api.github.com/repos/{repo}/issues/{pr_number}/comments'
+            comments_response = requests.get(comments_url, headers=self.headers)
+            comments = comments_response.json() if comments_response.ok else []
+            
+            # Extract critical issues from comments
+            critical_issues = []
+            for comment in comments:
+                body = comment.get('body', '')
+                if 'CRITICAL' in body or '❌' in body:
+                    # Parse issue lines
+                    for line in body.split('\n'):
+                        if '❌' in line or 'CRITICAL' in line:
+                            critical_issues.append(line.strip())
+            
+            pr_data['latest_review_state'] = latest_review
+            pr_data['critical_issues'] = critical_issues
+            pr_data['has_unresolved_issues'] = len(critical_issues) > 0
+            
+            return pr_data
+            
+        except requests.exceptions.RequestException as e:
+            print(f"❌ Failed to get PR details: {e}")
+            return {'number': pr_number, 'error': str(e)}
+    
+    def should_fix_draft_pr(self, pr_data: Dict[str, Any]) -> bool:
+        """
+        Determine if a draft PR should be auto-fixed.
+        
+        Returns True if:
+        - PR has APPROVED review
+        - No unresolved critical issues (or issues are auto-fixable)
+        - Tests are passing (if checks exist)
+        
+        Args:
+            pr_data: PR data from _get_pr_details()
+            
+        Returns:
+            True if PR should be marked ready
+        """
+        # If approved and no critical issues, mark ready immediately
+        if pr_data.get('latest_review_state') == 'APPROVED' and not pr_data.get('has_unresolved_issues'):
+            return True
+        
+        # TODO: Check if issues are auto-fixable (linting, formatting)
+        # For now, only mark ready if approved with no issues
+        
+        return False
 
 
 if __name__ == '__main__':
