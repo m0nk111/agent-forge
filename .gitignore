@@ -67,3 +67,5 @@ data/
 *.avi
 *.mov
 *.mkv
+*.gif
+!media/*.gif
