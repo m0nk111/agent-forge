@@ -481,10 +481,28 @@ Be concise. Only report real issues, not nitpicks."""
         """Format review results as GitHub comment."""
         lines = [
             "## 🤖 Automated Code Review",
-            "",
-            f"**Status**: {review_result['summary']}",
             ""
         ]
+        
+        # Add review method info
+        if self.use_llm:
+            lines.extend([
+                f"**Review Method**: Hybrid Analysis (Static + LLM)",
+                f"**LLM Model**: `{self.llm_model}`",
+                "**Checks**: File size, print statements, TODOs, exceptions, docstrings, tests + deep code analysis",
+                ""
+            ])
+        else:
+            lines.extend([
+                "**Review Method**: Static Code Analysis",
+                "**Checks**: File size, print statements, TODOs, exceptions, docstrings, tests",
+                ""
+            ])
+        
+        lines.extend([
+            f"**Status**: {review_result['summary']}",
+            ""
+        ])
         
         if review_result['issues']:
             lines.append("### Issues Found")
@@ -506,7 +524,7 @@ Be concise. Only report real issues, not nitpicks."""
         lines.extend([
             "",
             "---",
-            "*Automated review by Agent-Forge*"
+            f"*Automated review by Agent-Forge PR Review Bot (m0nk111-reviewer)*"
         ])
         
         return '\n'.join(lines)
