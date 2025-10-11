@@ -26,6 +26,7 @@ import requests
 from engine.utils.review_lock import ReviewLock
 from engine.operations.pr_review_logic import ReviewLogic
 from engine.operations.pr_github_client import GitHubAPIClient
+from engine.operations.pr_workflow_orchestrator import WorkflowOrchestrator
 
 
 logger = logging.getLogger(__name__)
@@ -87,6 +88,14 @@ class PRReviewAgent:
         self.review_lock = ReviewLock(
             lock_dir=str(self.project_root / "data" / "review_locks"),
             lock_timeout=300  # 5 minutes
+        )
+        
+        # Initialize workflow orchestrator
+        self.workflow_orchestrator = WorkflowOrchestrator(
+            review_agent=self,
+            github_client=self.github_client,
+            review_lock=self.review_lock,
+            bot_account=bot_account
         )
     
     def _load_github_token(self) -> str:
