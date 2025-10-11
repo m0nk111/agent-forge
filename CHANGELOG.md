@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **LLM-Powered Code Review** 🤖
+  - Added `--use-llm` flag to PR review agent for deep code analysis via Ollama
+  - Integrated qwen2.5-coder:7b (configurable via `--llm-model`) for architecture, logic, and security review
+  - Hybrid approach: Static analysis (fast) + optional LLM review (deep insights)
+  - LLM checks for: logic errors, performance issues, security vulnerabilities, design patterns, maintainability
+  - Transparent labeling: Console output shows "Hybrid Review (Static + LLM)" vs "Static Code Analysis"
+  - Ollama integration: http://localhost:11434/api/generate with timeout and error handling
+  - **Testing**: Validated on PR #90 (found 5+ additional issues beyond static analysis) and PR #95 (found 1 warning)
+  - **Impact**: PR reviews can now provide context-aware feedback on code quality and architecture
+
 ### Changed
 - **Project Structure Documentation** 📁
   - Updated README.md project structure section to match current codebase

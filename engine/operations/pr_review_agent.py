@@ -3,11 +3,15 @@ PR Review Agent - Automated code review for pull requests.
 
 This module provides automated code review capabilities for PRs created by bot accounts.
 It performs:
-- Code quality analysis
+- Code quality analysis (static + optional LLM)
 - Test coverage verification
 - Style compliance checks
 - Security scanning
 - Detailed PR comments with actionable feedback
+
+Review Modes:
+- Static Analysis: Fast, deterministic, zero cost
+- LLM-Powered: Deep insights, context-aware, uses Ollama
 """
 
 import json
@@ -25,13 +29,21 @@ logger = logging.getLogger(__name__)
 class PRReviewAgent:
     """Automated code review agent for pull requests."""
     
-    def __init__(self, project_root: Optional[str] = None, github_token: Optional[str] = None):
+    def __init__(
+        self, 
+        project_root: Optional[str] = None, 
+        github_token: Optional[str] = None,
+        use_llm: bool = False,
+        llm_model: str = "qwen2.5-coder:7b"
+    ):
         """
         Initialize PR Review Agent.
         
         Args:
             project_root: Path to project root (auto-detected if not provided)
             github_token: GitHub token for API requests (loads from secrets if not provided)
+            use_llm: Enable LLM-powered code review (default: False)
+            llm_model: Ollama model to use for LLM review (default: qwen2.5-coder:7b)
         """
         if project_root:
             self.project_root = Path(project_root)
@@ -44,6 +56,11 @@ class PRReviewAgent:
             self.github_token = github_token
         else:
             self.github_token = self._load_github_token()
+        
+        # LLM configuration
+        self.use_llm = use_llm
+        self.llm_model = llm_model
+        self.ollama_url = "http://localhost:11434/api/generate"
     
     def _load_github_token(self) -> str:
         """Load GitHub token from secrets."""
@@ -112,8 +129,15 @@ class PRReviewAgent:
             Dictionary with review results and summary
         """
         logger.info(f"🔍 Starting automated review for {repo}#{pr_number}")
-        logger.info("📊 Review Type: Static Code Analysis (No LLM)")
-        logger.info("🔍 Checks: File size, print statements, TODOs, exceptions, docstrings, tests")
+        
+        # Log review type
+        if self.use_llm:
+            logger.info(f"📊 Review Type: Hybrid (Static + LLM using {self.llm_model})")
+            logger.info("🔍 Static Checks: File size, print statements, TODOs, exceptions, docstrings, tests")
+            logger.info("🤖 LLM Checks: Logic, performance, security, design patterns, maintainability")
+        else:
+            logger.info("📊 Review Type: Static Code Analysis (No LLM)")
+            logger.info("🔍 Checks: File size, print statements, TODOs, exceptions, docstrings, tests")
         
         review_result = {
             'pr': f"{repo}#{pr_number}",
@@ -273,6 +297,11 @@ class PRReviewAgent:
                     func_name = func_line.split('def ')[1].split('(')[0]
                     issues.append(f"⚠️ Missing docstring for function '{func_name}' in {filename}")
         
+        # LLM review (if enabled)
+        if self.use_llm:
+            llm_issues = self._llm_review_file(filename, patch)
+            issues.extend(llm_issues)
+        
         return issues
     
     def _run_tests(self, test_files: List[str]) -> Dict:
@@ -329,6 +358,89 @@ class PRReviewAgent:
             result['failed_count'] = 1
         
         return result
+    
+    def _llm_review_file(self, filename: str, patch: str, file_content: Optional[str] = None) -> List[str]:
+        """
+        Perform LLM-powered code review of a file.
+        
+        Args:
+            filename: Name of the file being reviewed
+            patch: Git diff patch
+            file_content: Full file content (optional, for context)
+        
+        Returns:
+            List of LLM-identified issues
+        """
+        if not self.use_llm:
+            return []
+        
+        issues = []
+        
+        try:
+            logger.info(f"🤖 LLM reviewing: {filename} (model: {self.llm_model})")
+            
+            # Prepare prompt
+            prompt = f"""You are an expert code reviewer. Review this code change and provide specific, actionable feedback.
+
+File: {filename}
+
+Changes (git diff):
+```
+{patch[:2000]}  # Limit to prevent huge prompts
+```
+
+Analyze for:
+1. Logic errors or bugs
+2. Performance issues
+3. Security vulnerabilities
+4. Design pattern violations
+5. Code maintainability concerns
+
+Provide feedback in this format:
+- [CRITICAL/WARNING/INFO] Issue description
+
+Be concise. Only report real issues, not nitpicks."""
+
+            # Query Ollama
+            response = requests.post(
+                self.ollama_url,
+                json={
+                    "model": self.llm_model,
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {
+                        "temperature": 0.3,  # Lower temperature for more focused reviews
+                        "num_predict": 500   # Limit response length
+                    }
+                },
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                llm_response = response.json().get('response', '').strip()
+                
+                if llm_response and len(llm_response) > 10:
+                    # Parse LLM response into issues
+                    lines = llm_response.split('\n')
+                    for line in lines:
+                        line = line.strip()
+                        if line.startswith('-') and any(x in line.upper() for x in ['CRITICAL', 'WARNING', 'INFO']):
+                            issues.append(f"🤖 LLM: {line.lstrip('-').strip()}")
+                    
+                    if not issues and llm_response:
+                        # LLM found issues but not in expected format
+                        issues.append(f"🤖 LLM feedback for {filename}: {llm_response[:200]}")
+                    
+                    logger.info(f"   Found {len(issues)} LLM-identified issue(s)")
+            else:
+                logger.warning(f"   LLM API error: status {response.status_code}")
+        
+        except requests.exceptions.Timeout:
+            logger.warning(f"   LLM review timeout for {filename}")
+        except Exception as e:
+            logger.error(f"   LLM review error: {e}")
+        
+        return issues
     
     def post_review_comment(self, repo: str, pr_number: int, review_result: Dict) -> bool:
         """
@@ -413,16 +525,26 @@ def main():
     parser.add_argument('repo', help='Repository (owner/repo)')
     parser.add_argument('pr_number', type=int, help='PR number')
     parser.add_argument('--post-comment', action='store_true', help='Post review as comment')
+    parser.add_argument('--use-llm', action='store_true', help='Enable LLM-powered deep code review')
+    parser.add_argument('--llm-model', default='qwen2.5-coder:7b', help='LLM model to use (default: qwen2.5-coder:7b)')
     
     args = parser.parse_args()
     
     try:
-        reviewer = PRReviewAgent()
+        reviewer = PRReviewAgent(
+            use_llm=args.use_llm,
+            llm_model=args.llm_model
+        )
         
         # Print review type info
-        print("📊 PR Review Agent - Static Code Analysis")
-        print("🔧 Review Method: Rule-based checks (No LLM)")
-        print("✓ Fast • ✓ Deterministic • ✓ Zero cost")
+        if args.use_llm:
+            print("🤖 PR Review Agent - Hybrid Review (Static + LLM)")
+            print(f"🔧 Review Method: Rule-based checks + {args.llm_model}")
+            print("✓ Deep analysis • ✓ Context-aware • ✓ Architecture insights")
+        else:
+            print("📊 PR Review Agent - Static Code Analysis")
+            print("🔧 Review Method: Rule-based checks (No LLM)")
+            print("✓ Fast • ✓ Deterministic • ✓ Zero cost")
         print()
         
         result = reviewer.review_pr(args.repo, args.pr_number)
