@@ -251,7 +251,7 @@ class AgentRegistry:
         config = managed.config
         
         # Create bot instance
-        # Use agent_id as username (e.g., m0nk111-bot)
+        # Use agent_id as username (e.g., m0nk111-post)
         agent = BotAgent(
             agent_id=config.agent_id,
             username=config.agent_id,  # Bot username same as agent_id
