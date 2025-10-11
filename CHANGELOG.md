@@ -8,7 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **🔄 Smart Draft PR Re-Review System** (October 11, 2025)
+- **� Race Condition Prevention for PR Reviews** (October 11, 2025)
+  - **CRITICAL FIX**: Prevents concurrent reviews by multiple processes
+  - **New Module**: `engine/utils/review_lock.py` - File-based locking system
+  - **Features**:
+    - Atomic lock acquisition using O_CREAT|O_EXCL flags
+    - Automatic stale lock cleanup (5-minute timeout)
+    - Lock refresh for long-running operations
+    - Context manager support for safe cleanup
+    - Per-PR locking (independent across repos and PR numbers)
+  - **Integration**: 
+    - `PRReviewAgent` now acquires lock before reviewing
+    - Skips review if lock already held by another process
+    - Always releases lock in finally block (even on errors)
+    - Polling service periodically cleans up stale locks
+  - **Testing**: Full test suite (10 tests) covering all scenarios
+  - **Impact**: Eliminates race condition between polling service and GitHub Actions
+  - **Rationale**: Before this fix, both polling service (every 10 min) and GitHub Actions (event-driven) could review same PR simultaneously, causing duplicate comments, conflicting state, and potential double-merge attempts
+
+- **�🔄 Smart Draft PR Re-Review System** (October 11, 2025)
   - **Intelligent draft PR handling**: System now automatically re-reviews draft PRs when fixes are pushed
   - **GitHub Actions workflow enhancement**:
     - Triggers on `synchronize` events for draft PRs with `critical-issues` or `has-conflicts` labels

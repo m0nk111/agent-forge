@@ -1257,7 +1257,26 @@ class PollingService:
                     current_task=None
                 )
             
+            # Periodic cleanup of stale review locks
+            if hasattr(self, '_cleanup_counter'):
+                self._cleanup_counter += 1
+                if self._cleanup_counter >= 10:  # Every 10 cycles
+                    self._cleanup_stale_locks()
+                    self._cleanup_counter = 0
+            else:
+                self._cleanup_counter = 0
+            
             logger.info("=== Polling cycle complete ===")
+    
+    def _cleanup_stale_locks(self):
+        """Clean up stale review locks."""
+        try:
+            from engine.utils.review_lock import ReviewLock
+            lock_mgr = ReviewLock()
+            lock_mgr.cleanup_stale_locks()
+            logger.debug("🧹 Cleaned up stale review locks")
+        except Exception as e:
+            logger.error(f"❌ Error cleaning up stale locks: {e}")
     
     async def run(self):
         """Run continuous polling loop."""

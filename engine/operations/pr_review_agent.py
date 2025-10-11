@@ -22,6 +22,8 @@ from typing import Dict, List, Optional, Tuple
 
 import requests
 
+from engine.utils.review_lock import ReviewLock
+
 
 logger = logging.getLogger(__name__)
 
@@ -65,16 +67,11 @@ class PRReviewAgent:
         self.llm_model = llm_model
         self.ollama_url = "http://localhost:11434/api/generate"
         
-        # Load GitHub token
-        if github_token:
-            self.github_token = github_token
-        else:
-            self.github_token = self._load_github_token()
-        
-        # LLM configuration
-        self.use_llm = use_llm
-        self.llm_model = llm_model
-        self.ollama_url = "http://localhost:11434/api/generate"
+        # Review lock for preventing concurrent reviews
+        self.review_lock = ReviewLock(
+            lock_dir=str(self.project_root / "data" / "review_locks"),
+            lock_timeout=300  # 5 minutes
+        )
     
     def _load_github_token(self) -> str:
         """Load GitHub token from secrets."""
@@ -1171,42 +1168,54 @@ The PR was merged because it met quality standards, but these improvements shoul
         Returns:
             Dict with workflow results including merge decision and status
         """
-        # Run standard review workflow
-        workflow_result = self.complete_pr_review_workflow(
-            repo=repo,
-            pr_number=pr_number,
-            auto_assign_reviewers=auto_assign_reviewers,
-            auto_label=auto_label,
-            reviewers=reviewers,
-            post_comment=post_comment
-        )
+        # 🔒 Acquire review lock to prevent concurrent reviews
+        requester = f"{self.bot_account}-pr-review"
+        if not self.review_lock.acquire(repo, pr_number, requester):
+            logger.warning(f"⏭️ Skipping review of {repo}#{pr_number} - already being reviewed by another process")
+            return {
+                'skipped': True,
+                'reason': 'Review already in progress (locked by another process)',
+                'review_result': None,
+                'merge_decision': None
+            }
         
-        # Evaluate merge decision
-        review_result = workflow_result['review_result']
-        merge_decision = self.evaluate_merge_decision(review_result)
-        workflow_result['merge_decision'] = merge_decision
-        
-        # Handle critical issues - convert to draft
-        if merge_decision['merge_recommendation'] == 'DO_NOT_MERGE':
-            critical_count = merge_decision.get('critical_count', 0)
-            if critical_count > 0:
-                logger.warning(f"⚠️ Converting PR to draft due to {critical_count} critical issue(s)")
-                
-                # Convert to draft
-                if self.convert_to_draft(repo, pr_number, f"{critical_count} critical issues"):
-                    # Add explanatory comment
-                    comment = f"""🚧 **Converted to Draft**
+        try:
+            # Run standard review workflow
+            workflow_result = self.complete_pr_review_workflow(
+                repo=repo,
+                pr_number=pr_number,
+                auto_assign_reviewers=auto_assign_reviewers,
+                auto_label=auto_label,
+                reviewers=reviewers,
+                post_comment=post_comment
+            )
+            
+            # Evaluate merge decision
+            review_result = workflow_result['review_result']
+            merge_decision = self.evaluate_merge_decision(review_result)
+            workflow_result['merge_decision'] = merge_decision
+            
+            # Handle critical issues - convert to draft
+            if merge_decision['merge_recommendation'] == 'DO_NOT_MERGE':
+                critical_count = merge_decision.get('critical_count', 0)
+                if critical_count > 0:
+                    logger.warning(f"⚠️ Converting PR to draft due to {critical_count} critical issue(s)")
+                    
+                    # Convert to draft
+                    if self.convert_to_draft(repo, pr_number, f"{critical_count} critical issues"):
+                        # Add explanatory comment
+                        comment = f"""🚧 **Converted to Draft**
 
 This PR has been automatically converted to draft status because the automated review found **{critical_count} critical issue(s)** that must be addressed before merging.
 
 **Critical Issues:**
 """
-                    # Extract critical issues from review
-                    for issue in review_result.get('issues', []):
-                        if 'CRITICAL' in issue or '❌' in issue:
-                            comment += f"- {issue}\n"
-                    
-                    comment += """
+                        # Extract critical issues from review
+                        for issue in review_result.get('issues', []):
+                            if 'CRITICAL' in issue or '❌' in issue:
+                                comment += f"- {issue}\n"
+                        
+                        comment += """
 **Next Steps:**
 1. Fix the critical issues listed above
 2. Push your changes to this branch
@@ -1214,35 +1223,35 @@ This PR has been automatically converted to draft status because the automated r
 4. The automated review will run again
 
 Once all critical issues are resolved, this PR can be merged."""
-                    
-                    self.add_pr_comment(repo, pr_number, comment)
-                    workflow_result['converted_to_draft'] = True
-        
-        # Check for merge conflicts and handle them
-        owner, repo_name = repo.split('/')
-        pr_url = f"https://api.github.com/repos/{owner}/{repo_name}/pulls/{pr_number}"
-        pr_status, pr_data = self._github_request('GET', pr_url)
-        
-        if pr_status == 200 and pr_data:
-            mergeable_state = pr_data.get('mergeable_state')
+                        
+                        self.add_pr_comment(repo, pr_number, comment)
+                        workflow_result['converted_to_draft'] = True
             
-            if mergeable_state == 'dirty':  # Has conflicts
-                logger.warning(f"⚠️ PR has merge conflicts - converting to draft and adding instructions")
+            # Check for merge conflicts and handle them
+            owner, repo_name = repo.split('/')
+            pr_url = f"https://api.github.com/repos/{owner}/{repo_name}/pulls/{pr_number}"
+            pr_status, pr_data = self._github_request('GET', pr_url)
+            
+            if pr_status == 200 and pr_data:
+                mergeable_state = pr_data.get('mergeable_state')
                 
-                # Convert to draft
-                if self.convert_to_draft(repo, pr_number, "merge conflicts"):
-                    # Add has-conflicts label
-                    self.add_labels(repo, pr_number, ['has-conflicts'])
+                if mergeable_state == 'dirty':  # Has conflicts
+                    logger.warning(f"⚠️ PR has merge conflicts - converting to draft and adding instructions")
                     
-                    # Remove ready-for-merge label if present
-                    self.remove_label(repo, pr_number, 'ready-for-merge')
-                    
-                    # Add conflict resolution instructions
-                    pr_author = pr_data.get('user', {}).get('login', 'author')
-                    base_branch = pr_data.get('base', {}).get('ref', 'main')
-                    head_branch = pr_data.get('head', {}).get('ref', 'your-branch')
-                    
-                    comment = f"""⚠️ **Merge Conflicts Detected**
+                    # Convert to draft
+                    if self.convert_to_draft(repo, pr_number, "merge conflicts"):
+                        # Add has-conflicts label
+                        self.add_labels(repo, pr_number, ['has-conflicts'])
+                        
+                        # Remove ready-for-merge label if present
+                        self.remove_label(repo, pr_number, 'ready-for-merge')
+                        
+                        # Add conflict resolution instructions
+                        pr_author = pr_data.get('user', {}).get('login', 'author')
+                        base_branch = pr_data.get('base', {}).get('ref', 'main')
+                        head_branch = pr_data.get('head', {}).get('ref', 'your-branch')
+                        
+                        comment = f"""⚠️ **Merge Conflicts Detected**
 
 @{pr_author} This PR has merge conflicts with the `{base_branch}` branch and has been converted to draft status.
 
@@ -1271,71 +1280,75 @@ Once all critical issues are resolved, this PR can be merged."""
 5. Mark this PR as "Ready for review"
 
 The automated review will run again once conflicts are resolved."""
-                    
-                    self.add_pr_comment(repo, pr_number, comment)
-                    workflow_result['converted_to_draft'] = True
-                    workflow_result['has_conflicts'] = True
-                    
-                    # Don't attempt merge if there are conflicts
-                    return workflow_result
-        
-        # Log merge decision
-        logger.info(f"\n🤔 Merge Decision: {merge_decision['merge_recommendation']}")
-        logger.info(f"   🤖 Autonomous Action: {merge_decision.get('autonomous_action', 'NONE')}")
-        for reason in merge_decision['reasoning']:
-            logger.info(f"   • {reason}")
-        
-        # Execute autonomous action based on decision
-        workflow_result['merged'] = False
-        workflow_result['followup_issue_created'] = False
-        autonomous_action = merge_decision.get('autonomous_action')
-        
-        if autonomous_action == 'CONVERT_TO_DRAFT':
-            # Already handled above (critical issues or conflicts)
-            logger.info("   🚧 PR converted to draft for fixes")
+                        
+                        self.add_pr_comment(repo, pr_number, comment)
+                        workflow_result['converted_to_draft'] = True
+                        workflow_result['has_conflicts'] = True
+                        
+                        # Don't attempt merge if there are conflicts
+                        return workflow_result
             
-        elif autonomous_action == 'MERGE_ONLY':
-            # Clean merge with no follow-up
-            if auto_merge_if_approved:
-                logger.info(f"\n🔀 Merging PR #{pr_number} using {merge_method}...")
-                if self.merge_pull_request(repo, pr_number, merge_method):
-                    workflow_result['merged'] = True
-                    logger.info(f"   ✅ PR #{pr_number} merged successfully!")
-                else:
-                    workflow_result['errors'].append("Merge failed (conflicts, checks, or permissions)")
-                    logger.error(f"   ❌ Merge failed")
-            else:
-                logger.info("   ⏸️  Auto-merge disabled - PR ready but not merged")
+            # Log merge decision
+            logger.info(f"\n🤔 Merge Decision: {merge_decision['merge_recommendation']}")
+            logger.info(f"   🤖 Autonomous Action: {merge_decision.get('autonomous_action', 'NONE')}")
+            for reason in merge_decision['reasoning']:
+                logger.info(f"   • {reason}")
+            
+            # Execute autonomous action based on decision
+            workflow_result['merged'] = False
+            workflow_result['followup_issue_created'] = False
+            autonomous_action = merge_decision.get('autonomous_action')
+            
+            if autonomous_action == 'CONVERT_TO_DRAFT':
+                # Already handled above (critical issues or conflicts)
+                logger.info("   🚧 PR converted to draft for fixes")
                 
-        elif autonomous_action == 'MERGE_AND_CREATE_ISSUE':
-            # Merge first, then create follow-up issue
-            if auto_merge_if_approved or merge_with_suggestions:
-                logger.info(f"\n🔀 Merging PR #{pr_number} using {merge_method}...")
-                if self.merge_pull_request(repo, pr_number, merge_method):
-                    workflow_result['merged'] = True
-                    logger.info(f"   ✅ PR #{pr_number} merged successfully!")
-                    
-                    # Create follow-up issue for suggestions
-                    logger.info("   📝 Creating follow-up issue for suggestions/warnings...")
-                    followup_issue = self.create_followup_issue(
-                        repo=repo,
-                        pr_number=pr_number,
-                        review_result=review_result,
-                        merge_decision=merge_decision
-                    )
-                    if followup_issue:
-                        workflow_result['followup_issue_created'] = True
-                        workflow_result['followup_issue_number'] = followup_issue
-                        logger.info(f"   ✅ Created follow-up issue #{followup_issue}")
+            elif autonomous_action == 'MERGE_ONLY':
+                # Clean merge with no follow-up
+                if auto_merge_if_approved:
+                    logger.info(f"\n🔀 Merging PR #{pr_number} using {merge_method}...")
+                    if self.merge_pull_request(repo, pr_number, merge_method):
+                        workflow_result['merged'] = True
+                        logger.info(f"   ✅ PR #{pr_number} merged successfully!")
                     else:
-                        logger.warning("   ⚠️  Failed to create follow-up issue")
+                        workflow_result['errors'].append("Merge failed (conflicts, checks, or permissions)")
+                        logger.error(f"   ❌ Merge failed")
                 else:
-                    workflow_result['errors'].append("Merge failed (conflicts, checks, or permissions)")
-                    logger.error(f"   ❌ Merge failed")
-            else:
-                logger.info("   ⏸️  Auto-merge disabled - PR ready but not merged")
+                    logger.info("   ⏸️  Auto-merge disabled - PR ready but not merged")
+                    
+            elif autonomous_action == 'MERGE_AND_CREATE_ISSUE':
+                # Merge first, then create follow-up issue
+                if auto_merge_if_approved or merge_with_suggestions:
+                    logger.info(f"\n🔀 Merging PR #{pr_number} using {merge_method}...")
+                    if self.merge_pull_request(repo, pr_number, merge_method):
+                        workflow_result['merged'] = True
+                        logger.info(f"   ✅ PR #{pr_number} merged successfully!")
+                        
+                        # Create follow-up issue for suggestions
+                        logger.info("   📝 Creating follow-up issue for suggestions/warnings...")
+                        followup_issue = self.create_followup_issue(
+                            repo=repo,
+                            pr_number=pr_number,
+                            review_result=review_result,
+                            merge_decision=merge_decision
+                        )
+                        if followup_issue:
+                            workflow_result['followup_issue_created'] = True
+                            workflow_result['followup_issue_number'] = followup_issue
+                            logger.info(f"   ✅ Created follow-up issue #{followup_issue}")
+                        else:
+                            logger.warning("   ⚠️  Failed to create follow-up issue")
+                    else:
+                        workflow_result['errors'].append("Merge failed (conflicts, checks, or permissions)")
+                        logger.error(f"   ❌ Merge failed")
+                else:
+                    logger.info("   ⏸️  Auto-merge disabled - PR ready but not merged")
+            
+            return workflow_result
         
-        return workflow_result
+        finally:
+            # 🔓 Always release lock when done (even if error occurred)
+            self.review_lock.release(repo, pr_number)
 
 
 def main():
