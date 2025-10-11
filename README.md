@@ -191,73 +191,130 @@ agent-forge/
 │   │   ├── agent_registry.py   # Unified agent lifecycle manager ⭐
 │   │   ├── service_manager.py  # Service orchestrator
 │   │   ├── config_manager.py   # Configuration management
-│   │   └── permissions.py      # Role-based permissions
+│   │   ├── llm_providers.py    # LLM provider abstraction
+│   │   ├── pipeline_orchestrator.py # Multi-stage task pipelines
+│   │   ├── context_manager.py  # Context management
+│   │   ├── permissions.py      # Role-based permissions
+│   │   ├── rate_limiter.py     # API rate limiting
+│   │   ├── key_manager.py      # Token/key management
+│   │   └── account_manager.py  # GitHub account management
 │   ├── runners/                 # Agent implementations
-│   │   ├── code_agent.py       # Developer agent (always-on)
+│   │   ├── code_agent.py       # Developer agent (generic LLM)
 │   │   ├── bot_agent.py        # Bot agent (on-demand)
 │   │   ├── coordinator_agent.py # Coordinator agent (always-on)
 │   │   ├── monitor_service.py  # Monitoring & health checks
 │   │   └── polling_service.py  # GitHub polling service
 │   ├── operations/              # Operations modules
-│   │   ├── file_editor.py      # File editing
+│   │   ├── file_editor.py      # File editing operations
+│   │   ├── llm_file_editor.py  # LLM-powered file editing
 │   │   ├── git_operations.py   # Git operations
 │   │   ├── github_api_helper.py # GitHub API wrapper
-│   │   └── terminal_operations.py # Terminal execution
+│   │   ├── terminal_operations.py # Terminal execution
+│   │   ├── code_generator.py   # Code generation
+│   │   ├── issue_handler.py    # Issue resolution
+│   │   ├── issue_opener_agent.py # Issue creation agent
+│   │   ├── pr_review_agent.py  # Automated PR reviews
+│   │   ├── pr_reviewer.py      # PR review operations
+│   │   ├── repo_manager.py     # Repository access management
+│   │   ├── bot_operations.py   # Bot utility functions
+│   │   ├── creative_status.py  # ASCII art generation
+│   │   ├── codebase_search.py  # Code search utilities
+│   │   ├── test_runner.py      # Test execution
+│   │   ├── workspace_tools.py  # Workspace utilities
+│   │   ├── websocket_handler.py # WebSocket communication
+│   │   ├── mcp_client.py       # MCP protocol client
+│   │   ├── web_fetcher.py      # Web content fetching
+│   │   ├── shell_runner.py     # Shell command execution
+│   │   ├── retry_util.py       # Retry logic utilities
+│   │   ├── error_checker.py    # Error detection
+│   │   ├── string_utils.py     # String manipulation
+│   │   ├── structure_generator.py # Project structure generation
+│   │   ├── team_manager.py     # Team management
+│   │   ├── repository_creator.py # Repository creation
+│   │   └── bootstrap_coordinator.py # Coordinator bootstrapping
 │   └── validation/              # Validation modules
-│       ├── instruction_validator.py # Copilot instructions
-│       └── instruction_parser.py    # Rule parsing
+│       ├── instruction_validator.py # Copilot instructions validation
+│       ├── instruction_parser.py    # Validation rule parsing
+│       └── security_auditor.py      # Security audits
+│
+├── api/                         # REST API endpoints
+│   ├── auth_routes.py          # Authentication endpoints
+│   └── config_routes.py        # Configuration API
 │
 ├── config/                      # Configuration files (YAML)
 │   ├── agents/                  # Per-agent configs
-│   │   ├── m0nk111-post.yaml        # Bot agent config
-│   │   ├── m0nk111-coder1.yaml      # GPT-5 coder config
-│   │   ├── m0nk111-coder2.yaml      # GPT-4o coder config
-│   │   ├── m0nk111-reviewer.yaml    # Reviewer config
-│   │   └── m0nk111-qwen-agent.yaml  # Qwen coder config (reserve)
 │   ├── services/                # Service configs
-│   │   ├── coordinator.yaml     # Coordinator config
-│   │   └── polling.yaml         # Polling config
+│   │   ├── coordinator.yaml     # Coordinator settings
+│   │   └── polling.yaml         # Polling configuration
 │   ├── system/                  # System configs
-│   │   ├── system.yaml          # Global system settings
-│   │   ├── repositories.yaml    # Monitored repositories
-│   │   ├── github_accounts.yaml # GitHub accounts (centralized) ⭐
-│   │   └── trusted_agents.yaml  # Agent trust list (deprecated)
-│   └── rules/                   # Validation rules
-│       ├── instruction_rules.yaml   # Instruction validation
-│       ├── review_criteria.yaml     # PR review criteria
-│       └── security_audit.yaml      # Security rules
+│   ├── rules/                   # Validation rules
+│   ├── backups/                 # Config backups
+│   ├── development/             # Development configs
+│   └── keys.example.json        # Example secrets structure
 │
 ├── frontend/                    # Web dashboards
 │   ├── dashboard.html          # Main monitoring dashboard ⭐
+│   ├── index.html              # Landing page
+│   ├── login.html              # Authentication page
 │   ├── config_ui.html          # Configuration UI
 │   └── monitoring_dashboard.html # Legacy monitoring
 │
 ├── docs/                        # Documentation
-│   ├── ARCHITECTURE.md         # System architecture
-│   ├── AGENT_ONBOARDING.md     # Agent quick start
-│   ├── MONITORING_API.md       # API documentation
-│   ├── PORT_REFERENCE.md       # Port allocation guide
-│   └── diagrams/               # Architecture diagrams
+│   ├── README.md               # Documentation index
+│   ├── guides/                 # User guides
+│   │   ├── AGENT_ROLES.md      # Agent role documentation
+│   │   ├── AGENT_ONBOARDING.md # Quick start for agents
+│   │   ├── MONITORING_API.md   # API documentation
+│   │   ├── GPT5_QUICK_REFERENCE.md # GPT-5 usage guide
+│   │   ├── INSTRUCTION_VALIDATION_GUIDE.md # Validation guide
+│   │   ├── ASCII_AUTOMATION_WORKFLOW.md # ASCII art workflow
+│   │   ├── PIPELINE_ARCHITECTURE.md # Pipeline documentation
+│   │   └── ANTI_SPAM_PROTECTION.md # Spam prevention
+│   ├── diagrams/               # Architecture diagrams (Mermaid)
+│   ├── internal/               # Internal documentation
+│   └── archive/                # Archived documentation
+│
+├── data/                        # Runtime data
+│   └── polling_state.json      # Polling service state
 │
 ├── secrets/                     # Secrets (gitignored)
-│   └── agents/                 # Agent tokens (600 permissions)
-│       ├── m0nk111-post.token       # Bot orchestrator
-│       ├── m0nk111-coder1.token     # GPT-5 primary coder
-│       ├── m0nk111-coder2.token     # GPT-4o primary coder
-│       ├── m0nk111-reviewer.token   # Dedicated reviewer
-│       └── m0nk111-qwen-agent.token # Reserve coder
+│   ├── README.md               # Secrets documentation
+│   ├── agents/                 # Agent tokens (600 permissions)
+│   │   ├── m0nk111.token       # Admin token
+│   │   ├── m0nk111-post.token  # Bot orchestrator
+│   │   ├── m0nk111-qwen-agent.token # Code agent token
+│   │   ├── m0nk111-coder1.token # GPT-5 coder token
+│   │   ├── m0nk111-coder2.token # GPT-4o coder token
+│   │   └── m0nk111-reviewer.token # Reviewer token
+│   └── keys/                   # API keys (600 permissions)
+│       └── openai.key          # OpenAI API key
 │
 ├── scripts/                     # Utility scripts
+│   ├── launch_agent.py         # Agent launcher
+│   ├── manage_repos.py         # Repository management CLI
+│   ├── migrate_secrets.py      # Secrets migration tool
+│   ├── monitor-cli.py          # CLI monitoring tool
+│   ├── test_*.py               # Test scripts
+│   ├── demo_*.py               # Demo scripts
 │   ├── sync-to-production.sh   # Production deployment
+│   ├── quick-deploy.sh         # Quick deployment
 │   ├── start-service.sh        # Service startup
-│   └── install-service.sh      # Systemd installation
+│   ├── install-service.sh      # Systemd installation
+│   ├── install-polling-service.sh # Polling service install
+│   ├── launch_dashboard.sh     # Dashboard launcher
+│   ├── launch_monitoring.sh    # Monitoring launcher
+│   ├── launch_config_ui.sh     # Config UI launcher
+│   ├── secure-tokens.sh        # Token security script
+│   └── test_github_integration.sh # GitHub integration test
 │
 ├── systemd/                     # Systemd service files
-│   └── agent-forge.service     # Main service unit
+│   ├── agent-forge.service     # Main service unit
+│   ├── agent-forge-polling.service # Polling service unit
+│   ├── agent-forge-auth.service # Auth service unit
+│   └── tokens.env.example      # Example environment file
 │
 ├── tests/                       # Test suite
-│   ├── test_agent_registry.py  # Registry tests
-│   ├── test_instruction_validator.py # Validation tests
+│   ├── test_*.py               # Unit/integration tests
 │   └── manual/                 # Manual test scripts
 │
 ├── CHANGELOG.md                # Version history
