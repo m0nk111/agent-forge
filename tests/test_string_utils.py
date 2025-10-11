@@ -65,7 +65,7 @@ def test_reverse_string():
 
 def test_count_vowels():
     assert count_vowels('hello world') == 3
-    assert count_vowels('python programming') == 3
+    assert count_vowels('python programming') == 4  # Fixed: o,o,a,i = 4 vowels
     assert count_vowels('AEIOU') == 5
     with pytest.raises(ValueError):
         count_vowels(12345)
