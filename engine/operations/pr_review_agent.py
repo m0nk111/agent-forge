@@ -628,6 +628,99 @@ Be concise. Only report real issues, not nitpicks."""
             logger.error(f"❌ Error adding comment: {e}")
             return False
     
+    def create_followup_issue(self, repo: str, pr_number: int, review_result: Dict, merge_decision: Dict) -> Optional[int]:
+        """Create a follow-up issue for PR suggestions and warnings.
+        
+        This creates a tech-debt tracking issue with all non-critical suggestions
+        from the PR review, allowing the PR to be merged while still tracking
+        improvements for future work.
+        
+        Args:
+            repo: Repository in owner/name format
+            pr_number: Merged PR number
+            review_result: Review results from review_pr()
+            merge_decision: Merge decision from evaluate_merge_decision()
+        
+        Returns:
+            Issue number if created successfully, None otherwise
+        """
+        try:
+            owner, repo_name = repo.split('/')
+            
+            # Extract non-critical issues
+            warnings = []
+            suggestions = []
+            for issue in review_result.get('issues', []):
+                if '⚠️' in issue or 'WARNING' in issue:
+                    warnings.append(issue)
+                elif 'ℹ️' in issue or 'INFO' in issue or 'SUGGESTION' in issue:
+                    suggestions.append(issue)
+            
+            if not warnings and not suggestions:
+                logger.debug("No warnings or suggestions to track - skipping follow-up issue")
+                return None
+            
+            # Create issue title
+            warning_count = merge_decision.get('warnings', 0)
+            info_count = merge_decision.get('info_suggestions', 0)
+            title = f"Tech Debt: Address {warning_count} warning(s) and {info_count} suggestion(s) from PR #{pr_number}"
+            
+            # Create issue body
+            body = f"""**Automated Follow-up Issue from PR #{pr_number}**
+
+This issue tracks non-critical warnings and suggestions from the automated review of PR #{pr_number}.
+The PR was merged because it met quality standards, but these improvements should be addressed in a future PR.
+
+---
+
+"""
+            
+            if warnings:
+                body += f"### ⚠️ Warnings ({len(warnings)})\n\n"
+                for warning in warnings:
+                    body += f"- {warning}\n"
+                body += "\n"
+            
+            if suggestions:
+                body += f"### ℹ️ Suggestions ({len(suggestions)})\n\n"
+                for suggestion in suggestions:
+                    body += f"- {suggestion}\n"
+                body += "\n"
+            
+            body += f"""---
+
+**Next Steps:**
+1. Review each warning/suggestion
+2. Determine which improvements are worth implementing
+3. Create targeted PR(s) to address them
+4. Close this issue when complete or mark as "won't fix" if not relevant
+
+**Related PR:** #{pr_number}
+**Created by:** Automated PR Review System
+"""
+            
+            # Create issue via GitHub API
+            url = f"https://api.github.com/repos/{owner}/{repo_name}/issues"
+            data = {
+                'title': title,
+                'body': body,
+                'labels': ['tech-debt', 'from-pr-review', f'from-pr-{pr_number}']
+            }
+            
+            status, response = self._github_request('POST', url, json_data=data)
+            
+            if status == 201 and response:
+                issue_number = response.get('number')
+                logger.info(f"✅ Created follow-up issue #{issue_number} for PR #{pr_number}")
+                return issue_number
+            else:
+                logger.warning(f"⚠️ Could not create follow-up issue (status {status}): {response}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"❌ Error creating follow-up issue: {e}")
+            return None
+    
     def remove_label(self, repo: str, pr_number: int, label: str) -> bool:
         """Remove a label from a PR.
         
@@ -921,34 +1014,43 @@ Be concise. Only report real issues, not nitpicks."""
             'critical_issues': critical_count,
             'warnings': warning_count,
             'info_suggestions': info_count,
-            'manual_review_needed': False
+            'autonomous_action': None  # What action the system will take
         }
         
         if not review_result['approved']:
-            # Changes requested - definitely don't merge
+            # Changes requested - convert to draft for developer to fix
             decision['merge_recommendation'] = 'DO_NOT_MERGE'
+            decision['autonomous_action'] = 'CONVERT_TO_DRAFT'
             decision['reasoning'].append(f"Changes requested: {critical_count} critical issue(s) found")
-            decision['manual_review_needed'] = True
+            decision['reasoning'].append("System will convert PR to draft and notify author")
         elif critical_count > 0:
-            # Has critical issues - don't auto-merge even if approved
-            decision['merge_recommendation'] = 'MANUAL_REVIEW'
+            # Has critical issues - convert to draft even if approved
+            decision['merge_recommendation'] = 'DO_NOT_MERGE'
+            decision['autonomous_action'] = 'CONVERT_TO_DRAFT'
             decision['reasoning'].append(f"Critical issues present: {critical_count} issue(s) need attention")
-            decision['manual_review_needed'] = True
-        elif warning_count > 3:
-            # Many warnings - human should review
-            decision['merge_recommendation'] = 'MANUAL_REVIEW'
-            decision['reasoning'].append(f"Multiple warnings ({warning_count}) - manual review recommended")
-            decision['manual_review_needed'] = True
+            decision['reasoning'].append("System will convert PR to draft for fixes")
+        elif warning_count > 5:
+            # Many warnings - create follow-up issue and merge
+            decision['should_auto_merge'] = True
+            decision['merge_recommendation'] = 'AUTO_MERGE'
+            decision['autonomous_action'] = 'MERGE_AND_CREATE_ISSUE'
+            decision['reasoning'].append(f"Multiple warnings ({warning_count}) - will merge and track in follow-up issue")
+            decision['reasoning'].append("System will create tech-debt issue for improvements")
         elif warning_count > 0 or info_count > 0:
-            # Minor suggestions - can merge but with consideration
-            decision['should_auto_merge'] = False
-            decision['merge_recommendation'] = 'MERGE_WITH_CONSIDERATION'
+            # Minor suggestions - merge and optionally create follow-up
+            decision['should_auto_merge'] = True
+            decision['merge_recommendation'] = 'AUTO_MERGE'
+            decision['autonomous_action'] = 'MERGE_ONLY' if (warning_count + info_count) <= 2 else 'MERGE_AND_CREATE_ISSUE'
             decision['reasoning'].append(f"Approved with {warning_count} warning(s) and {info_count} suggestion(s)")
-            decision['reasoning'].append("Consider addressing suggestions in follow-up PR")
+            if (warning_count + info_count) > 2:
+                decision['reasoning'].append("System will merge and create follow-up issue for suggestions")
+            else:
+                decision['reasoning'].append("System will merge - suggestions are minor")
         else:
             # Fully approved, no issues
             decision['should_auto_merge'] = True
             decision['merge_recommendation'] = 'AUTO_MERGE'
+            decision['autonomous_action'] = 'MERGE_ONLY'
             decision['reasoning'].append("Fully approved with no issues - safe to merge")
         
         return decision
@@ -1177,32 +1279,59 @@ The automated review will run again once conflicts are resolved."""
         
         # Log merge decision
         logger.info(f"\n🤔 Merge Decision: {merge_decision['merge_recommendation']}")
+        logger.info(f"   🤖 Autonomous Action: {merge_decision.get('autonomous_action', 'NONE')}")
         for reason in merge_decision['reasoning']:
             logger.info(f"   • {reason}")
         
-        # Decide whether to merge
-        should_merge = False
-        if merge_decision['merge_recommendation'] == 'AUTO_MERGE' and auto_merge_if_approved:
-            should_merge = True
-            logger.info("   ✅ Will auto-merge (fully approved)")
-        elif merge_decision['merge_recommendation'] == 'MERGE_WITH_CONSIDERATION' and merge_with_suggestions:
-            should_merge = True
-            logger.info("   ⚠️  Will merge with suggestions (user enabled merge_with_suggestions)")
-        elif merge_decision['merge_recommendation'] == 'MANUAL_REVIEW':
-            logger.info("   👤 Manual review required - will NOT auto-merge")
-        elif merge_decision['merge_recommendation'] == 'DO_NOT_MERGE':
-            logger.info("   ❌ Changes requested - will NOT merge")
-        
-        # Perform merge if decided
+        # Execute autonomous action based on decision
         workflow_result['merged'] = False
-        if should_merge:
-            logger.info(f"\n🔀 Merging PR #{pr_number} using {merge_method}...")
-            if self.merge_pull_request(repo, pr_number, merge_method):
-                workflow_result['merged'] = True
-                logger.info(f"   ✅ PR #{pr_number} merged successfully!")
+        workflow_result['followup_issue_created'] = False
+        autonomous_action = merge_decision.get('autonomous_action')
+        
+        if autonomous_action == 'CONVERT_TO_DRAFT':
+            # Already handled above (critical issues or conflicts)
+            logger.info("   🚧 PR converted to draft for fixes")
+            
+        elif autonomous_action == 'MERGE_ONLY':
+            # Clean merge with no follow-up
+            if auto_merge_if_approved:
+                logger.info(f"\n🔀 Merging PR #{pr_number} using {merge_method}...")
+                if self.merge_pull_request(repo, pr_number, merge_method):
+                    workflow_result['merged'] = True
+                    logger.info(f"   ✅ PR #{pr_number} merged successfully!")
+                else:
+                    workflow_result['errors'].append("Merge failed (conflicts, checks, or permissions)")
+                    logger.error(f"   ❌ Merge failed")
             else:
-                workflow_result['errors'].append("Merge failed (conflicts, checks, or permissions)")
-                logger.error(f"   ❌ Merge failed")
+                logger.info("   ⏸️  Auto-merge disabled - PR ready but not merged")
+                
+        elif autonomous_action == 'MERGE_AND_CREATE_ISSUE':
+            # Merge first, then create follow-up issue
+            if auto_merge_if_approved or merge_with_suggestions:
+                logger.info(f"\n🔀 Merging PR #{pr_number} using {merge_method}...")
+                if self.merge_pull_request(repo, pr_number, merge_method):
+                    workflow_result['merged'] = True
+                    logger.info(f"   ✅ PR #{pr_number} merged successfully!")
+                    
+                    # Create follow-up issue for suggestions
+                    logger.info("   📝 Creating follow-up issue for suggestions/warnings...")
+                    followup_issue = self.create_followup_issue(
+                        repo=repo,
+                        pr_number=pr_number,
+                        review_result=review_result,
+                        merge_decision=merge_decision
+                    )
+                    if followup_issue:
+                        workflow_result['followup_issue_created'] = True
+                        workflow_result['followup_issue_number'] = followup_issue
+                        logger.info(f"   ✅ Created follow-up issue #{followup_issue}")
+                    else:
+                        logger.warning("   ⚠️  Failed to create follow-up issue")
+                else:
+                    workflow_result['errors'].append("Merge failed (conflicts, checks, or permissions)")
+                    logger.error(f"   ❌ Merge failed")
+            else:
+                logger.info("   ⏸️  Auto-merge disabled - PR ready but not merged")
         
         return workflow_result
 

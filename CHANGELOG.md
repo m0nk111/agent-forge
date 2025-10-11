@@ -8,6 +8,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **🤖 Fully Autonomous PR Management System** (October 11, 2025)
+  - **BREAKING CHANGE**: Removed all manual review steps - system now fully autonomous
+  - **New Decision Matrix**: Every scenario has autonomous action
+    - `CONVERT_TO_DRAFT`: Critical issues or conflicts → auto-convert + instructions
+    - `MERGE_ONLY`: Clean approval → auto-merge immediately
+    - `MERGE_AND_CREATE_ISSUE`: Warnings/suggestions → merge + create tech-debt issue
+  - **New Method**: `create_followup_issue()` for tech-debt tracking
+    - Automatically creates GitHub issue for warnings and suggestions
+    - Links back to merged PR for traceability
+    - Labels: `tech-debt`, `from-pr-review`, `from-pr-{number}`
+    - Tracks improvements without blocking merge
+  - **Enhanced Workflow Logic**:
+    - Executes autonomous actions based on merge decision
+    - No "manual review" steps - always takes action
+    - Creates follow-up issues for >2 warnings/suggestions
+    - Merges with confidence when quality threshold met
+  - **Thresholds**:
+    - 0 issues → Merge immediately
+    - 1-2 minor suggestions → Merge without follow-up
+    - 3+ suggestions → Merge + create follow-up issue
+    - 5+ warnings → Merge + create follow-up issue
+    - 1+ critical → Convert to draft (block merge)
+    - Conflicts → Convert to draft (block merge)
+  - **Impact**: True autonomous operation - no human intervention needed for any scenario
+
 - **� Intelligent PR Lifecycle Management** (October 11, 2025)
   - Auto-draft conversion for critical issues and merge conflicts
   - New helper methods in `PRReviewAgent`:
