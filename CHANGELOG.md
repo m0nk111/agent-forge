@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Repository Management System** 🤖
+  - New module `engine/operations/repo_manager.py` for automated bot account management
+  - CLI tool `scripts/manage_repos.py` with commands: setup, invite, accept, verify, list
+  - Automatically invites all bot accounts to all configured repositories
+  - Accepts pending invitations for bot accounts
+  - Verifies bot account access permissions
+  - Loads configuration from `config/services/polling.yaml`
+  - Reads bot tokens from `secrets/agents/*.token` files
+  - Supports dry-run mode for testing
+  - **Impact**: Eliminates manual repository access management, ensures all bots have required permissions
+  
+- **Secrets Directory Reorganization** 🔐
+  - Migrated from single `keys.json` to organized structure:
+    - `secrets/agents/` - GitHub bot account tokens (one file per bot)
+    - `secrets/keys/` - LLM API keys (one file per service)
+  - Added `secrets/README.md` with comprehensive documentation
+  - Created `scripts/migrate_secrets.py` for automatic migration
+  - Deprecated `keys.json` (renamed to `keys.json.deprecated`)
+  - **Rationale**: Better separation of concerns, easier token rotation, clearer organization
+  - **Impact**: More maintainable secrets management, clearer credential ownership
+
 ### Fixed
 - **LLM Prompt Engineering for Import Statements** 🚀
   - Enhanced `_generate_tests()` prompt to MANDATE import statements at top of test files
