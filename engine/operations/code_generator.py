@@ -354,12 +354,19 @@ Requirements for {spec.test_path}:
    - Import any mocking libraries: `from unittest.mock import Mock, patch, MagicMock`
    - Import standard library modules used in tests: `import os, sys, socket, etc.`
    
-2. Test all functions in the module
-3. Include positive and negative test cases
-4. Test edge cases and error handling
-5. Use pytest fixtures where appropriate
-6. Aim for >80% code coverage
-7. Clear test names (test_function_scenario)
+2. **CRITICAL**: Test expectations MUST match actual implementation behavior
+   - Read the implementation code carefully before writing assertions
+   - If function uses `split()`, empty spaces become empty strings
+   - If function reverses a string, it maintains original case unless explicitly changed
+   - Count exact results (e.g., count_vowels("good morning") has 4 vowels: o,o,o,i not 3)
+   - Test what the code DOES, not what you think it SHOULD do
+   
+3. Test all functions in the module
+4. Include positive and negative test cases
+5. Test edge cases and error handling
+6. Use pytest fixtures where appropriate
+7. Aim for >80% code coverage
+8. Clear test names (test_function_scenario)
 
 {error_feedback}
 
