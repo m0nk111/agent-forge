@@ -744,12 +744,13 @@ class PollingService:
             try:
                 owner, repo_name = repo.split('/')
                 
-                # Fetch open PRs
+                # Fetch open PRs (bypass rate limit for internal polling)
                 logger.debug(f"🔍 Fetching open PRs for {repo}")
                 prs = self.github_api.list_pull_requests(
                     owner=owner,
                     repo=repo_name,
-                    state='open'
+                    state='open',
+                    bypass_rate_limit=True
                 )
                 
                 if not prs:

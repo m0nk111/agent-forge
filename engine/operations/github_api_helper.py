@@ -534,7 +534,7 @@ class GitHubAPIHelper:
             logger.error(f"Failed to create PR in {owner}/{repo}: {e}")
             raise
     
-    def list_pull_requests(self, owner: str, repo: str, state: str = 'open') -> List[Dict]:
+    def list_pull_requests(self, owner: str, repo: str, state: str = 'open', bypass_rate_limit: bool = False) -> List[Dict]:
         """
         List pull requests in a repository.
         
@@ -542,13 +542,14 @@ class GitHubAPIHelper:
             owner: Repository owner
             repo: Repository name
             state: PR state filter ('open', 'closed', 'all')
+            bypass_rate_limit: Bypass rate limits (for internal polling)
             
         Returns:
             List of PR dictionaries
         """
         target = f"{owner}/{repo}"
         
-        if not self._check_rate_limit(OperationType.API_READ, target):
+        if not self._check_rate_limit(OperationType.API_READ, target, bypass=bypass_rate_limit):
             raise RuntimeError(f"Rate limit exceeded for {target}")
         
         url = f"{self.BASE_URL}/repos/{owner}/{repo}/pulls"
