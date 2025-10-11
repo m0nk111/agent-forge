@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Frontend TEST mode indicator** (2025-10-11)
+  - Dashboard now shows prominent "🧪 TEST MODE" badge in header when system is in test environment
+  - Footer displays current environment (TEST/PRODUCTION) with color coding
+  - Auto-detects environment from monitoring API on page load
+  - Orange badge for TEST mode, green for PRODUCTION, red for UNKNOWN
+  - Updated version display to "v1.0 (2025-10-11)"
+
 - **Repository enabled/disabled flags** (2025-10-11)
   - Added support for per-repository `enabled` flag in polling.yaml
   - Repositories can be individually disabled while keeping configuration
