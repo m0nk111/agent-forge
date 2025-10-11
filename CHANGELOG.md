@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Systemd Service: Remove Hardcoded Tokens, Use EnvironmentFile** (October 11, 2025)
+  - **INFRASTRUCTURE FIX**: Systemd service now uses `EnvironmentFile` instead of hardcoded tokens
+    * Before: Tokens hardcoded in `/etc/systemd/system/agent-forge-polling.service`
+    * After: `EnvironmentFile=-/etc/agent-forge/tokens.env` directive
+    * Token updates now only require editing `/etc/agent-forge/tokens.env` + service restart
+    * No more systemd file edits or daemon-reload needed for token rotation
+  - Updated `systemd/agent-forge-polling.service` template in repo
+  - Created `systemd/README.md` with installation and token management instructions
+  - Service verified working with EnvironmentFile ✅
+  - Reasoning: Secrets should never be hardcoded in service files
+
 - **Expired GitHub Token + Removed All Hardcoded Config Defaults** (October 11, 2025)
   - **TOKEN FIX**: Updated expired `BOT_GITHUB_TOKEN` in `/etc/agent-forge/tokens.env`
     * Old token causing 401 Unauthorized errors on all GitHub API calls
