@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **PR Review Bot Account** 🔧
+  - Switched from admin token (`m0nk111.token`) to dedicated reviewer bot (`m0nk111-reviewer.token`)
+  - Prevents email notification spam to admin account
+  - Follows GitHub Account Usage Policy from copilot-instructions.md
+  - **Impact**: PR reviews no longer trigger unwanted admin notifications
+
 ### Added
 - **LLM-Powered Code Review** 🤖
   - Added `--use-llm` flag to PR review agent for deep code analysis via Ollama
