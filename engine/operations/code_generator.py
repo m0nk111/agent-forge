@@ -290,16 +290,19 @@ Guidelines:
 {error_feedback}
 
 CRITICAL IMPORT REQUIREMENT:
-✅ CORRECT structure:
-   ```python
-   """Module docstring."""
+✅ CORRECT structure - Always start with:
+   1. Module docstring in triple quotes
+   2. Import statements (import os, sys, from typing import Optional, List)
+   3. Function definitions
+
+   Example:
+   "''Module docstring.'''"  (use triple quotes)
    import os
    import sys
    from typing import Optional, List
    
    def my_function():
-       ...
-   ```
+       pass
 
 CRITICAL: Output ONLY the implementation code for {spec.module_path}.
 - DO include: ALL import statements at the very top, module docstring, function definitions, classes, implementation logic
@@ -363,19 +366,17 @@ Requirements for {spec.test_path}:
 CRITICAL IMPORT REQUIREMENT:
 ❌ COMMON ERROR: Tests that call functions without importing them
    Example BAD code:
-   ```python
+   
    def test_my_function():
        result = my_function()  # ❌ NameError: name 'my_function' is not defined
-   ```
 
 ✅ CORRECT: Always import at the top
-   ```python
+   
    import pytest
    from {spec.module_name} import my_function
    
    def test_my_function():
        result = my_function()  # ✅ Works!
-   ```
 
 CRITICAL: Output ONLY the test file code for {spec.test_path}.
 - DO include: ALL import statements at the very top (pytest, functions from module, mocks, stdlib)
