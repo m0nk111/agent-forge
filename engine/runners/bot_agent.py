@@ -1,7 +1,7 @@
 """
 Bot Agent for automated GitHub operations.
 
-This agent handles GitHub operations using a dedicated bot account (m0nk111-bot)
+This agent handles GitHub operations using a dedicated bot account (m0nk111-post)
 to prevent email spam to admin accounts. Includes rate limiting, error handling,
 and comprehensive monitoring integration.
 
@@ -77,7 +77,7 @@ class BotAgent:
     
     def __init__(
         self,
-        agent_id: str = "m0nk111-bot",
+        agent_id: str = "m0nk111-post",
         username: Optional[str] = None,
         github_token: Optional[str] = None,
         config_file: Optional[Path] = None,
@@ -94,7 +94,7 @@ class BotAgent:
             monitor: MonitorService instance for metrics
         """
         self.agent_id = agent_id
-        self.username = username or os.getenv("BOT_GITHUB_USERNAME", "m0nk111-bot")
+        self.username = username or os.getenv("BOT_GITHUB_USERNAME", "m0nk111-post")
         self.github_token = github_token or os.getenv("BOT_GITHUB_TOKEN")
         self.monitor = monitor
         

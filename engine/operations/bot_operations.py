@@ -28,7 +28,7 @@ class BotOperations:
     
     def __init__(self):
         """Initialize with bot credentials from environment."""
-        self.username = os.getenv('BOT_GITHUB_USERNAME', 'm0nk111-bot')
+        self.username = os.getenv('BOT_GITHUB_USERNAME', 'm0nk111-post')
         self.email = os.getenv('BOT_GITHUB_EMAIL', 'aicodingtime+bot@gmail.com')
         self.token = os.getenv('BOT_GITHUB_TOKEN')
         self.owner = 'm0nk111'  # Repository owner

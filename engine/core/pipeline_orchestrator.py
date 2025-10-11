@@ -727,7 +727,7 @@ class PipelineOrchestrator:
             
             github_api = GitHubAPIHelper(token)
             reviewer = PRReviewer(
-                github_username="m0nk111-bot",  # Bot username
+                github_username="m0nk111-post",  # Bot username
                 criteria=criteria,
                 llm_agent=self.agent,
                 github_api=github_api

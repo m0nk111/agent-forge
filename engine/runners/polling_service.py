@@ -100,7 +100,7 @@ class PollingConfig:
     
     interval_seconds: int = 300  # 5 minutes
     github_token: Optional[str] = None
-    github_username: str = "m0nk111-bot"
+    github_username: str = "m0nk111-post"
     repositories: List[str] = field(default_factory=list)  # ["owner/repo", ...]
     watch_labels: List[str] = field(default_factory=lambda: ["agent-ready", "auto-assign"])  # labels
     max_concurrent_issues: int = 3

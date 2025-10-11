@@ -237,7 +237,7 @@ coordinator:
     # Bot agent integration
     bot:
       enabled: true
-      agent_id: m0nk111-bot
+      agent_id: m0nk111-post
       use_for_notifications: true
     
     # Monitor service integration

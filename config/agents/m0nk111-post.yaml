@@ -1,6 +1,5 @@
 # Post Bot Agent Configuration
 # Configuration for automated GitHub bot operations
-# Replaces suspended m0nk111-bot account
 
 # Agent identification (root level for launcher compatibility)
 agent_id: m0nk111-post

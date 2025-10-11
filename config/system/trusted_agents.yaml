@@ -2,7 +2,7 @@
 # These accounts can interact with the agent system
 
 trusted_agents:
-  - username: m0nk111-bot
+  - username: m0nk111-post
     role: bot
     description: Bot account for automated GitHub operations (posting, organizing, triage)
     trusted: true

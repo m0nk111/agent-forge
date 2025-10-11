@@ -27,7 +27,7 @@
 
 ## GitHub Account Usage Policy
 - **CRITICAL**: Never use the `m0nk111` admin account for operations that trigger email notifications (issue assignments, PR reviews, mentions, etc.), unless explicitly requested by the user
-- Use dedicated bot accounts (e.g., `m0nk111-qwen-agent`, `m0nk111-bot`) for automated operations
+- Use dedicated bot accounts (e.g., `m0nk111-post`, `m0nk111-qwen-agent`, `m0nk111-coder1`) for automated operations
 - Rationale: Avoid spam and unwanted notifications to the admin email address
 - Exception: User explicitly requests using admin account for specific operation
 
