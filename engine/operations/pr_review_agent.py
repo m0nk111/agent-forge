@@ -34,22 +34,36 @@ class PRReviewAgent:
         project_root: Optional[str] = None, 
         github_token: Optional[str] = None,
         use_llm: bool = False,
-        llm_model: str = "qwen2.5-coder:7b"
+        llm_model: str = "qwen2.5-coder:7b",
+        bot_account: str = "post"
     ):
         """
         Initialize PR Review Agent.
         
         Args:
-            project_root: Path to project root (auto-detected if not provided)
-            github_token: GitHub token for API requests (loads from secrets if not provided)
-            use_llm: Enable LLM-powered code review (default: False)
-            llm_model: Ollama model to use for LLM review (default: qwen2.5-coder:7b)
+            project_root: Root directory of the project
+            github_token: GitHub personal access token (optional, will try to load from secrets)
+            use_llm: Enable LLM-powered code review via Ollama
+            llm_model: LLM model to use (default: qwen2.5-coder:7b)
+            bot_account: Bot account to use ('post', 'reviewer', 'coder1', etc.)
         """
         if project_root:
             self.project_root = Path(project_root)
         else:
-            # Auto-detect from module location
-            self.project_root = Path(__file__).parent.parent.parent.resolve()
+            self.project_root = Path(__file__).parent.parent.parent
+        
+        self.bot_account = bot_account
+        
+        # GitHub authentication
+        if github_token:
+            self.github_token = github_token
+        else:
+            self.github_token = self._load_github_token()
+        
+        # LLM configuration
+        self.use_llm = use_llm
+        self.llm_model = llm_model
+        self.ollama_url = "http://localhost:11434/api/generate"
         
         # Load GitHub token
         if github_token:
@@ -64,8 +78,8 @@ class PRReviewAgent:
     
     def _load_github_token(self) -> str:
         """Load GitHub token from secrets."""
-        # Use m0nk111-post bot account (reviewer had rate limit issues)
-        token_path = self.project_root / 'secrets' / 'agents' / 'm0nk111-post.token'
+        # Use configurable bot account
+        token_path = self.project_root / 'secrets' / 'agents' / f'm0nk111-{self.bot_account}.token'
         
         if not token_path.exists():
             raise FileNotFoundError(f"GitHub token not found: {token_path}")
@@ -524,7 +538,7 @@ Be concise. Only report real issues, not nitpicks."""
         lines.extend([
             "",
             "---",
-            f"*Automated review by Agent-Forge PR Review Bot (m0nk111-post)*"
+            f"*Automated review by Agent-Forge PR Review Bot (m0nk111-{self.bot_account})*"
         ])
         
         return '\n'.join(lines)
@@ -546,13 +560,15 @@ def main():
     parser.add_argument('--post-comment', action='store_true', help='Post review as comment')
     parser.add_argument('--use-llm', action='store_true', help='Enable LLM-powered deep code review')
     parser.add_argument('--llm-model', default='qwen2.5-coder:7b', help='LLM model to use (default: qwen2.5-coder:7b)')
+    parser.add_argument('--bot-account', default='post', help='Bot account to use: post, reviewer, coder1, etc. (default: post)')
     
     args = parser.parse_args()
     
     try:
         reviewer = PRReviewAgent(
             use_llm=args.use_llm,
-            llm_model=args.llm_model
+            llm_model=args.llm_model,
+            bot_account=args.bot_account
         )
         
         # Print review type info
