@@ -654,13 +654,13 @@ curl http://localhost:8080/github/repos
       {
         "full_name": "m0nk111/agent-forge",
         "polling_enabled": true,
-        "assignees": ["m0nk111-bot"],
+        "assignees": ["m0nk111-post"],
         "last_poll": "2025-10-06T14:25:00Z"
       },
       {
         "full_name": "m0nk111/stepperheightcontrol",
         "polling_enabled": true,
-        "assignees": ["m0nk111-bot"],
+        "assignees": ["m0nk111-post"],
         "last_poll": "2025-10-06T14:25:00Z"
       }
     ]
@@ -695,7 +695,7 @@ curl "http://localhost:8080/github/issues?repo=m0nk111/agent-forge&state=open"
         "title": "Add retry mechanism",
         "state": "open",
         "repo": "m0nk111/agent-forge",
-        "assignee": "m0nk111-bot",
+        "assignee": "m0nk111-post",
         "labels": ["enhancement"],
         "created_at": "2025-10-06T10:00:00Z",
         "updated_at": "2025-10-06T14:20:00Z"

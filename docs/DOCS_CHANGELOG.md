@@ -2,6 +2,30 @@
 
 All notable documentation-only changes are tracked here. Newest first.
 
+## 2025-10-11
+
+### Added
+
+- **Centralized GitHub Account Configuration**: New `config/system/github_accounts.yaml` as single source of truth
+- **AccountManager Documentation**: Usage examples for programmatic account access
+- **Email Pattern Documentation**: All accounts use `aicodingtime+<suffix>@gmail.com`
+
+### Changed
+
+- **AGENT_ACCOUNTS_SUMMARY.md**: Updated all accounts with emails, priorities, and AccountManager reference
+- **GITHUB_ACCOUNTS_STRATEGY.md**: Complete rewrite with current 6-account implementation
+- **README.md**: Updated directory trees with all 5 agent configs and tokens
+- **ARCHITECTURE.md**: Updated agents list and directory structure
+- **API.md**: Replaced m0nk111-bot examples with m0nk111-post
+- **MONITORING_API.md**: Replaced m0nk111-bot examples with m0nk111-post
+- **AGENT_LAUNCHER_GUIDE.md**: Replaced m0nk111-bot references with m0nk111-post
+- **AGENT_ROLES.md**: Replaced m0nk111-bot examples with m0nk111-post
+
+### Removed
+
+- **m0nk111-bot References**: Eliminated suspended account from all documentation
+- **Outdated Account Info**: Removed references to deprecated bot token files
+
 ## 2025-10-10
 
 ### Fixed

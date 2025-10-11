@@ -52,7 +52,7 @@ curl http://localhost:7997/api/agents | jq .
       "api_rate_limit_remaining": 5000
     },
     {
-      "agent_id": "m0nk111-bot",
+      "agent_id": "m0nk111-post",
       "agent_name": "GitHub Bot Agent",
       "status": "offline",
       "current_task": "Agent configured but not running",
