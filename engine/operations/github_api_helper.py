@@ -548,7 +548,7 @@ class GitHubAPIHelper:
         """
         target = f"{owner}/{repo}"
         
-        if not self._check_rate_limit(OperationType.ISSUE_COMMENT, target):
+        if not self._check_rate_limit(OperationType.API_READ, target):
             raise RuntimeError(f"Rate limit exceeded for {target}")
         
         url = f"{self.BASE_URL}/repos/{owner}/{repo}/pulls"
@@ -559,7 +559,7 @@ class GitHubAPIHelper:
             response.raise_for_status()
             self._update_rate_limit_from_response(response)
             
-            self._record_operation(OperationType.ISSUE_COMMENT, target,
+            self._record_operation(OperationType.API_READ, target,
                                  f"Listed {state} PRs", success=True)
             
             prs = response.json()
@@ -567,7 +567,7 @@ class GitHubAPIHelper:
             return prs
             
         except requests.exceptions.RequestException as e:
-            self._record_operation(OperationType.ISSUE_COMMENT, target,
+            self._record_operation(OperationType.API_READ, target,
                                  f"Failed to list PRs", success=False)
             logger.error(f"Failed to list PRs in {target}: {e}")
             raise
