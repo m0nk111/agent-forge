@@ -57,12 +57,14 @@ class IssueOpenerAgent:
                 - project_root: Path to project
         """
         self.config = config
-        self.project_root = Path(config.get('project_root', project_root))
+        self.project_root = Path(config.get('project_root', '/home/flip/agent-forge'))
+        
+        # Parse owner/repo
+        self.owner, self.repo = config['repo'].split('/')
         
         # Initialize GitHub API
         self.github = GitHubAPIHelper(
-            token=config['github_token'],
-            repo=config['repo']
+            token=config['github_token']
         )
         
         # Initialize LLM provider
@@ -75,7 +77,7 @@ class IssueOpenerAgent:
         
         logger.info(f"🤖 Issue Opener Agent initialized")
         logger.info(f"   Model: {self.model}")
-        logger.info(f"   Repo: {config['repo']}")
+        logger.info(f"   Repo: {self.owner}/{self.repo}")
     
     def process_issue(self, issue_number: int) -> Dict:
         """
@@ -200,7 +202,7 @@ class IssueOpenerAgent:
     
     def _fetch_issue(self, issue_number: int) -> Dict:
         """Fetch issue details from GitHub."""
-        issue_data = self.github.get_issue(issue_number)
+        issue_data = self.github.get_issue(self.owner, self.repo, issue_number)
         
         return {
             'number': issue_data['number'],
