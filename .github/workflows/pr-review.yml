@@ -1,0 +1,132 @@
+name: Automated PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    # Only run on PRs from bot accounts for safety
+    # Can be extended to all PRs after testing
+  
+  # Allow manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        required: true
+        type: number
+      merge_with_suggestions:
+        description: 'Merge PRs with suggestions/warnings'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  review:
+    name: AI Code Review
+    runs-on: ubuntu-latest
+    
+    # Only run for bot accounts or manual trigger
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.pull_request.user.login == 'm0nk111-post' ||
+        github.event.pull_request.user.login == 'm0nk111-coder1' ||
+        github.event.pull_request.user.login == 'm0nk111-coder2' ||
+        github.event.pull_request.user.login == 'm0nk111-qwen-agent'
+      )
+    
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better analysis
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Set up Ollama for LLM review
+        run: |
+          # Install Ollama (for LLM code review)
+          curl -fsSL https://ollama.com/install.sh | sh
+          
+          # Start Ollama service
+          ollama serve &
+          sleep 5
+          
+          # Pull qwen2.5-coder model for code review
+          ollama pull qwen2.5-coder:7b
+      
+      - name: Determine PR number
+        id: pr_number
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "PR_NUMBER=${{ inputs.pr_number }}" >> $GITHUB_OUTPUT
+          else
+            echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Run automated PR review
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER="${{ steps.pr_number.outputs.PR_NUMBER }}"
+          MERGE_WITH_SUGGESTIONS="${{ inputs.merge_with_suggestions || 'false' }}"
+          
+          # Build command
+          CMD="python3 -m engine.operations.pr_review_agent"
+          CMD="$CMD ${{ github.repository }} $PR_NUMBER"
+          CMD="$CMD --use-llm"
+          CMD="$CMD --full-workflow"
+          CMD="$CMD --post-comment"
+          CMD="$CMD --merge-method squash"
+          
+          # Add merge flags based on configuration
+          if [ "$MERGE_WITH_SUGGESTIONS" == "true" ]; then
+            CMD="$CMD --merge-with-suggestions"
+          else
+            CMD="$CMD --auto-merge-if-approved"
+          fi
+          
+          # Run review
+          echo "🤖 Running: $CMD"
+          $CMD
+      
+      - name: Comment on workflow success
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr_number = ${{ steps.pr_number.outputs.PR_NUMBER }};
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr_number,
+              body: '✅ Automated PR review workflow completed successfully! Check the review comment above for details.'
+            });
+      
+      - name: Comment on workflow failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr_number = ${{ steps.pr_number.outputs.PR_NUMBER }};
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr_number,
+              body: '❌ Automated PR review workflow failed. Check the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.'
+            });
