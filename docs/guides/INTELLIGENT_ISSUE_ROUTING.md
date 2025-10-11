@@ -2,42 +2,46 @@
 
 **Status**: Design Complete, Ready for Integration  
 **Created**: October 11, 2025  
-**Purpose**: Solve the "looks simple but actually complex" issue handling problem
+**Updated**: October 11, 2025 - **CRITICAL ARCHITECTURE CHANGE**  
+**Purpose**: Coordinator as mandatory gateway for ALL issues
 
 ---
 
-## Problem Statement
+## CRITICAL UPDATE: Coordinator-First Architecture
 
-### Current Limitation
+### ⚠️ Architecture Change
 
-The polling service is "dumb" - it only checks for labels (`agent-ready`, `auto-assign`) and routes all issues directly to a single code agent. This has two major problems:
-
-1. **No pre-flight complexity check** - Complex issues get routed to single agent, wasting time
-2. **No mid-flight adaptation** - Agent can't escalate when discovering complexity during work
-
-### The "Research Reveals Complexity" Scenario
-
+**PREVIOUS DESIGN** (Discarded):
 ```
-Issue appears simple initially
-    ↓
-Code agent starts work
-    ↓
-During research: "This affects 8 files across 4 components!"
-    ↓
-Agent is stuck - needs coordination
-    ↓
-❌ Currently: Agent fails or submits incomplete PR
+Polling → Quick pre-check → Route decision → Code agent or Coordinator
 ```
+
+**NEW DESIGN** (Mandatory):
+```
+Polling → ALWAYS Coordinator → Coordinator decides → Delegate or Orchestrate
+```
+
+### Why This Change?
+
+**The coordinator MUST be the intelligence hub:**
+- ✅ Coordinator has LLM for semantic analysis
+- ✅ Coordinator makes ALL routing decisions
+- ✅ No "dumb" pre-filtering by polling service
+- ✅ Coordinator can delegate OR orchestrate
+- ✅ Single point of intelligent decision-making
+
+**Polling service role:**
+- Detect issues with `agent-ready` label
+- Call coordinator gateway
+- **NEVER** decide routing itself
 
 ---
 
-## Solution: Two-Stage Intelligent Routing
-
-### Architecture Overview
+## Architecture Overview
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    STAGE 1: TRIAGE                          │
+│              MANDATORY COORDINATOR GATEWAY                   │
 └─────────────────────────────────────────────────────────────┘
                              
 Issue with "agent-ready" label
@@ -45,21 +49,21 @@ Issue with "agent-ready" label
 Polling Service detects
          ↓
     ┌────────────────────────────────┐
-    │ Coordinator Light Triage       │
-    │ (IssueComplexityAnalyzer)      │
-    │ - Quick analysis (5-10 sec)    │
-    │ - 9 complexity signals         │
-    │ - Score: 0-65 points           │
+    │ ALWAYS → Coordinator Gateway   │
+    │ (CoordinatorGateway)           │
+    │ - LLM-powered analysis         │
+    │ - IssueComplexityAnalyzer      │
+    │ - Makes routing decision       │
     └────────────────────────────────┘
          ↓
     ┌───┴───┬───────────┬────────────┐
     │       │           │            │
    SIMPLE  UNCERTAIN  COMPLEX       │
-  (≤10pts) (11-25)   (>25pts)       │
-    │       │           │            │
+         │           │            │
     ↓       ↓           ↓            │
-  Code    Code+      Coordinator    │
-  Agent   Escalation  Orchestration │
+  Delegate Delegate+  Orchestrate  │
+  to Code  Escalation  Sub-Issues  │
+  Agent    Enabled                  │
     │       │           │            │
     └───────┴───────────┴────────────┘
                              

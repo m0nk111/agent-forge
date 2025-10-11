@@ -242,6 +242,10 @@ class CoordinatorAgent:
         self.blocker_threshold = self.config.get('monitoring', {}).get('blocker_threshold', 1800)
         
         logger.info(f"Coordinator agent initialized: {self.agent_id}")
+        
+        # Initialize complexity analyzer for issue triage
+        from engine.operations.issue_complexity_analyzer import IssueComplexityAnalyzer
+        self.complexity_analyzer = IssueComplexityAnalyzer(llm_agent=llm_agent)
     
     def _load_config(self, config_file: Optional[Path]) -> Dict:
         """Load coordinator configuration from YAML."""
@@ -292,6 +296,62 @@ class CoordinatorAgent:
         )
         self.agent_registry[agent_id] = capability
         logger.info(f"Registered agent: {agent_id} ({role}) with skills: {skills}")
+    
+    def analyze_issue_complexity(
+        self,
+        title: str,
+        body: str,
+        labels: List[str],
+        use_llm: bool = True
+    ) -> Dict:
+        """
+        Analyze issue complexity for routing decision.
+        
+        This is the GATEWAY ANALYSIS - determines routing for all issues.
+        
+        Args:
+            title: Issue title
+            body: Issue description
+            labels: Issue labels
+            use_llm: Whether to use LLM for semantic analysis
+        
+        Returns:
+            Dict with complexity analysis and routing recommendation
+        """
+        logger.info("🔍 COORDINATOR: Analyzing issue complexity...")
+        
+        # Use IssueComplexityAnalyzer
+        analysis = self.complexity_analyzer.analyze_issue(
+            title=title,
+            body=body,
+            labels=labels,
+            use_llm=use_llm and self.llm_agent is not None
+        )
+        
+        logger.info(f"📊 Analysis complete:")
+        logger.info(f"   Complexity: {analysis['complexity']}")
+        logger.info(f"   Score: {analysis['score']}")
+        logger.info(f"   Routing: {analysis['routing']}")
+        logger.info(f"   Confidence: {analysis['confidence']:.0%}")
+        
+        return analysis
+    
+    def get_available_agent(self, role: str) -> Optional[Any]:
+        """
+        Get an available agent with the specified role.
+        
+        Args:
+            role: Agent role (developer, reviewer, etc.)
+        
+        Returns:
+            AgentCapability or None if no agent available
+        """
+        for agent_id, capability in self.agent_registry.items():
+            if capability.role == role and capability.is_available:
+                return capability
+        
+        logger.warning(f"⚠️  No available agent with role: {role}")
+        return None
     
     async def analyze_issue(
         self,
