@@ -8,6 +8,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Multiple Test and Code Generation Bugs** (October 11, 2025)
+  - **BUG FIX**: Fixed syntax error in `engine/utils/string_utils.py` (code fence wrappers in Python file)
+    * Agent generated file had ````python` and ```` wrappers causing syntax error
+    * Removed markdown code fences, file now valid Python ✅
+  - **BUG FIX**: Root directory violation by Issue Opener agent
+    * Issue Opener created `string_utils.py` in root directory (Root Directory Rule violation)
+    * Root file deleted, proper implementation kept in `engine/utils/string_utils.py` ✅
+  - **BUG FIX**: Missing `capitalize_words` function
+    * Tests expected `capitalize_words()` but function didn't exist
+    * Added proper implementation with spacing preservation ✅
+  - **BUG FIX**: Test import error in `tests/test_string_utils.py`
+    * Imported from `string_utils` instead of `engine.utils.string_utils`
+    * Fixed import path ✅
+  - **BUG FIX**: Test fixture missing in `tests/test_bootstrap_agent.py`
+    * `test_list_templates()` expected `coordinator` fixture but it didn't exist
+    * Added pytest fixture with token loading ✅
+  - **BUG FIX**: Test calling `_generate_plan()` without required argument
+    * Function signature changed to require `issue` parameter
+    * Updated test call in `tests/test_issue_handler.py` ✅
+  - All string_utils tests now passing (13/13) ✅
+  - Validation working correctly: blocks root directory files, requires CHANGELOG updates
+  - Reasoning: Code generation quality issues and test infrastructure gaps
+
 - **Systemd Service: Remove Hardcoded Tokens, Use EnvironmentFile** (October 11, 2025)
   - **INFRASTRUCTURE FIX**: Systemd service now uses `EnvironmentFile` instead of hardcoded tokens
     * Before: Tokens hardcoded in `/etc/systemd/system/agent-forge-polling.service`

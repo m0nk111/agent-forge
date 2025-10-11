@@ -92,7 +92,7 @@ for criterion in requirements['acceptance_criteria']:
 
 # Generate implementation plan
 print("\n🗺️  Step 2: Generating implementation plan...")
-plan = agent.issue_handler._generate_plan(requirements)
+plan = agent.issue_handler._generate_plan(requirements, demo_issue)
 
 print(f"   📊 Plan has {len(plan['phases'])} phases:")
 for i, phase in enumerate(plan['phases'], 1):

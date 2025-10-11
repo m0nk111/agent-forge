@@ -8,6 +8,7 @@ import os
 import sys
 import json
 import logging
+import pytest
 from engine.operations.bootstrap_coordinator import BootstrapCoordinator
 
 # Configure logging
@@ -16,6 +17,15 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+
+@pytest.fixture
+def coordinator():
+    """Create a BootstrapCoordinator instance for testing."""
+    admin_token, bot_token = load_tokens()
+    if not admin_token:
+        pytest.skip("GitHub tokens not available")
+    return BootstrapCoordinator(admin_token, bot_token)
 
 
 def load_tokens():
