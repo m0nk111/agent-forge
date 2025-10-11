@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Expired GitHub Token + Removed All Hardcoded Config Defaults** (October 11, 2025)
+  - **TOKEN FIX**: Updated expired `BOT_GITHUB_TOKEN` in `/etc/agent-forge/tokens.env`
+    * Old token causing 401 Unauthorized errors on all GitHub API calls
+    * Updated to valid token for `m0nk111-post` account
+    * Service now authenticates successfully ✅
+  - **HARDCODED REMOVAL**: Eliminated all hardcoded configuration defaults from `PollingConfig`
+    * `pr_review_strategy`: "dedicated" → `Optional[str] = None`
+    * `reviewer_agent_id`: "reviewer-agent" → `Optional[str] = None`
+    * `pr_llm_model`: "qwen2.5-coder:7b" → `Optional[str] = None`
+    * `pr_bot_account`: "admin" → `Optional[str] = None`
+    * `pr_merge_method`: "squash" → `Optional[str] = None`
+    * `issue_opener_agent_id`: "issue-opener-agent" → `Optional[str] = None`
+  - All values now correctly loaded from `config/services/polling.yaml`
+  - Service verified working with YAML-only configuration ✅
+  - Reasoning: No hardcoded values in code - all config must come from configuration files
+
 - **Removed Hardcoded Bot Username** (October 11, 2025)
   - Removed hardcoded `github_username = "m0nk111-post"` from `PollingConfig` dataclass
   - Username now must be configured via `config/services/polling.yaml` or environment
