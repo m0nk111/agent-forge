@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Root Directory Cleanup** 🧹
+  - Enforced root directory rules: only README.md, CHANGELOG.md, LICENSE, ARCHITECTURE.md, and config files allowed
+  - Moved `GITHUB_INTEGRATION_STATUS.md` → `docs/internal/`
+  - Moved `README.old.md` → `docs/archive/`
+  - Moved test files (`test_*.py`, 4 files) → `tests/`
+  - Moved `test_github_integration.sh` → `scripts/`
+  - Moved `keys.example.json` → `config/`
+  - Removed `polling_service.log` (runtime log file)
+  - **Rationale**: Maintain clean root directory for better project navigation and structure
+
 - **Documentation Reorganization** 📚
   - Separated generic framework documentation from project-specific implementation details
   - Created `docs/guides/` for generic, reusable documentation (17 files)
