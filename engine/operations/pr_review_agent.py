@@ -78,8 +78,11 @@ class PRReviewAgent:
     
     def _load_github_token(self) -> str:
         """Load GitHub token from secrets."""
-        # Use configurable bot account
-        token_path = self.project_root / 'secrets' / 'agents' / f'm0nk111-{self.bot_account}.token'
+        # Handle 'admin' alias - use m0nk111.token for admin
+        if self.bot_account == 'admin':
+            token_path = self.project_root / 'secrets' / 'agents' / 'm0nk111.token'
+        else:
+            token_path = self.project_root / 'secrets' / 'agents' / f'm0nk111-{self.bot_account}.token'
         
         if not token_path.exists():
             raise FileNotFoundError(f"GitHub token not found: {token_path}")
@@ -457,7 +460,91 @@ Be concise. Only report real issues, not nitpicks."""
         
         return issues
     
-    def post_review_comment(self, repo: str, pr_number: int, review_result: Dict) -> bool:
+    def assign_reviewers(self, repo: str, pr_number: int, reviewers: list) -> bool:
+        """Assign reviewers to a PR.
+        
+        Args:
+            repo: Repository in owner/name format
+            pr_number: Pull request number
+            reviewers: List of GitHub usernames to assign as reviewers
+        
+        Returns:
+            True if reviewers assigned successfully
+        """
+        try:
+            owner, repo_name = repo.split('/')
+            url = f"https://api.github.com/repos/{owner}/{repo_name}/pulls/{pr_number}/requested_reviewers"
+            data = {'reviewers': reviewers}
+            
+            status, response = self._github_request('POST', url, json_data=data)
+            
+            if status in [200, 201]:
+                logger.info(f"✅ Assigned reviewers to {repo}#{pr_number}: {', '.join(reviewers)}")
+                return True
+            else:
+                logger.warning(f"⚠️ Could not assign reviewers (status {status}): {response}")
+                return False
+        except Exception as e:
+            logger.error(f"❌ Error assigning reviewers: {e}")
+            return False
+    
+    def add_labels(self, repo: str, pr_number: int, labels: list) -> bool:
+        """Add labels to a PR.
+        
+        Args:
+            repo: Repository in owner/name format
+            pr_number: Pull request number
+            labels: List of label names to add
+        
+        Returns:
+            True if labels added successfully
+        """
+        try:
+            owner, repo_name = repo.split('/')
+            url = f"https://api.github.com/repos/{owner}/{repo_name}/issues/{pr_number}/labels"
+            data = {'labels': labels}
+            
+            status, response = self._github_request('POST', url, json_data=data)
+            
+            if status in [200, 201]:
+                logger.info(f"✅ Added labels to {repo}#{pr_number}: {', '.join(labels)}")
+                return True
+            else:
+                logger.warning(f"⚠️ Could not add labels (status {status}): {response}")
+                return False
+        except Exception as e:
+            logger.error(f"❌ Error adding labels: {e}")
+            return False
+    
+    def update_pr_assignees(self, repo: str, pr_number: int, assignees: list) -> bool:
+        """Assign users to a PR (different from reviewers).
+        
+        Args:
+            repo: Repository in owner/name format
+            pr_number: Pull request number
+            assignees: List of GitHub usernames to assign to PR
+        
+        Returns:
+            True if assignees updated successfully
+        """
+        try:
+            owner, repo_name = repo.split('/')
+            url = f"https://api.github.com/repos/{owner}/{repo_name}/issues/{pr_number}/assignees"
+            data = {'assignees': assignees}
+            
+            status, response = self._github_request('POST', url, json_data=data)
+            
+            if status in [200, 201]:
+                logger.info(f"✅ Assigned PR to {repo}#{pr_number}: {', '.join(assignees)}")
+                return True
+            else:
+                logger.warning(f"⚠️ Could not assign PR (status {status}): {response}")
+                return False
+        except Exception as e:
+            logger.error(f"❌ Error assigning PR: {e}")
+            return False
+    
+    def post_review_comment(self, repo: str, pr_number: int, review_result: Dict, use_review_api: bool = True) -> bool:
         """
         Post review comment to PR.
         
@@ -465,6 +552,7 @@ Be concise. Only report real issues, not nitpicks."""
             repo: Repository name
             pr_number: PR number
             review_result: Review results from review_pr()
+            use_review_api: Use GitHub PR Review API instead of simple comment (default: True)
         
         Returns:
             True if comment posted successfully
@@ -472,20 +560,49 @@ Be concise. Only report real issues, not nitpicks."""
         try:
             # Format review comment
             comment = self._format_review_comment(review_result)
-            
-            # Post comment via GitHub API
             owner, repo_name = repo.split('/')
-            url = f"https://api.github.com/repos/{owner}/{repo_name}/issues/{pr_number}/comments"
             
-            data = {'body': comment}
-            status, _ = self._github_request('POST', url, json_data=data)
+            if use_review_api:
+                # Use official PR Review API - shows as actual review
+                url = f"https://api.github.com/repos/{owner}/{repo_name}/pulls/{pr_number}/reviews"
+                
+                # Determine review event based on approval status
+                if review_result['approved']:
+                    if review_result['issues']:
+                        event = 'COMMENT'  # Approved with suggestions
+                    else:
+                        event = 'APPROVE'  # Fully approved
+                else:
+                    event = 'REQUEST_CHANGES'  # Changes needed
+                
+                data = {
+                    'body': comment,
+                    'event': event
+                }
+                
+                status, _ = self._github_request('POST', url, json_data=data)
+                
+                if status in [200, 201]:
+                    logger.info(f"✅ Posted PR review ({event}) to {repo}#{pr_number}")
+                    return True
+                else:
+                    logger.error(f"❌ Failed to post review: status {status}")
+                    # Fallback to regular comment
+                    logger.info("   Trying fallback: regular comment...")
+                    use_review_api = False
             
-            if status in [200, 201]:
-                logger.info(f"✅ Posted review comment to {repo}#{pr_number}")
-                return True
-            else:
-                logger.error(f"❌ Failed to post comment: status {status}")
-                return False
+            if not use_review_api:
+                # Fallback: Post as regular comment
+                url = f"https://api.github.com/repos/{owner}/{repo_name}/issues/{pr_number}/comments"
+                data = {'body': comment}
+                status, _ = self._github_request('POST', url, json_data=data)
+                
+                if status in [200, 201]:
+                    logger.info(f"✅ Posted review comment to {repo}#{pr_number}")
+                    return True
+                else:
+                    logger.error(f"❌ Failed to post comment: status {status}")
+                    return False
         
         except Exception as e:
             logger.error(f"❌ Error posting comment: {e}")
@@ -542,6 +659,125 @@ Be concise. Only report real issues, not nitpicks."""
         ])
         
         return '\n'.join(lines)
+    
+    def complete_pr_review_workflow(self, repo: str, pr_number: int, 
+                                     auto_assign_reviewers: bool = True,
+                                     auto_label: bool = True,
+                                     reviewers: Optional[list] = None,
+                                     post_comment: bool = True) -> Dict:
+        """Complete PR review workflow with review, assignment, and labeling.
+        
+        This method performs the full PR review process:
+        1. Review the PR code
+        2. Post review comment with status (APPROVE/REQUEST_CHANGES/COMMENT)
+        3. Assign reviewers (if specified)
+        4. Add appropriate labels based on review results
+        5. Assign PR to relevant users
+        
+        Args:
+            repo: Repository in owner/name format
+            pr_number: Pull request number
+            auto_assign_reviewers: Automatically assign admin as reviewer (default: True)
+            auto_label: Automatically add labels based on review (default: True)
+            reviewers: List of GitHub usernames to assign as reviewers (default: ['m0nk111'])
+            post_comment: Post review comment (default: True)
+        
+        Returns:
+            Dict with workflow results including review_result, assigned_reviewers, added_labels
+        """
+        workflow_result = {
+            'review_result': None,
+            'review_posted': False,
+            'reviewers_assigned': False,
+            'labels_added': False,
+            'assignees_updated': False,
+            'errors': []
+        }
+        
+        try:
+            # Step 1: Review the PR
+            logger.info(f"🔍 Starting complete PR review workflow for {repo}#{pr_number}")
+            review_result = self.review_pr(repo, pr_number)
+            workflow_result['review_result'] = review_result
+            
+            # Step 2: Post review comment with proper status
+            if post_comment:
+                logger.info("📝 Posting review comment...")
+                if self.post_review_comment(repo, pr_number, review_result, use_review_api=True):
+                    workflow_result['review_posted'] = True
+                else:
+                    workflow_result['errors'].append("Failed to post review comment")
+            
+            # Step 3: Assign reviewers
+            if auto_assign_reviewers:
+                if reviewers is None:
+                    reviewers = ['m0nk111']  # Default to admin
+                
+                logger.info(f"👥 Assigning reviewers: {reviewers}")
+                if self.assign_reviewers(repo, pr_number, reviewers):
+                    workflow_result['reviewers_assigned'] = True
+                else:
+                    workflow_result['errors'].append("Failed to assign reviewers (may be PR author)")
+            
+            # Step 4: Add labels based on review result
+            if auto_label:
+                labels = []
+                
+                if review_result['approved']:
+                    if review_result['issues']:
+                        labels.append('approved-with-suggestions')
+                        labels.append('ready-for-merge')
+                    else:
+                        labels.append('approved')
+                        labels.append('ready-for-merge')
+                else:
+                    labels.append('changes-requested')
+                    labels.append('needs-work')
+                
+                # Add technical labels
+                if self.use_llm:
+                    labels.append('ai-reviewed')
+                else:
+                    labels.append('static-reviewed')
+                
+                # Add severity labels
+                critical_count = sum(1 for issue in review_result['issues'] if 'CRITICAL' in issue)
+                if critical_count > 0:
+                    labels.append('critical-issues')
+                
+                logger.info(f"🏷️  Adding labels: {labels}")
+                if self.add_labels(repo, pr_number, labels):
+                    workflow_result['labels_added'] = True
+                    workflow_result['labels'] = labels
+                else:
+                    workflow_result['errors'].append("Failed to add labels")
+            
+            # Step 5: Assign PR to admin for visibility
+            if auto_assign_reviewers:
+                logger.info("📌 Assigning PR to admin...")
+                if self.update_pr_assignees(repo, pr_number, ['m0nk111']):
+                    workflow_result['assignees_updated'] = True
+                else:
+                    workflow_result['errors'].append("Failed to assign PR")
+            
+            # Summary
+            logger.info("✅ PR review workflow complete")
+            logger.info(f"   Review posted: {workflow_result['review_posted']}")
+            logger.info(f"   Reviewers assigned: {workflow_result['reviewers_assigned']}")
+            logger.info(f"   Labels added: {workflow_result['labels_added']}")
+            logger.info(f"   Assignees updated: {workflow_result['assignees_updated']}")
+            
+            if workflow_result['errors']:
+                logger.warning(f"   Errors: {len(workflow_result['errors'])}")
+                for error in workflow_result['errors']:
+                    logger.warning(f"      - {error}")
+            
+            return workflow_result
+            
+        except Exception as e:
+            logger.error(f"❌ Error in PR review workflow: {e}")
+            workflow_result['errors'].append(str(e))
+            return workflow_result
 
 
 def main():
@@ -560,9 +796,27 @@ def main():
     parser.add_argument('--post-comment', action='store_true', help='Post review as comment')
     parser.add_argument('--use-llm', action='store_true', help='Enable LLM-powered deep code review')
     parser.add_argument('--llm-model', default='qwen2.5-coder:7b', help='LLM model to use (default: qwen2.5-coder:7b)')
-    parser.add_argument('--bot-account', default='post', help='Bot account to use: post, reviewer, coder1, etc. (default: post)')
+    parser.add_argument('--bot-account', default='admin', 
+                        help='Bot account to use: admin, post, reviewer, coder1, etc. '
+                             'NOTE: Only admin and post accounts have visible reviews. '
+                             '(default: admin)')
+    parser.add_argument('--use-review-api', action='store_true', default=True,
+                        help='Use official PR Review API (default: True)')
+    parser.add_argument('--full-workflow', action='store_true',
+                        help='Run complete workflow: review + assign reviewers + add labels')
+    parser.add_argument('--reviewers', nargs='*', default=None,
+                        help='Reviewers to assign (default: m0nk111)')
+    parser.add_argument('--no-auto-label', action='store_true',
+                        help='Disable automatic label assignment')
+    parser.add_argument('--no-auto-assign', action='store_true',
+                        help='Disable automatic reviewer assignment')
     
     args = parser.parse_args()
+    
+    # Warn if using bot account (except admin/post which are visible)
+    if args.bot_account not in ['admin', 'm0nk111', 'post']:
+        logger.warning(f"⚠️  Using bot account '{args.bot_account}' - reviews may not be visible to admin")
+        logger.warning("   Consider using --bot-account admin for public reviews")
     
     try:
         reviewer = PRReviewAgent(
@@ -582,26 +836,61 @@ def main():
             print("✓ Fast • ✓ Deterministic • ✓ Zero cost")
         print()
         
-        result = reviewer.review_pr(args.repo, args.pr_number)
-        
-        print(f"\n{'='*60}")
-        print("REVIEW SUMMARY")
-        print('='*60)
-        print(result['summary'])
-        
-        if result['issues']:
-            print(f"\nIssues ({len(result['issues'])}):")
-            for issue in result['issues']:
-                print(f"  - {issue}")
-        
-        if args.post_comment:
-            if reviewer.post_review_comment(args.repo, args.pr_number, result):
-                print("\n✅ Review comment posted to PR")
-            else:
-                print("\n❌ Failed to post review comment")
-                return 1
-        
-        return 0 if result['approved'] else 1
+        # Use full workflow or simple review
+        if args.full_workflow or args.post_comment:
+            # Complete workflow: review + assign + label
+            workflow_result = reviewer.complete_pr_review_workflow(
+                repo=args.repo,
+                pr_number=args.pr_number,
+                auto_assign_reviewers=not args.no_auto_assign,
+                auto_label=not args.no_auto_label,
+                reviewers=args.reviewers,
+                post_comment=args.post_comment
+            )
+            
+            result = workflow_result['review_result']
+            
+            print(f"\n{'='*60}")
+            print("REVIEW SUMMARY")
+            print('='*60)
+            print(result['summary'])
+            
+            if result['issues']:
+                print(f"\nIssues ({len(result['issues'])}):")
+                for issue in result['issues']:
+                    print(f"  - {issue}")
+            
+            print(f"\n{'='*60}")
+            print("WORKFLOW RESULTS")
+            print('='*60)
+            print(f"✅ Review posted: {workflow_result['review_posted']}")
+            print(f"✅ Reviewers assigned: {workflow_result['reviewers_assigned']}")
+            print(f"✅ Labels added: {workflow_result['labels_added']}")
+            if 'labels' in workflow_result:
+                print(f"   Labels: {', '.join(workflow_result['labels'])}")
+            print(f"✅ Assignees updated: {workflow_result['assignees_updated']}")
+            
+            if workflow_result['errors']:
+                print(f"\n⚠️  Errors encountered:")
+                for error in workflow_result['errors']:
+                    print(f"   - {error}")
+            
+            return 0 if result['approved'] else 1
+        else:
+            # Simple review without posting
+            result = reviewer.review_pr(args.repo, args.pr_number)
+            
+            print(f"\n{'='*60}")
+            print("REVIEW SUMMARY")
+            print('='*60)
+            print(result['summary'])
+            
+            if result['issues']:
+                print(f"\nIssues ({len(result['issues'])}):")
+                for issue in result['issues']:
+                    print(f"  - {issue}")
+            
+            return 0 if result['approved'] else 1
     
     except Exception as e:
         logger.error(f"❌ Error: {e}")

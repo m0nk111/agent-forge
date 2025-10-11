@@ -7,22 +7,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Complete PR Review Workflow** 🔄
+  - Added `complete_pr_review_workflow()` method for end-to-end PR management
+  - Automated reviewer assignment (default: admin account for visibility)
+  - Automatic label assignment based on review results:
+    - `approved` / `approved-with-suggestions` / `changes-requested`
+    - `ready-for-merge` / `needs-work`
+    - `ai-reviewed` / `static-reviewed`
+    - `critical-issues` (when CRITICAL issues found)
+  - PR assignee management (assigns admin for visibility)
+  - CLI flags: `--full-workflow`, `--reviewers`, `--no-auto-label`, `--no-auto-assign`
+  - **Impact**: Complete PR lifecycle management in single command
+
+- **GitHub PR Management Methods** 🛠️
+  - `assign_reviewers()`: Assign reviewers to PR via GitHub API
+  - `add_labels()`: Add labels to PR for categorization
+  - `update_pr_assignees()`: Assign users to PR (different from reviewers)
+  - **Impact**: Full programmatic control over PR metadata
+
+- **Admin Account Default for Reviews** 👤
+  - Changed default `--bot-account` from `post` to `admin`
+  - Admin and post accounts are publicly visible (reviews visible to all)
+  - Bot accounts (coder1, coder2, reviewer) are NOT publicly visible
+  - Reviews from non-visible accounts only visible to themselves
+  - **Impact**: Reviews now visible to all users by default
+
 ### Fixed
-- **PR Review Bot Account** 🔧
-  - Switched from admin token (`m0nk111.token`) to dedicated reviewer bot (`m0nk111-reviewer.token`)
-  - Prevents email notification spam to admin account
-  - Follows GitHub Account Usage Policy from copilot-instructions.md
-  - **Impact**: PR reviews no longer trigger unwanted admin notifications
+- **Bot Account Review Visibility Issue** 🔍
+  - Identified that bot accounts (coder1, coder2, reviewer, bot) are NOT publicly visible on GitHub
+  - These accounts created 2025-10-11 but don't appear in `/users/{username}` endpoint (404)
+  - Reviews from these accounts only visible to themselves, not to admin or other users
+  - Cannot be assigned as reviewers (422: "Could not resolve to a node")
+  - **Root Cause**: Accounts lack public visibility, possibly due to:
+    - Unverified email addresses
+    - GitHub anti-spam flagging (multiple accounts from same IP)
+    - Suspended/restricted account status
+  - **Solution**: Use admin or post accounts for reviews (both publicly visible)
+  - **Future**: Need to verify emails or wait for accounts to become publicly visible
+
+- **PR Review API Implementation** ✅
+  - Implemented official GitHub PR Review API (`POST /pulls/{pr}/reviews`)
+  - Reviews now use proper event types: `APPROVE`, `REQUEST_CHANGES`, `COMMENT`
+  - Reviews appear in "Reviews" tab on GitHub UI (not just comments)
+  - Fallback to regular comment API if review API fails
+  - Fixed variable scoping issues in post_review_comment() method
+  - **Impact**: Reviews are now proper GitHub reviews, not just comments
 
 ### Changed
 - **PR Review Comment Transparency** 📝
   - Added review method info to GitHub comment header (Static vs Hybrid)
   - Display LLM model name when `--use-llm` is used (e.g., `qwen2.5-coder:7b`)
   - Show comprehensive checks description in comment
-  - Footer now mentions m0nk111-reviewer bot identity
+  - Footer now mentions bot account identity
   - **Impact**: Users can immediately see which review type and model was used
 
-### Added
+- **CLI Argument Updates** ⚙️
+  - Default `--bot-account` changed from `post` to `admin` (for visibility)
+  - Added warning when using non-visible bot accounts
+  - Updated help text to explain visibility limitations
+  - Added `Optional` type hint for `reviewers` parameter
+  - **Impact**: Clearer user guidance on account selection
+
+### Added (Previous)
 - **LLM-Powered Code Review** 🤖
   - Added `--use-llm` flag to PR review agent for deep code analysis via Ollama
   - Integrated qwen2.5-coder:7b (configurable via `--llm-model`) for architecture, logic, and security review
