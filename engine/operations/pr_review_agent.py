@@ -68,8 +68,7 @@ class PRReviewAgent:
         
         # Initialize GitHub API client
         self.github_client = GitHubAPIClient(
-            github_token=self.github_token,
-            bot_account=bot_account
+            github_token=self.github_token
         )
         
         # Initialize review logic

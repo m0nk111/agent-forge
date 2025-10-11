@@ -1,11 +1,13 @@
 # GPT-5 Coordinator Agent Configuration
 # Optimized for complex planning and coordination tasks
 # DEFAULT COORDINATOR (as of October 11, 2025)
+# TEMPORARILY DISABLED - Implementation not complete
 
 agent_id: "coordinator-agent"
 name: "Coordinator Agent"
 role: "coordinator"
 description: "Master coordinator with GPT-5 - Latest model for complex planning and task orchestration. 44% faster than GPT-4o with equal quality. DEFAULT coordinator."
+enabled: false  # Disabled until implementation complete
 
 # LLM Configuration
 llm:

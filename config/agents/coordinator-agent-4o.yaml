@@ -1,10 +1,12 @@
 # Coordinator Agent Configuration (GPT-4o Optimized)
 # Role: Task planning, breakdown, and orchestration
 # Recommended Model: GPT-4o (optimized: faster, cheaper, multimodal)
+# TEMPORARILY DISABLED - Implementation not complete
 
 agent_id: "coordinator-agent-4o"
 name: "Coordinator Agent (GPT-4o)"
 role: "coordinator"
+enabled: false  # Disabled until implementation complete
 
 # Model configuration - GPT-4o for best performance/cost ratio
 model_provider: "openai"
