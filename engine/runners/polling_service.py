@@ -234,10 +234,27 @@ class PollingService:
             token = gh.get('token')
             if isinstance(token, str) and token.strip():
                 cfg.github_token = token.strip()
+            
             # Repositories & labels
             repos = data.get('repositories') or []
             if isinstance(repos, list):
-                cfg.repositories = [str(r) for r in repos]
+                # Support both old format (strings) and new format (dicts with enabled flag)
+                enabled_repos = []
+                for r in repos:
+                    if isinstance(r, str):
+                        # Old format: simple string
+                        enabled_repos.append(r)
+                    elif isinstance(r, dict):
+                        # New format: dict with 'repo' and 'enabled' keys
+                        repo_name = r.get('repo')
+                        is_enabled = r.get('enabled', True)
+                        if repo_name and is_enabled:
+                            enabled_repos.append(str(repo_name))
+                            logger.info(f"✅ Repository enabled: {repo_name}")
+                        elif repo_name:
+                            logger.info(f"🚫 Repository disabled: {repo_name}")
+                cfg.repositories = enabled_repos
+            
             labels = data.get('watch_labels') or []
             if isinstance(labels, list) and labels:
                 cfg.watch_labels = [str(l) for l in labels]

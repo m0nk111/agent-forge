@@ -15,16 +15,37 @@ github:
   # token: "ghp_..."  # Uncomment and set if not using environment variable
 
 # Repositories to monitor
+# Each repository can be disabled individually while keeping configuration
 repositories:
-  # Only agent-forge for now - other repos need bot account access
-  # TODO: Add bot account as collaborator to:
-  #   - m0nk111/stepperheightcontrol
-  #   - m0nk111/Mycodo
-  #   - m0nk111/caramba
-  - "m0nk111/agent-forge"
-  # - "m0nk111/stepperheightcontrol"
-  # - "m0nk111/Mycodo"
-  # - "m0nk111/caramba"
+  # TEST REPOSITORY - Only enabled during test phase
+  - repo: "m0nk111/agent-forge-test"
+    enabled: true
+    environment: "test"
+    auto_merge: true  # Safe in test repo
+  
+  # PRODUCTION REPOSITORIES - DISABLED during test phase
+  - repo: "m0nk111/agent-forge"
+    enabled: false  # 🚫 DISABLED - Test phase only
+    environment: "production"
+    auto_merge: false
+  
+  - repo: "m0nk111/stepperheightcontrol"
+    enabled: false  # 🚫 DISABLED - Test phase only
+    environment: "production"
+    auto_merge: false
+    # TODO: Add bot account as collaborator
+  
+  - repo: "m0nk111/Mycodo"
+    enabled: false  # 🚫 DISABLED - Test phase only
+    environment: "production"
+    auto_merge: false
+    # TODO: Add bot account as collaborator
+  
+  - repo: "m0nk111/caramba"
+    enabled: false  # 🚫 DISABLED - Test phase only
+    environment: "production"
+    auto_merge: false
+    # TODO: Add bot account as collaborator
 
 # Labels to watch for (issues must have at least one of these labels)
 watch_labels:

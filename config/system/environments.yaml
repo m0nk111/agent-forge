@@ -3,7 +3,8 @@
 
 # Active environment (default: production)
 # Options: development, test, production
-active: production
+# 🧪 CURRENTLY IN TEST PHASE - Only test repo enabled
+active: test
 
 environments:
   # Development - Local testing, dry-run mode

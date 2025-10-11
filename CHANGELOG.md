@@ -9,6 +9,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Repository enabled/disabled flags** (2025-10-11)
+  - Added support for per-repository `enabled` flag in polling.yaml
+  - Repositories can be individually disabled while keeping configuration
+  - Polling service filters out disabled repositories at startup
+  - Format: `{repo: "owner/name", enabled: true/false, environment: "test/production"}`
+  - Backward compatible: still supports simple string format
+  - Logging: Shows which repos are enabled/disabled during startup
+
+### Changed
+
+- **Environment set to TEST mode** (2025-10-11)
+  - **CRITICAL**: Changed `active: production` → `active: test` in environments.yaml
+  - **Effect**: Only `m0nk111/agent-forge-test` is monitored
+  - **Reason**: Test phase - prevent accidental operations on production repos
+  - Production repositories (agent-forge, stepperheightcontrol, Mycodo, caramba) are now ignored
+  - Auto-merge enabled (safe in test environment)
+  - Shorter claim timeout (60 minutes vs 1440 in production)
+  - Max concurrent issues: 2 (vs 3 in production)
+  - **To switch back**: Change `active: test` → `active: production` in environments.yaml
+
+- **Repository configuration structure improved** (2025-10-11)
+  - polling.yaml now uses structured format for repositories
+  - Each repo has: `repo`, `enabled`, `environment`, `auto_merge` fields
+  - All production repos explicitly marked as `enabled: false`
+  - Clear comments indicating test phase status
+  - Easier to enable/disable repos without deleting configuration
+
+### Added
+
 - **Media Directory with Gource Visualization** (2025-10-11)
   - Created `/media/` directory for repository visualization videos
   - Added `media/agent-forge-gource-latest.mp4` (35 MB, 1080p60, 30 seconds)
