@@ -8,6 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **🔄 Smart Draft PR Re-Review System** (October 11, 2025)
+  - **Intelligent draft PR handling**: System now automatically re-reviews draft PRs when fixes are pushed
+  - **GitHub Actions workflow enhancement**:
+    - Triggers on `synchronize` events for draft PRs with `critical-issues` or `has-conflicts` labels
+    - These labels indicate PR was auto-converted by autonomous system
+    - Enables continuous feedback loop: convert to draft → fix → auto-review → merge or re-draft
+    - Still requires manual "Ready for Review" for normal work-in-progress draft PRs
+  - **Polling service enhancement**:
+    - Changed `reviewed_prs` from Set to Dict to track commit SHA per PR
+    - Detects new commits on draft PRs with auto-converted labels
+    - Re-reviews when HEAD SHA changes (new fixes pushed)
+    - Skips re-review if same commit already reviewed
+    - Smart filtering: only re-reviews PRs converted by autonomous system
+  - **Impact**: Complete autonomous cycle - convert to draft, developer fixes, auto-review, auto-merge
+  - **Use case**: Bot fixes issues and pushes commits without manual "Ready" marking
+
+- **🐛 Bug Fixes** (October 11, 2025)
+  - **DELETE method support**: Added DELETE to `_github_request()` for proper label removal
+  - Fixes "Unsupported method: DELETE" error when removing labels during conflict cleanup
+  - Enables proper `has-conflicts` label removal after resolution
+
 - **🤖 Fully Autonomous PR Management System** (October 11, 2025)
   - **BREAKING CHANGE**: Removed all manual review steps - system now fully autonomous
   - **New Decision Matrix**: Every scenario has autonomous action

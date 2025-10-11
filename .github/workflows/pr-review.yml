@@ -29,7 +29,12 @@ jobs:
     name: AI Code Review
     runs-on: ubuntu-latest
     
-    # Only run for bot accounts or manual trigger, and skip draft PRs (unless ready_for_review event)
+    # Only run for bot accounts or manual trigger
+    # Smart draft handling:
+    # - Always run on ready_for_review event (draft → ready)
+    # - Run on synchronize for draft PRs with 'critical-issues' or 'has-conflicts' labels
+    #   (these were auto-converted by our system and need re-review after fixes)
+    # - Skip other draft PRs (work in progress)
     if: >
       (github.event_name == 'workflow_dispatch') ||
       (github.event.action == 'ready_for_review') ||
@@ -40,6 +45,14 @@ jobs:
           github.event.pull_request.user.login == 'm0nk111-coder1' ||
           github.event.pull_request.user.login == 'm0nk111-coder2' ||
           github.event.pull_request.user.login == 'm0nk111-qwen-agent'
+        )
+      ) ||
+      (
+        github.event.action == 'synchronize' &&
+        github.event.pull_request.draft == true &&
+        (
+          contains(github.event.pull_request.labels.*.name, 'critical-issues') ||
+          contains(github.event.pull_request.labels.*.name, 'has-conflicts')
         )
       )
     

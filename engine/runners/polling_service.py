@@ -188,7 +188,7 @@ class PollingService:
         self.monitor = None
         self.api_calls = 0  # Track API calls
         self.creative_logs_enabled = os.getenv("POLLING_CREATIVE_LOGS", "0") in {"1", "true", "TRUE"}
-        self.reviewed_prs: Set[str] = set()  # Track reviewed PRs to avoid duplicates
+        self.reviewed_prs: Dict[str, str] = {}  # Track reviewed PRs with commit SHA {pr_key: head_sha}
         
         # Initialize GitHub API helper
         self.github_api = GitHubAPIHelper(token=self.config.github_token)
@@ -763,8 +763,24 @@ class PollingService:
                     pr_title = pr.get('title', 'Untitled')
                     pr_user = pr.get('user', {}).get('login', '')
                     pr_labels = [label.get('name', '') for label in pr.get('labels', [])]
+                    is_draft = pr.get('draft', False)
                     
-                    logger.debug(f"🔍 Checking PR #{pr_number} by {pr_user}: {pr_title}")
+                    logger.debug(f"🔍 Checking PR #{pr_number} by {pr_user}: {pr_title} (draft: {is_draft})")
+                    
+                    # Smart draft handling:
+                    # - Skip draft PRs UNLESS they have 'critical-issues' or 'has-conflicts' labels
+                    # - These labels indicate the PR was auto-converted by our system
+                    # - We want to auto-review them when new commits are pushed (fixes)
+                    if is_draft:
+                        has_auto_converted_label = any(
+                            label in ['critical-issues', 'has-conflicts'] 
+                            for label in pr_labels
+                        )
+                        if not has_auto_converted_label:
+                            logger.debug(f"📝 Skipping draft PR #{pr_number} - work in progress (no auto-converted labels)")
+                            continue
+                        else:
+                            logger.info(f"🔄 Draft PR #{pr_number} has auto-converted labels - will re-review on commits")
                     
                     # Check if user is in skip list (admin accounts)
                     if pr_user in self.config.pr_skip_review_users:
@@ -783,11 +799,24 @@ class PollingService:
                             logger.debug(f"⏭️ Skipping PR #{pr_number} - missing required labels")
                             continue
                     
-                    # Check if already reviewed
+                    # Check if already reviewed (with commit SHA tracking for re-reviews)
                     pr_key = f"{repo}#{pr_number}"
-                    if pr_key in self.reviewed_prs:
-                        logger.debug(f"✅ Already reviewed PR #{pr_number}")
-                        continue
+                    head_sha = pr.get('head', {}).get('sha', '')
+                    
+                    # For draft PRs with auto-converted labels, check if HEAD commit changed
+                    if is_draft and any(label in ['critical-issues', 'has-conflicts'] for label in pr_labels):
+                        # Check if we've reviewed this specific commit
+                        reviewed_sha = self.reviewed_prs.get(pr_key)
+                        if reviewed_sha == head_sha:
+                            logger.debug(f"✅ Already reviewed PR #{pr_number} at commit {head_sha[:7]}")
+                            continue
+                        elif reviewed_sha:
+                            logger.info(f"🔄 Re-reviewing PR #{pr_number} - new commits since last review (was {reviewed_sha[:7]}, now {head_sha[:7]})")
+                    else:
+                        # For normal PRs, review only once
+                        if pr_key in self.reviewed_prs:
+                            logger.debug(f"✅ Already reviewed PR #{pr_number}")
+                            continue
                     
                     # Trigger reviewer agent
                     logger.info(f"🤖 Triggering review for PR #{pr_number}: {pr_title}")
@@ -944,8 +973,10 @@ class PollingService:
             
             logger.info(f"✅ PR review completed for {pr_key}: {decision} ({issue_count} issues found)")
             
-            # Mark as reviewed
-            self.reviewed_prs.add(pr_key)
+            # Mark as reviewed with commit SHA
+            head_sha = pr_data.get('head', {}).get('sha', '')
+            self.reviewed_prs[pr_key] = head_sha
+            logger.debug(f"📝 Marked PR {pr_key} as reviewed at commit {head_sha[:7] if head_sha else 'unknown'}")
             
         except Exception as e:
             logger.error(f"❌ Failed to trigger PR review for {repo}#{pr_number}: {e}", exc_info=True)
