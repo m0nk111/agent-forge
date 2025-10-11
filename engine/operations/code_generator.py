@@ -93,15 +93,23 @@ class CodeGenerator:
         """
         logger.info("🔍 Inferring module specification from issue...")
         
-        # Extract file path mentions (e.g., "create engine/operations/helper.py")
+        # Extract file path mentions (e.g., "create engine/operations/helper.py" or "create docs/README.md")
         text = f"{issue_title} {issue_body}".lower()
         
-        # Pattern 1: Explicit path mention
-        path_pattern = r'(?:create|add|implement|build)\s+(?:file\s+)?[`]?([a-z_/]+\.py)[`]?'
+        # Pattern 1: Explicit path mention - support Python files and documentation files
+        # Supported extensions: .py (Python), .md (Markdown), .txt (text), .rst (reStructuredText)
+        path_pattern = r'(?:create|add|implement|build)\s+(?:file\s+)?[`]?([a-z_/]+\.(?:py|md|txt|rst))[`]?'
         path_match = re.search(path_pattern, text)
         
         if path_match:
             module_path = path_match.group(1)
+            
+            # Check if this is a documentation file (not Python)
+            if not module_path.endswith('.py'):
+                # For documentation files, return None to trigger fallback to IssueHandler
+                logger.info(f"📄 Detected documentation file: {module_path}")
+                logger.info(f"   This will be handled by IssueHandler instead of CodeGenerator")
+                return None
         else:
             # Pattern 2: Infer from keywords
             if 'helper' in text or 'utility' in text:

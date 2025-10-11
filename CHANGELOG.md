@@ -8,24 +8,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
-- **Bug #8: Module specification inference fails for documentation tasks** (DISCOVERED)
+- **Bug #8: Module specification inference fails for documentation tasks** (FIXED)
   - **Problem**: Pipeline orchestrator crashes when trying to infer Python module from documentation-only issues
-  - **Root cause**: `code_generator._infer_module_from_issue()` assumes all tasks are Python code, not documentation
+  - **Root cause**: `code_generator.infer_module_spec()` only recognized `.py` files, not `.md`, `.txt`, `.rst`
   - **Impact**: "Could not infer module specification from issue" error, workflow fails immediately
   - **Error**: `RuntimeError: Requirements parsing failed: Could not infer module specification from issue`
   - **Phase**: parse_requirements
-  - **Workaround**: Update issue body with explicit file specification (e.g., `` `docs/WELCOME.md` ``)
-  - **Proper fix TODO**: Add fallback to IssueHandler or make code generator handle non-Python files
-  - **File**: `engine/operations/code_generator.py` (inference logic)
-  - **Status**: WORKAROUND APPLIED - Issue #1 body updated with explicit file path
+  - **Fix**: Extended regex pattern to detect documentation files (`.md`, `.txt`, `.rst`), returns None to trigger fallback to IssueHandler
+  - **Benefits**:
+    * Code generator now recognizes documentation file requests
+    * Gracefully falls back to IssueHandler for non-Python files
+    * Supports Markdown, text, and reStructuredText formats
+  - **File**: `engine/operations/code_generator.py` lines 98-111
+  - **Status**: FIXED - Documentation files now properly detected and handled
 
-- **Bug #6: Labels query gebruikt AND i.p.v. OR** (WORKAROUND)
+- **Bug #6: Labels query gebruikt AND i.p.v. OR** (FIXED)
   - **Problem**: Polling service searched for `labels=agent-ready,auto-assign` which uses AND logic in GitHub API
-  - **Root cause**: comma-separated labels = ALL labels required, not ANY
+  - **Root cause**: GitHub API comma-separated labels require ALL labels (AND), not ANY (OR)
   - **Impact**: Issues with only `agent-ready` label were not found
-  - **Workaround**: Added `auto-assign` label to test issue #1
-  - **Proper fix TODO**: Implement OR logic by querying each label separately and merging results
-  - **File**: `engine/runners/polling_service.py` line 436
+  - **Fix**: Implemented OR logic by querying each label separately and merging/deduplicating results
+  - **Benefits**:
+    * Issues are found if they have ANY watch label (not all required)
+    * Proper OR semantics for label-based discovery
+    * Deduplicated results prevent duplicate processing
+  - **File**: `engine/runners/polling_service.py` lines 428-456
+  - **Status**: FIXED - OR logic implemented with per-label queries
 
 - **Bug #7: Wrong agent type selected for workflow**
   - **Problem**: Polling service tried to use bot agent (m0nk111-post) for code generation

@@ -430,32 +430,42 @@ class PollingService:
                 
                 # Get ALL open issues with watch labels (not filtered by assignee)
                 # This allows any agent to pick up unclaimed agent-ready issues
-                try:
-                    # Use GitHub API to search by labels
-                    # Note: We check for issues with ANY of the watch labels
-                    label_query = ','.join(self.config.watch_labels)
-                    path = f"/repos/{owner}/{repo_name}/issues?state=open&per_page=100&labels={label_query}"
-                    stdout = subprocess.run(
-                        ["gh", "api", path],
-                        text=True,
-                        capture_output=True
-                    )
-                    if stdout.returncode != 0:
-                        raise RuntimeError(stdout.stderr.strip() or "gh api failed")
-                    issues = json.loads(stdout.stdout or "[]")
-                except Exception:
-                    # Fallback to REST API helper
-                    # Get issues with any of the watch labels
-                    issues = self.github_api.list_issues(
-                        owner=owner,
-                        repo=repo_name,
-                        labels=self.config.watch_labels,
-                        state="open",
-                        per_page=100,
-                        bypass_rate_limit=True
-                    )
-                    # Increment API call counter
-                    self.api_calls += 1
+                # 
+                # Note: GitHub API uses AND logic for comma-separated labels,
+                # so we query each label separately and merge results (OR logic)
+                issues = []
+                seen_issue_ids = set()
+                
+                for label in self.config.watch_labels:
+                    try:
+                        # Query for each label individually
+                        path = f"/repos/{owner}/{repo_name}/issues?state=open&per_page=100&labels={label}"
+                        stdout = subprocess.run(
+                            ["gh", "api", path],
+                            text=True,
+                            capture_output=True
+                        )
+                        if stdout.returncode != 0:
+                            raise RuntimeError(stdout.stderr.strip() or "gh api failed")
+                        label_issues = json.loads(stdout.stdout or "[]")
+                    except Exception:
+                        # Fallback to REST API helper
+                        label_issues = self.github_api.list_issues(
+                            owner=owner,
+                            repo=repo_name,
+                            labels=[label],  # Single label query
+                            state="open",
+                            per_page=100,
+                            bypass_rate_limit=True
+                        )
+                        # Increment API call counter
+                        self.api_calls += 1
+                    
+                    # Deduplicate: only add issues we haven't seen yet
+                    for issue in label_issues:
+                        if issue['id'] not in seen_issue_ids:
+                            issues.append(issue)
+                            seen_issue_ids.add(issue['id'])
                 
                 # Add repository field to each issue
                 for issue in issues:
