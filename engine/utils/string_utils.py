@@ -78,3 +78,40 @@ def contains_digit(s):
         bool: True if the string contains a digit, False otherwise.
     """
     return any(char.isdigit() for char in s)
+
+def count_consonants(s):
+    """
+    Counts the number of consonants in the given string.
+
+    Args:
+        s (str): The string to analyze.
+
+    Returns:
+        int: The number of consonants in the string.
+    """
+    vowels = "aeiouAEIOU"
+    return sum(1 for char in s if char.isalpha() and char not in vowels)
+
+def count_uppercase_letters(s):
+    """
+    Counts the number of uppercase letters in the given string.
+
+    Args:
+        s (str): The string to analyze.
+
+    Returns:
+        int: The number of uppercase letters in the string.
+    """
+    return sum(1 for char in s if char.isupper())
+
+def count_lowercase_letters(s):
+    """
+    Counts the number of lowercase letters in the given string.
+
+    Args:
+        s (str): The string to analyze.
+
+    Returns:
+        int: The number of lowercase letters in the string.
+    """
+    return sum(1 for char in s if char.islower())

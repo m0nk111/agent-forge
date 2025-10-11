@@ -81,6 +81,22 @@ def remove_punctuation(text: str) -> str:
     import string
     return ''.join(char for char in text if char not in string.punctuation)
 
+def count_consonants(text: str) -> int:
+    """
+    Count the number of consonants in the input string.
+
+    Args:
+        text (str): The input string to count consonants from.
+
+    Returns:
+        int: The total count of consonants in the input string.
+    """
+    if not isinstance(text, str):
+        raise ValueError("Input must be a string")
+    
+    consonants = 'bcdfghjklmnpqrstvwxyzBCDFGHJKLMNPQRSTVWXYZ'
+    return sum(1 for char in text if char in consonants)
+
 # Test suite using pytest
 import pytest
 
@@ -113,3 +129,10 @@ def test_remove_punctuation():
     assert remove_punctuation('Hello, World!') == 'Hello World'
     assert remove_punctuation('Python 3.8') == 'Python 38'
     assert remove_punctuation('No punctuation here') == 'No punctuation here'
+
+def test_count_consonants():
+    assert count_consonants('hello world') == 7
+    assert count_consonants('python programming') == 12
+    assert count_consonants('BCDFGHJKLMNPQRSTVWXYZ') == 24
+    with pytest.raises(ValueError):
+        count_consonants(12345)
