@@ -763,5 +763,260 @@ class GitHubAPIHelper:
                                  f"Failed to submit review on PR #{pr_number}", success=False)
             logger.error(f"Failed to submit PR review to {owner}/{repo}#{pr_number}: {e}")
             raise
+    
+    # ========================================
+    # Repository Management Methods
+    # ========================================
+    
+    def create_repository(self, name: str, description: str = "", 
+                         private: bool = False, organization: Optional[str] = None,
+                         auto_init: bool = True, gitignore_template: Optional[str] = None,
+                         license_template: Optional[str] = None) -> Dict:
+        """Create a new repository.
+        
+        Args:
+            name: Repository name
+            description: Repository description
+            private: Whether repository should be private
+            organization: Organization name (creates user repo if None)
+            auto_init: Initialize with README.md
+            gitignore_template: .gitignore template (e.g., 'Python', 'Node')
+            license_template: License template (e.g., 'mit', 'apache-2.0')
+            
+        Returns:
+            Repository data from GitHub API
+            
+        Raises:
+            requests.RequestException: On API error
+        """
+        target = f"{organization or 'user'}/{name}"
+        
+        # Check rate limit first
+        if not self._check_rate_limit(OperationType.REPOSITORY_ACTION, target):
+            raise RuntimeError(f"⏳ Rate limit reached for repository creation")
+        
+        # Build request payload
+        payload = {
+            'name': name,
+            'description': description,
+            'private': private,
+            'auto_init': auto_init
+        }
+        
+        if gitignore_template:
+            payload['gitignore_template'] = gitignore_template
+        if license_template:
+            payload['license_template'] = license_template
+        
+        # Choose endpoint based on organization
+        if organization:
+            url = f"{self.BASE_URL}/orgs/{organization}/repos"
+        else:
+            url = f"{self.BASE_URL}/user/repos"
+        
+        try:
+            logger.info(f"🔨 Creating repository: {target}")
+            response = self.session.post(url, json=payload)
+            self._update_rate_limit_from_response(response)
+            response.raise_for_status()
+            
+            repo_data = response.json()
+            self._record_operation(OperationType.REPOSITORY_ACTION, target,
+                                 f"Created repository {name}")
+            logger.info(f"✅ Repository created: {repo_data['html_url']}")
+            return repo_data
+            
+        except requests.RequestException as e:
+            if hasattr(e, 'response') and e.response is not None:
+                if e.response.status_code == 422:
+                    logger.error(f"❌ Repository creation failed: {e.response.text}")
+            
+            self._record_operation(OperationType.REPOSITORY_ACTION, target,
+                                 f"Failed to create repository {name}", success=False)
+            logger.error(f"Failed to create repository {target}: {e}")
+            raise
+    
+    def add_collaborator(self, owner: str, repo: str, username: str, 
+                        permission: str = "push") -> bool:
+        """Add a collaborator to a repository.
+        
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            username: GitHub username to add
+            permission: Permission level ('pull', 'push', 'admin', 'maintain', 'triage')
+            
+        Returns:
+            True if successful
+            
+        Raises:
+            requests.RequestException: On API error
+        """
+        target = f"{owner}/{repo}"
+        
+        # Check rate limit first
+        if not self._check_rate_limit(OperationType.REPOSITORY_ACTION, target):
+            raise RuntimeError(f"⏳ Rate limit reached for collaborator management")
+        
+        url = f"{self.BASE_URL}/repos/{owner}/{repo}/collaborators/{username}"
+        payload = {'permission': permission}
+        
+        try:
+            logger.info(f"👥 Adding collaborator {username} to {target} ({permission})")
+            response = self.session.put(url, json=payload)
+            self._update_rate_limit_from_response(response)
+            response.raise_for_status()
+            
+            self._record_operation(OperationType.REPOSITORY_ACTION, target,
+                                 f"Added collaborator {username}")
+            logger.info(f"✅ Collaborator {username} added to {target}")
+            return True
+            
+        except requests.RequestException as e:
+            if hasattr(e, 'response') and e.response is not None:
+                logger.error(f"❌ Failed to add collaborator: {e.response.text}")
+            
+            self._record_operation(OperationType.REPOSITORY_ACTION, target,
+                                 f"Failed to add collaborator {username}", success=False)
+            logger.error(f"Failed to add collaborator {username} to {target}: {e}")
+            raise
+    
+    def list_repository_invitations(self) -> List[Dict]:
+        """List pending repository invitations for authenticated user.
+        
+        Returns:
+            List of invitation dictionaries
+            
+        Raises:
+            requests.RequestException: On API error
+        """
+        target = "user/invitations"
+        
+        # Check rate limit first
+        if not self._check_rate_limit(OperationType.REPOSITORY_ACTION, target):
+            raise RuntimeError(f"⏳ Rate limit reached for invitation listing")
+        
+        url = f"{self.BASE_URL}/user/repository_invitations"
+        
+        try:
+            logger.info(f"📬 Fetching repository invitations")
+            response = self.session.get(url)
+            self._update_rate_limit_from_response(response)
+            response.raise_for_status()
+            
+            invitations = response.json()
+            self._record_operation(OperationType.REPOSITORY_ACTION, target,
+                                 f"Listed {len(invitations)} invitations")
+            logger.info(f"✅ Found {len(invitations)} pending invitations")
+            return invitations
+            
+        except requests.RequestException as e:
+            if hasattr(e, 'response') and e.response is not None:
+                logger.error(f"❌ Failed to list invitations: {e.response.text}")
+            
+            self._record_operation(OperationType.REPOSITORY_ACTION, target,
+                                 "Failed to list invitations", success=False)
+            logger.error(f"Failed to list repository invitations: {e}")
+            raise
+    
+    def accept_repository_invitation(self, invitation_id: int) -> bool:
+        """Accept a repository invitation.
+        
+        Args:
+            invitation_id: Invitation ID from list_repository_invitations()
+            
+        Returns:
+            True if successful
+            
+        Raises:
+            requests.RequestException: On API error
+        """
+        target = f"invitation/{invitation_id}"
+        
+        # Check rate limit first
+        if not self._check_rate_limit(OperationType.REPOSITORY_ACTION, target):
+            raise RuntimeError(f"⏳ Rate limit reached for invitation acceptance")
+        
+        url = f"{self.BASE_URL}/user/repository_invitations/{invitation_id}"
+        
+        try:
+            logger.info(f"✉️ Accepting repository invitation {invitation_id}")
+            response = self.session.patch(url)
+            self._update_rate_limit_from_response(response)
+            response.raise_for_status()
+            
+            self._record_operation(OperationType.REPOSITORY_ACTION, target,
+                                 f"Accepted invitation {invitation_id}")
+            logger.info(f"✅ Invitation {invitation_id} accepted")
+            return True
+            
+        except requests.RequestException as e:
+            if hasattr(e, 'response') and e.response is not None:
+                logger.error(f"❌ Failed to accept invitation: {e.response.text}")
+            
+            self._record_operation(OperationType.REPOSITORY_ACTION, target,
+                                 f"Failed to accept invitation {invitation_id}", success=False)
+            logger.error(f"Failed to accept invitation {invitation_id}: {e}")
+            raise
+    
+    def update_branch_protection(self, owner: str, repo: str, branch: str,
+                                required_reviews: int = 1,
+                                enforce_admins: bool = False,
+                                require_code_owner_reviews: bool = False) -> Dict:
+        """Configure branch protection rules.
+        
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            branch: Branch name (e.g., 'main', 'master')
+            required_reviews: Number of required approving reviews
+            enforce_admins: Enforce protections for administrators
+            require_code_owner_reviews: Require CODEOWNERS review
+            
+        Returns:
+            Branch protection data
+            
+        Raises:
+            requests.RequestException: On API error
+        """
+        target = f"{owner}/{repo}:{branch}"
+        
+        # Check rate limit first
+        if not self._check_rate_limit(OperationType.REPOSITORY_ACTION, target):
+            raise RuntimeError(f"⏳ Rate limit reached for branch protection")
+        
+        url = f"{self.BASE_URL}/repos/{owner}/{repo}/branches/{branch}/protection"
+        
+        payload = {
+            'required_status_checks': None,  # Can be configured later
+            'enforce_admins': enforce_admins,
+            'required_pull_request_reviews': {
+                'required_approving_review_count': required_reviews,
+                'require_code_owner_reviews': require_code_owner_reviews,
+                'dismiss_stale_reviews': True
+            },
+            'restrictions': None  # No push restrictions
+        }
+        
+        try:
+            logger.info(f"🔒 Configuring branch protection for {target}")
+            response = self.session.put(url, json=payload)
+            self._update_rate_limit_from_response(response)
+            response.raise_for_status()
+            
+            protection_data = response.json()
+            self._record_operation(OperationType.REPOSITORY_ACTION, target,
+                                 f"Updated branch protection for {branch}")
+            logger.info(f"✅ Branch protection configured for {target}")
+            return protection_data
+            
+        except requests.RequestException as e:
+            if hasattr(e, 'response') and e.response is not None:
+                logger.error(f"❌ Branch protection failed: {e.response.text}")
+            
+            self._record_operation(OperationType.REPOSITORY_ACTION, target,
+                                 f"Failed to update branch protection", success=False)
+            logger.error(f"Failed to configure branch protection for {target}: {e}")
+            raise
 
 
