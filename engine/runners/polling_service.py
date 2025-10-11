@@ -30,6 +30,7 @@ from engine.runners.polling_models import PollingConfig, IssueState
 from engine.runners.config_override_handler import ConfigOverrideHandler
 from engine.runners.state_manager import StateManager
 from engine.runners.issue_filter import IssueFilter
+from engine.utils.environment_config import EnvironmentConfig
 
 
 def _utc_now() -> datetime:
@@ -112,6 +113,10 @@ class PollingService:
             enable_monitoring: Whether to register with monitor service
             config_path: Optional explicit path to YAML config file
         """
+        # Load environment configuration first
+        self.env_config = EnvironmentConfig()
+        logger.info(f"🌍 Environment: {self.env_config.active_env}")
+        
         # Configuration resolution strategy:
         # - If explicit config provided without config_path: use it directly (do not load YAML)
         # - If config is None: load from YAML (config_path or default)
@@ -122,6 +127,10 @@ class PollingService:
             self.config = self._load_config_from_yaml(config_path)
             if config is not None:
                 self._apply_config_overrides(config)
+        
+        # Apply environment-specific overrides
+        self._apply_environment_overrides()
+        
         self.agent_registry = agent_registry
         self.state_file = Path(self.config.state_file)
         
@@ -319,6 +328,40 @@ class PollingService:
         """
         handler = ConfigOverrideHandler(self.config)
         handler.apply_overrides(override)
+    
+    def _apply_environment_overrides(self):
+        """Apply environment-specific configuration overrides."""
+        # Override repositories from environment
+        env_repos = self.env_config.get_repositories()
+        if env_repos:
+            logger.info(f"🌍 Environment override: repositories = {env_repos}")
+            self.config.repositories = env_repos
+        
+        # Override max concurrent issues
+        env_max = self.env_config.get_max_concurrent_issues()
+        if env_max != self.config.max_concurrent_issues:
+            logger.info(f"🌍 Environment override: max_concurrent_issues = {env_max}")
+            self.config.max_concurrent_issues = env_max
+        
+        # Override claim timeout
+        env_timeout = self.env_config.get_claim_timeout()
+        if env_timeout != self.config.claim_timeout_minutes:
+            logger.info(f"🌍 Environment override: claim_timeout_minutes = {env_timeout}")
+            self.config.claim_timeout_minutes = env_timeout
+        
+        # Override auto-merge setting
+        env_auto_merge = self.env_config.can_auto_merge()
+        if env_auto_merge != self.config.pr_auto_merge_if_approved:
+            logger.info(f"🌍 Environment override: auto_merge = {env_auto_merge}")
+            self.config.pr_auto_merge_if_approved = env_auto_merge
+        
+        # Log environment info
+        if self.env_config.is_dry_run():
+            logger.warning("⚠️  DRY RUN MODE - No actual operations will be performed")
+        if self.env_config.is_test_mode():
+            logger.info("🧪 TEST MODE - Using test repository")
+        if self.env_config.is_production():
+            logger.info("🚀 PRODUCTION MODE - Using production repositories")
         
     def load_state(self):
         """Load polling state from disk."""

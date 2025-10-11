@@ -20,17 +20,3 @@ This document outlines the guidelines for including docstrings and type hints in
    - Type hints should be included in function signatures where possible.
 
 ## Example
-
-```python
-def add_numbers(a: int, b: int) -> int:
-    """Return the sum of two numbers.
-
-    Parameters:
-    a (int): The first number.
-    b (int): The second number.
-
-    Returns:
-    int: The sum of the two numbers.
-    """
-    return a + b
-```
