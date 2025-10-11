@@ -2,22 +2,27 @@
 
 Guide for using the GitHub bot account across different Copilot agent sessions.
 
+> **Note**: This guide uses `m0nk111-post` (current bot account).  
+> See `config/system/github_accounts.yaml` for complete account configuration.
+
 ## Overview
 
-The `m0nk111-bot` account provides administrative capabilities for GitHub operations:
+The `m0nk111-post` bot account provides administrative capabilities for GitHub operations:
 - ✅ Create and manage issues
 - ✅ Create and manage pull requests  
 - ✅ Add comments and reviews
 - ✅ Manage labels and milestones
-- ❌ Cannot push code (security separation)
+- ✅ Create repositories (Bootstrap Agent)
+- ❌ Cannot push code directly (uses coders for that)
 
 **Security Model:**
-- Bot account: Administrative operations only (Triage role)
-- Agent accounts: Code commits and pushes (Write role)
+- Bot account: Administrative operations only (Orchestration role)
+- Coder accounts: Code commits and pushes (Write role)
+- Reviewer account: PR reviews and approvals (Review role)
 
 ## Prerequisites
 
-All agents must have access to the bot token via environment variables:
+All agents must have access to the bot token via environment variables or configuration:
 
 ```bash
 # Source the agent-forge environment (already in ~/.bashrc)
@@ -27,17 +32,17 @@ source ~/.agent-forge.env
 echo $BOT_GITHUB_TOKEN  # Should show: ghp_...
 ```
 
-**Credentials:**
-- Token: Available in `~/.agent-forge.env` as `BOT_GITHUB_TOKEN`
-- Username: `m0nk111-bot`
-- Email: `aicodingtime+bot@gmail.com`
-- Expires: ~90 days from October 5, 2025
+**Credentials (centralized in config/system/github_accounts.yaml):**
+- Token: BOT_GITHUB_TOKEN (from `secrets/agents/m0nk111-post.token`)
+- Username: `m0nk111-post`
+- Email: `aicodingtime+post@gmail.com`
+- Scopes: repo, admin:org, workflow, write:discussion
 
-**Security:** Never commit tokens to git. Use environment variables only.
+**Security:** Never commit tokens to git. Use environment variables or secure token files only.
 
-## Method 1: Python API (Recommended)
+## Method 1: Python API with AccountManager (Recommended)
 
-Use the `BotOperations` class for type-safe operations:
+Use the `BotOperations` class with centralized account management:
 
 ### Setup
 
@@ -296,10 +301,10 @@ open_tasks = bot.list_issues(
 bot.add_comment(
     repo='agent-forge',
     issue_number=5,
-    comment='@m0nk111-bot Please review implementation'
+    comment='@m0nk111-reviewer Please review implementation'
 )
 
-# Agent B responds
+# Reviewer responds
 bot.add_comment(
     repo='agent-forge',
     issue_number=5,
