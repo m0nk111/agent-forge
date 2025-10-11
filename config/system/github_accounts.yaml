@@ -1,0 +1,128 @@
+# GitHub Accounts Configuration
+# Centralized configuration for all GitHub bot/agent accounts
+# This eliminates hardcoded values throughout the codebase
+
+accounts:
+  # Bot orchestrator account
+  m0nk111-post:
+    username: m0nk111-post
+    email: aicodingtime+post@gmail.com
+    role: bot
+    description: Bot account for automated GitHub operations (orchestration, triage, repo creation)
+    token_file: secrets/agents/m0nk111-post.token
+    token_env: BOT_GITHUB_TOKEN
+    capabilities:
+      - create_issues
+      - add_comments
+      - assign_tasks
+      - update_labels
+      - create_repository
+      - invite_collaborators
+      - configure_branch_protection
+  
+  # Primary GPT-5 coder
+  m0nk111-coder1:
+    username: m0nk111-coder1
+    email: aicodingtime+coder1@gmail.com
+    role: developer
+    description: Primary GPT-5 Chat Latest code generation and development agent
+    token_file: secrets/agents/m0nk111-coder1.token
+    token_env: CODER1_GITHUB_TOKEN
+    capabilities:
+      - code_generation
+      - bug_fixing
+      - refactoring
+      - testing
+      - documentation
+      - create_pull_requests
+      - review_code
+  
+  # Primary GPT-4o coder
+  m0nk111-coder2:
+    username: m0nk111-coder2
+    email: aicodingtime+coder2@gmail.com
+    role: developer
+    description: Primary GPT-4o code generation and development agent
+    token_file: secrets/agents/m0nk111-coder2.token
+    token_env: CODER2_GITHUB_TOKEN
+    capabilities:
+      - code_generation
+      - bug_fixing
+      - refactoring
+      - testing
+      - documentation
+      - create_pull_requests
+      - review_code
+  
+  # Dedicated reviewer
+  m0nk111-reviewer:
+    username: m0nk111-reviewer
+    email: aicodingtime+reviewer@gmail.com
+    role: reviewer
+    description: Dedicated GPT-5 Chat Latest PR reviewer
+    token_file: secrets/agents/m0nk111-reviewer.token
+    token_env: REVIEWER_GITHUB_TOKEN
+    capabilities:
+      - review_code
+      - add_comments
+      - approve_prs
+      - request_changes
+  
+  # Reserve/fallback coder (Qwen local model)
+  m0nk111-qwen-agent:
+    username: m0nk111-qwen-agent
+    email: aicodingtime+qwen@gmail.com  # Different pattern for consistency
+    role: developer
+    description: Reserve Qwen 2.5 Coder local model agent (fallback)
+    token_file: secrets/agents/m0nk111-qwen-agent.token
+    token_env: CODEAGENT_GITHUB_TOKEN
+    capabilities:
+      - code_generation
+      - bug_fixing
+      - refactoring
+      - create_pull_requests
+
+# Repository owner
+repository_owner: m0nk111
+
+# Default bot account (for backwards compatibility)
+default_bot_account: m0nk111-post
+
+# Account groups for easy filtering
+groups:
+  bots:
+    - m0nk111-post
+  
+  coders:
+    - m0nk111-coder1
+    - m0nk111-coder2
+    - m0nk111-qwen-agent
+  
+  reviewers:
+    - m0nk111-reviewer
+    - m0nk111-coder1  # Can also review
+    - m0nk111-coder2  # Can also review
+  
+  primary_coders:
+    - m0nk111-coder1
+    - m0nk111-coder2
+  
+  reserve_coders:
+    - m0nk111-qwen-agent
+  
+  all_agents:
+    - m0nk111-post
+    - m0nk111-coder1
+    - m0nk111-coder2
+    - m0nk111-reviewer
+    - m0nk111-qwen-agent
+
+# Trusted accounts (for security audit bypass)
+trusted_accounts:
+  - m0nk111-post
+  - m0nk111-coder1
+  - m0nk111-coder2
+  - m0nk111-reviewer
+  - m0nk111-qwen-agent
+  - dependabot[bot]
+  - github-actions[bot]

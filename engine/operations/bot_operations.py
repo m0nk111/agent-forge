@@ -21,22 +21,40 @@ Usage:
 import os
 import requests
 from typing import Optional, List, Dict, Any
+from engine.core.account_manager import get_bot_account, get_account_manager
 
 
 class BotOperations:
     """Handle GitHub administrative operations via bot account."""
     
-    def __init__(self):
-        """Initialize with bot credentials from environment."""
-        self.username = os.getenv('BOT_GITHUB_USERNAME', 'm0nk111-post')
-        self.email = os.getenv('BOT_GITHUB_EMAIL', 'aicodingtime+bot@gmail.com')
-        self.token = os.getenv('BOT_GITHUB_TOKEN')
-        self.owner = 'm0nk111'  # Repository owner
+    def __init__(self, username: Optional[str] = None):
+        """
+        Initialize with bot credentials.
+        
+        Args:
+            username: Optional specific account username (defaults to default bot account)
+        """
+        # Get account from centralized config
+        manager = get_account_manager()
+        
+        if username:
+            account = manager.get_account(username)
+            if not account:
+                raise ValueError(f"Account {username} not found in github_accounts.yaml")
+        else:
+            account = manager.get_default_bot_account()
+            if not account:
+                raise ValueError("No default bot account configured in github_accounts.yaml")
+        
+        self.username = account.username
+        self.email = account.email
+        self.token = account.token
+        self.owner = manager.get_repository_owner()
         
         if not self.token:
             raise ValueError(
-                "BOT_GITHUB_TOKEN not set in environment.\n"
-                "Run: source ~/.agent-forge.env"
+                f"No GitHub token found for {self.username}.\n"
+                f"Set {account.token_env} in environment or create {account.token_file}"
             )
         
         self.headers = {

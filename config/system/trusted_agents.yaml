@@ -1,13 +1,13 @@
 # Trusted GitHub Accounts
-# These accounts can interact with the agent system
+# NOTE: This file is DEPRECATED
+# All trusted accounts are now managed in config/system/github_accounts.yaml
+# 
+# Migration: Use AccountManager from engine.core.account_manager
+#   manager = AccountManager()
+#   trusted = manager.get_trusted_accounts()
+#
+# This file remains for backwards compatibility but should not be edited.
+# Edit config/system/github_accounts.yaml instead.
 
-trusted_agents:
-  - username: m0nk111-post
-    role: bot
-    description: Bot account for automated GitHub operations (posting, organizing, triage)
-    trusted: true
-  
-  - username: m0nk111-qwen-agent
-    role: developer
-    description: Qwen-based code generation and development agent
-    trusted: true
+# DEPRECATED - Use github_accounts.yaml
+trusted_agents_source: config/system/github_accounts.yaml
