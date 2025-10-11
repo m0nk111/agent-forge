@@ -3,7 +3,7 @@
 
 # Agent identification (root level for launcher compatibility)
 agent_id: m0nk111-post
-name: M0nk111 Post Bot
+name: M0nk111 Post Agent
 role: bot
 model_provider: local
 model_name: qwen2.5-coder:7b
