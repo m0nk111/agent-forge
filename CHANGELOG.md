@@ -8,6 +8,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **🐛 Rate Limiter Fix for PR List Operations** (October 11, 2025)
+  - **CRITICAL BUG FIX**: Fixed incorrect operation type for list_pull_requests
+  - **Problem**:
+    - `list_pull_requests()` was classified as ISSUE_COMMENT operation
+    - Triggered 15-second comment cooldown on every PR list attempt
+    - All PR review checks failed with "Rate limit exceeded"
+    - GitHub API had 99.7% quota available (4986/5000 requests)
+    - Internal rate limiter was too aggressive, not GitHub
+  - **Root Cause**:
+    - Wrong OperationType (ISSUE_COMMENT) used for read-only PR listing
+    - Comment cooldown (15s) applied instead of API_READ cooldown (5s)
+    - Rate limiter state persisted between polling cycles
+    - Caused false positives: "rate limited" when GitHub API was fine
+  - **Solution**:
+    - Changed OperationType from ISSUE_COMMENT to API_READ
+    - Updated both check and record operations
+    - API_READ has 5s cooldown vs 15s for comments
+    - Appropriate for read-only operations
+  - **Impact**:
+    - PR review checks no longer blocked by aggressive cooldowns
+    - Polling service can fetch PR lists every 5s instead of 15s
+    - No more false rate limit errors
+    - System will process ready PRs correctly
+  - **Testing**: Verified GitHub API at 99.7% quota, confirmed internal rate limiter was blocker
+  - **Rationale**: Read operations should not use comment cooldowns
+
 - **� Automatic Draft PR Recovery System** (October 11, 2025)
   - **FEATURE**: Bot automatically monitors and recovers draft PRs
   - **Problem**: PRs converted to draft for issues would remain stuck indefinitely
