@@ -2,7 +2,12 @@ name: Automated PR Review
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, ready_for_review]
+    # Triggers:
+    # - opened: New PR created
+    # - synchronize: New commits pushed to PR
+    # - reopened: Closed PR reopened
+    # - ready_for_review: Draft PR marked as ready
     # Only run on PRs from bot accounts for safety
     # Can be extended to all PRs after testing
   
@@ -24,14 +29,18 @@ jobs:
     name: AI Code Review
     runs-on: ubuntu-latest
     
-    # Only run for bot accounts or manual trigger
+    # Only run for bot accounts or manual trigger, and skip draft PRs (unless ready_for_review event)
     if: >
-      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_dispatch') ||
+      (github.event.action == 'ready_for_review') ||
       (
-        github.event.pull_request.user.login == 'm0nk111-post' ||
-        github.event.pull_request.user.login == 'm0nk111-coder1' ||
-        github.event.pull_request.user.login == 'm0nk111-coder2' ||
-        github.event.pull_request.user.login == 'm0nk111-qwen-agent'
+        github.event.pull_request.draft == false &&
+        (
+          github.event.pull_request.user.login == 'm0nk111-post' ||
+          github.event.pull_request.user.login == 'm0nk111-coder1' ||
+          github.event.pull_request.user.login == 'm0nk111-coder2' ||
+          github.event.pull_request.user.login == 'm0nk111-qwen-agent'
+        )
       )
     
     permissions:

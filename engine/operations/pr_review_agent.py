@@ -544,6 +544,123 @@ Be concise. Only report real issues, not nitpicks."""
             logger.error(f"❌ Error assigning PR: {e}")
             return False
     
+    def convert_to_draft(self, repo: str, pr_number: int, reason: str = "quality issues") -> bool:
+        """Convert PR to draft status.
+        
+        Args:
+            repo: Repository in owner/name format
+            pr_number: Pull request number
+            reason: Reason for conversion (for logging)
+        
+        Returns:
+            True if converted successfully
+        """
+        try:
+            owner, repo_name = repo.split('/')
+            
+            # GraphQL is required for draft conversion
+            # First get the PR node_id
+            pr_url = f"https://api.github.com/repos/{owner}/{repo_name}/pulls/{pr_number}"
+            pr_status, pr_data = self._github_request('GET', pr_url)
+            
+            if pr_status != 200 or not pr_data:
+                logger.error(f"❌ Could not fetch PR #{pr_number} for draft conversion")
+                return False
+            
+            node_id = pr_data.get('node_id')
+            if not node_id:
+                logger.error(f"❌ PR #{pr_number} missing node_id")
+                return False
+            
+            # Convert to draft via GraphQL
+            graphql_url = "https://api.github.com/graphql"
+            query = """
+            mutation($pullRequestId: ID!) {
+              convertPullRequestToDraft(input: {pullRequestId: $pullRequestId}) {
+                pullRequest {
+                  isDraft
+                }
+              }
+            }
+            """
+            variables = {"pullRequestId": node_id}
+            graphql_data = {"query": query, "variables": variables}
+            
+            status, response = self._github_request('POST', graphql_url, json_data=graphql_data)
+            
+            if status == 200 and response and not response.get('errors'):
+                logger.info(f"✅ Converted PR #{pr_number} to draft ({reason})")
+                return True
+            else:
+                errors = response.get('errors', []) if response else []
+                logger.warning(f"⚠️ Could not convert to draft (status {status}): {errors}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"❌ Error converting to draft: {e}")
+            return False
+    
+    def add_pr_comment(self, repo: str, pr_number: int, comment: str) -> bool:
+        """Add a simple comment to a PR (not a review comment).
+        
+        Args:
+            repo: Repository in owner/name format
+            pr_number: Pull request number
+            comment: Comment text
+        
+        Returns:
+            True if comment added successfully
+        """
+        try:
+            owner, repo_name = repo.split('/')
+            url = f"https://api.github.com/repos/{owner}/{repo_name}/issues/{pr_number}/comments"
+            data = {'body': comment}
+            
+            status, response = self._github_request('POST', url, json_data=data)
+            
+            if status in [200, 201]:
+                logger.info(f"✅ Added comment to {repo}#{pr_number}")
+                return True
+            else:
+                logger.warning(f"⚠️ Could not add comment (status {status}): {response}")
+                return False
+        except Exception as e:
+            logger.error(f"❌ Error adding comment: {e}")
+            return False
+    
+    def remove_label(self, repo: str, pr_number: int, label: str) -> bool:
+        """Remove a label from a PR.
+        
+        Args:
+            repo: Repository in owner/name format
+            pr_number: Pull request number
+            label: Label name to remove
+        
+        Returns:
+            True if label removed successfully
+        """
+        try:
+            owner, repo_name = repo.split('/')
+            # URL encode the label name
+            import urllib.parse
+            encoded_label = urllib.parse.quote(label)
+            url = f"https://api.github.com/repos/{owner}/{repo_name}/issues/{pr_number}/labels/{encoded_label}"
+            
+            status, response = self._github_request('DELETE', url)
+            
+            if status == 200:
+                logger.info(f"✅ Removed label '{label}' from {repo}#{pr_number}")
+                return True
+            elif status == 404:
+                logger.debug(f"ℹ️ Label '{label}' not found on {repo}#{pr_number}")
+                return True  # Label already removed, consider success
+            else:
+                logger.warning(f"⚠️ Could not remove label (status {status}): {response}")
+                return False
+        except Exception as e:
+            logger.error(f"❌ Error removing label: {e}")
+            return False
+    
     def post_review_comment(self, repo: str, pr_number: int, review_result: Dict, use_review_api: bool = True) -> bool:
         """
         Post review comment to PR.
@@ -964,6 +1081,99 @@ Be concise. Only report real issues, not nitpicks."""
         review_result = workflow_result['review_result']
         merge_decision = self.evaluate_merge_decision(review_result)
         workflow_result['merge_decision'] = merge_decision
+        
+        # Handle critical issues - convert to draft
+        if merge_decision['merge_recommendation'] == 'DO_NOT_MERGE':
+            critical_count = merge_decision.get('critical_count', 0)
+            if critical_count > 0:
+                logger.warning(f"⚠️ Converting PR to draft due to {critical_count} critical issue(s)")
+                
+                # Convert to draft
+                if self.convert_to_draft(repo, pr_number, f"{critical_count} critical issues"):
+                    # Add explanatory comment
+                    comment = f"""🚧 **Converted to Draft**
+
+This PR has been automatically converted to draft status because the automated review found **{critical_count} critical issue(s)** that must be addressed before merging.
+
+**Critical Issues:**
+"""
+                    # Extract critical issues from review
+                    for issue in review_result.get('issues', []):
+                        if 'CRITICAL' in issue or '❌' in issue:
+                            comment += f"- {issue}\n"
+                    
+                    comment += """
+**Next Steps:**
+1. Fix the critical issues listed above
+2. Push your changes to this branch
+3. Mark this PR as "Ready for review" when done
+4. The automated review will run again
+
+Once all critical issues are resolved, this PR can be merged."""
+                    
+                    self.add_pr_comment(repo, pr_number, comment)
+                    workflow_result['converted_to_draft'] = True
+        
+        # Check for merge conflicts and handle them
+        owner, repo_name = repo.split('/')
+        pr_url = f"https://api.github.com/repos/{owner}/{repo_name}/pulls/{pr_number}"
+        pr_status, pr_data = self._github_request('GET', pr_url)
+        
+        if pr_status == 200 and pr_data:
+            mergeable_state = pr_data.get('mergeable_state')
+            
+            if mergeable_state == 'dirty':  # Has conflicts
+                logger.warning(f"⚠️ PR has merge conflicts - converting to draft and adding instructions")
+                
+                # Convert to draft
+                if self.convert_to_draft(repo, pr_number, "merge conflicts"):
+                    # Add has-conflicts label
+                    self.add_labels(repo, pr_number, ['has-conflicts'])
+                    
+                    # Remove ready-for-merge label if present
+                    self.remove_label(repo, pr_number, 'ready-for-merge')
+                    
+                    # Add conflict resolution instructions
+                    pr_author = pr_data.get('user', {}).get('login', 'author')
+                    base_branch = pr_data.get('base', {}).get('ref', 'main')
+                    head_branch = pr_data.get('head', {}).get('ref', 'your-branch')
+                    
+                    comment = f"""⚠️ **Merge Conflicts Detected**
+
+@{pr_author} This PR has merge conflicts with the `{base_branch}` branch and has been converted to draft status.
+
+**To resolve conflicts:**
+
+1. Update your local branch with the latest changes:
+   ```bash
+   git checkout {head_branch}
+   git fetch origin
+   git merge origin/{base_branch}
+   ```
+
+2. Resolve the conflicts in your editor
+
+3. Mark conflicts as resolved:
+   ```bash
+   git add .
+   git commit -m "Resolve merge conflicts with {base_branch}"
+   ```
+
+4. Push the resolved changes:
+   ```bash
+   git push origin {head_branch}
+   ```
+
+5. Mark this PR as "Ready for review"
+
+The automated review will run again once conflicts are resolved."""
+                    
+                    self.add_pr_comment(repo, pr_number, comment)
+                    workflow_result['converted_to_draft'] = True
+                    workflow_result['has_conflicts'] = True
+                    
+                    # Don't attempt merge if there are conflicts
+                    return workflow_result
         
         # Log merge decision
         logger.info(f"\n🤔 Merge Decision: {merge_decision['merge_recommendation']}")

@@ -74,12 +74,24 @@ pr_monitoring:
     enabled: true
     # Auto-merge PRs with NO issues (0 critical, 0 warnings, 0 suggestions)
     auto_merge_if_approved: true
-    # Merge PRs with suggestions/warnings (requires manual consideration)
-    merge_with_suggestions: false
+    # Merge PRs with minor suggestions (1-2 suggestions, no critical, <3 warnings)
+    # RECOMMENDED: Set to true for faster iteration, creates follow-up issues
+    merge_with_suggestions: true
     # Default merge method: merge, squash, or rebase
     merge_method: "squash"
     # Merge timeout: wait N seconds after review before merging (safety delay)
     merge_delay_seconds: 30
+    
+  # Advanced PR lifecycle management
+  lifecycle_management:
+    # Auto-convert to draft when critical issues or conflicts found
+    auto_convert_to_draft: true
+    # Add conflict resolution instructions as comment
+    add_conflict_instructions: true
+    # Create follow-up issues for merged PRs with suggestions
+    create_followup_issues: true
+    # Suggestion threshold for follow-up issue (suggestions count)
+    followup_issue_threshold: 1
   
   # Reviewer selection strategy:
   # - "dedicated": Use dedicated reviewer_agent_id (single reviewer)
