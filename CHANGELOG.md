@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Issue Opener Test Generation Loop** (October 11, 2025)
+  - **CRITICAL BUG**: Polling service Issue Opener constantly regenerating `tests/test_string_utils.py`
+    * Agent in infinite loop trying to solve issue #84/#94
+    * Each iteration generates NEW tests with arbitrary expectations
+    * Tests fail not because code is wrong, but because generated tests are unrealistic
+    * Examples: `capitalize_words("hElLo wOrLd") == "HElLO WoRlD"` (nonsense)
+    * Example: `count_vowels("hElLo wOrLd") == 4` (actually 3 vowels: e, o, o)
+  - **ROOT CAUSE**: Test generation quality - agent invents requirements instead of testing behavior
+  - **TEMPORARY FIX**: Replaced with minimal stable test suite (6 tests, all passing)
+  - **PERMANENT FIX NEEDED**: Improve test generation logic to create realistic tests
+  - Import fixed AGAIN: `from engine.utils.string_utils import` (correct path)
+  - Reasoning: Unstable test generation creates false failures and wastes CI/CD resources
+
 - **Test Import Path Correction** (October 11, 2025)
   - **BUG FIX**: Fixed incorrect import in `tests/test_string_utils.py`
     * User edited tests but used wrong import: `from string_utils import`
