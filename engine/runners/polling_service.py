@@ -840,9 +840,33 @@ async def main():
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
     
+    # Initialize agent registry (required for workflow execution)
+    logger.info("🔧 Initializing agent registry...")
+    try:
+        from engine.core.config_manager import get_config_manager
+        from engine.core.agent_registry import AgentRegistry
+        
+        config_manager = get_config_manager()
+        agent_registry = AgentRegistry(config_manager, monitor=None)
+        
+        # Load all enabled agents
+        loaded = await agent_registry.load_agents()
+        logger.info(f"📋 Loaded {len(loaded)} agents:")
+        for agent_id, lifecycle in loaded.items():
+            logger.info(f"   - {agent_id}: {lifecycle}")
+        
+        # Start always-on agents
+        started = await agent_registry.start_always_on_agents()
+        logger.info(f"✅ Started {len(started)} always-on agents")
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to initialize agent registry: {e}")
+        logger.warning("⚠️  Polling service will run without agent registry (workflows will be skipped)")
+        agent_registry = None
+    
     # Create service (loads from YAML by default, CLI args override)
     config_path = Path(args.config) if args.config else None
-    service = PollingService(config_path=config_path)
+    service = PollingService(config_path=config_path, agent_registry=agent_registry, enable_monitoring=False)
     
     # Apply CLI overrides if provided
     if args.interval is not None:
