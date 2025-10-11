@@ -23,15 +23,11 @@ logging.basicConfig(
 
 app = FastAPI(title="Agent-Forge SSH Auth")
 
-# CORS for dashboard
+# CORS for dashboard - Allow all origins on port 8897 for development
+# In production, lock this down to specific domains
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:8897",
-        "http://192.168.1.26:8897",
-        "http://192.168.1.30:8897",  # Current IP
-        "http://ai-kvm1:8897"
-    ],
+    allow_origins=["*"],  # Allow all origins (for development/testing)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

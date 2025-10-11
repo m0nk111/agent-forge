@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Dashboard login CORS issue** (2025-10-11)
+  - Fixed CORS configuration in auth service preventing dashboard login
+  - Changed from restrictive origin whitelist to permissive `allow_origins=["*"]`
+  - Resolves "CORS policy blocked" errors when accessing dashboard from different IPs
+  - Auth service now accepts requests from any origin (suitable for development/testing)
+  - **Note**: In production deployment, lock down CORS to specific domains
+  - Service automatically restarted with new configuration
+
 ### Added
 
 - **Frontend TEST mode indicator** (2025-10-11)
