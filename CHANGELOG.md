@@ -14,6 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Follows GitHub Account Usage Policy from copilot-instructions.md
   - **Impact**: PR reviews no longer trigger unwanted admin notifications
 
+### Changed
+- **PR Review Comment Transparency** 📝
+  - Added review method info to GitHub comment header (Static vs Hybrid)
+  - Display LLM model name when `--use-llm` is used (e.g., `qwen2.5-coder:7b`)
+  - Show comprehensive checks description in comment
+  - Footer now mentions m0nk111-reviewer bot identity
+  - **Impact**: Users can immediately see which review type and model was used
+
 ### Added
 - **LLM-Powered Code Review** 🤖
   - Added `--use-llm` flag to PR review agent for deep code analysis via Ollama
