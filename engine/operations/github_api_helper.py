@@ -477,3 +477,61 @@ class GitHubAPIHelper:
             logger.error(f"Failed to post review comment to {owner}/{repo}#{pr_number}: {e}")
             raise
 
+    def create_pull_request(self, owner: str, repo: str, title: str, body: str, 
+                           head: str, base: str = "main") -> Dict:
+        """Create a new pull request.
+        
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            title: PR title
+            body: PR description
+            head: Branch containing changes
+            base: Target branch (default: main)
+            
+        Returns:
+            Dict containing PR details (number, url, etc.)
+            
+        Raises:
+            requests.exceptions.RequestException: If API call fails
+        """
+        target = f"{owner}/{repo}"
+        
+        # Check rate limit
+        if not self.rate_limiter.can_proceed(OperationType.ISSUE_COMMENT):
+            logger.warning(f"⚠️ Rate limit reached, cannot create PR in {target}")
+            raise RuntimeError("Rate limit exceeded for GitHub operations")
+        
+        url = f"{self.BASE_URL}/repos/{owner}/{repo}/pulls"
+        
+        payload = {
+            'title': title,
+            'body': body,
+            'head': head,
+            'base': base
+        }
+        
+        try:
+            response = self.session.post(url, json=payload, timeout=30)
+            response.raise_for_status()
+            
+            # Update rate limit
+            self._update_rate_limit_from_response(response)
+            
+            # Record operation
+            self._record_operation(OperationType.ISSUE_COMMENT, target, 
+                                 f"Created PR: {title}", success=True)
+            
+            pr_data = response.json()
+            logger.info(f"✅ PR #{pr_data['number']} created: {pr_data['html_url']}")
+            return pr_data
+            
+        except requests.exceptions.RequestException as e:
+            # Record failed operation
+            self._record_operation(OperationType.ISSUE_COMMENT, target, 
+                                 f"Failed to create PR: {title}", success=False)
+            
+            logger.error(f"Failed to create PR in {owner}/{repo}: {e}")
+            raise
+
+
