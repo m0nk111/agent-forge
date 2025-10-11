@@ -21,21 +21,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Reasoning: Zombie processes waste system resources
 
 - **Deep Code Quality Audit Completed** (October 11, 2025)
+  - **🔥 EXTREME COMPLEXITY**: Found functions with INSANE cyclomatic complexity:
+    * `polling_service._apply_config_overrides()`: **Complexity 277** 🚨
+    * `polling_service.load_state()`: **Complexity 266** 🚨
+    * `polling_service._select_reviewers()`: **Complexity 141** 
+    * `coordinator_agent._compute_plan_priority()`: **Complexity 122**
+    * 71 functions total with complexity >15 (threshold for high complexity)
   - **ARCHITECTURE**: Identified 2 MEGA FILES requiring urgent refactoring:
     * `pr_review_agent.py`: 1,771 lines (66KB) - 18 broad exception handlers
     * `polling_service.py`: 1,503 lines (77KB) - 23 broad exception handlers
-  - **DUPLICATE CODE**: Found duplicate patterns across codebase:
+  - **LONG PARAMETER LISTS**: 21 functions with >6 parameters:
+    * `complete_pr_review_and_merge_workflow()`: **10 parameters** (code smell!)
+    * `update_agent_status()`: 9 parameters
+    * `code_agent.__init__()`: 9 parameters
+  - **DUPLICATE CODE**: Found 871 duplicate code blocks (5+ lines each):
     * 2 separate `_github_request()` implementations
     * 42 direct HTTP calls (should use centralized helper)
     * 9 duplicate `logging.basicConfig()` calls
     * 4 duplicate GitHub token loading patterns
+  - **RESOURCE LEAKS**: Potential memory/file descriptor leaks:
+    * 7 file handles opened without `with` statement
+    * 41 HTTP requests potentially without proper cleanup
+  - **SECURITY RISKS**:
+    * 94 shell command executions (subprocess/os.system/os.popen)
+    * Top: git_operations.py (18), pipeline_orchestrator.py (12)
+    * 24 global keyword uses (shared state issues)
+    * 2 infinite loops (`while True:`)
   - **ERROR HANDLING**: 184 broad exception handlers, 0 custom exception classes
   - **HARDCODED VALUES**: 10+ sleep calls, 8+ timeouts, 6+ retry counts
   - **TESTING GAPS**: 12 modules without tests (40 test files for 52 source files)
   - **DOCUMENTATION**: 81 undocumented functions (85.8% coverage)
   - **CONFIG**: Only 5 files load config, most use hardcoded values
   - **UNUSED CODE**: 2 files with unused `import sys`
-  - ✅ **SECURITY GOOD**: No eval/exec, no wildcard imports, no silent exceptions
+  - **TECHNICAL DEBT**: 4 TODO/FIXME/HACK comments needing attention
+  - ✅ **SECURITY GOOD**: No eval/exec, no wildcard imports, no silent exceptions, no mutable defaults
   - Reasoning: Comprehensive audit for future refactoring roadmap
 
 - **Code Quality Issues Identified** (October 11, 2025)
