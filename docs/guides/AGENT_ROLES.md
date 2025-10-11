@@ -22,7 +22,7 @@ Agent-Forge uses a role-based system for task assignment and specialization. Eac
   - Implement features from specifications
   - Fix bugs and issues
   - Refactor and optimize code
-- **Typical Agent**: `m0nk111-qwen-agent`
+- **Typical Agent**: `your-agent`
 - **Best For**: Feature development, bug fixes, refactoring
 - **Permissions**: Code write access, terminal, file system
 
@@ -64,7 +64,7 @@ Agent-Forge uses a role-based system for task assignment and specialization. Eac
   - Project board management
   - Status updates and summaries
   - Scheduled maintenance tasks
-- **Typical Agent**: `m0nk111-bot`
+- **Typical Agent**: `your-bot-agent`
 - **Best For**: Automation, notifications, organization, posting updates
 - **Permissions**: Read-only (no code changes), issue management, project boards
 - **Special Features**:
@@ -87,7 +87,7 @@ Agent-Forge uses a role-based system for task assignment and specialization. Eac
 
 ### Single Role Agent (Specialized)
 ```yaml
-agent_id: m0nk111-bot
+agent_id: your-bot-agent
 name: M0nk111 Bot
 role: bot  # Single specialized role
 capabilities:
@@ -98,7 +98,7 @@ capabilities:
 
 ### Multi-Capability Agent (Flexible)
 ```yaml
-agent_id: m0nk111-qwen-agent
+agent_id: your-agent
 name: M0nk111 Qwen Agent
 role: developer  # Primary role
 capabilities:
@@ -216,13 +216,13 @@ You can have multiple agents with the same role for:
 
 ```yaml
 # Primary bot - fast responses
-agent_id: m0nk111-bot-fast
+agent_id: your-bot-agent-fast
 role: bot
 model: qwen2.5-coder:7b
 temperature: 0.3
 
 # Secondary bot - detailed analysis
-agent_id: m0nk111-bot-analyzer
+agent_id: your-bot-agent-analyzer
 role: bot
 model: qwen2.5:32b
 temperature: 0.5

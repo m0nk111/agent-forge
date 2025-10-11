@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Documentation Reorganization** 📚
+  - Separated generic framework documentation from project-specific implementation details
+  - Created `docs/guides/` for generic, reusable documentation (17 files)
+  - Created `docs/internal/` for project-specific implementation docs (30 files)
+  - Genericized all guide documentation: replaced specific account names, emails, repos with placeholders
+  - Account name replacements: `m0nk111-*` → `your-bot-account`, `your-coder-1`, etc.
+  - Email replacements: `aicodingtime+*@gmail.com` → `your-email+suffix@domain.com`
+  - Repository replacements: `m0nk111/agent-forge` → `your-org/your-project`
+  - Path replacements: `/home/flip/agent-forge` → `<project-root>`
+  - Created `docs/README.md` explaining documentation structure and migration strategy
+  - Preserved copyright and licensing information (m0nk111 references in licenses are intentional)
+  - **Rationale**: Allow framework to be shared/released without exposing internal implementation details
+
 ### Added
 - **Centralized GitHub Account Configuration** 🔧
   - Created `config/system/github_accounts.yaml` - Single source of truth for all GitHub accounts

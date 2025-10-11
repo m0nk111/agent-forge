@@ -14,7 +14,7 @@ Complete setup guide for Agent-Forge multi-agent platform.
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/m0nk111/agent-forge.git
+git clone https://github.com/your-org/your-project.git
 cd agent-forge
 
 # 2. Install Python dependencies
@@ -32,7 +32,7 @@ chmod 700 secrets
 
 # 6. Configure your first agent
 # Copy example config and customize
-cp config/agents/m0nk111-qwen-agent.yaml.example config/agents/your-agent.yaml
+cp config/agents/your-agent.yaml.example config/agents/your-agent.yaml
 # Edit config/agents/your-agent.yaml with your settings
 
 # 7. Add GitHub token (if using GitHub integration)
@@ -347,7 +347,7 @@ Go to: https://github.com/signup
 
 ```
 Username:   <your-username>-<agent-name>-agent
-            Example: m0nk111-qwen-agent
+            Example: your-agent
 Email:      <your-email>+<agent-name>@gmail.com
             Example: flip+qwen@gmail.com
 Password:   <secure password - save in password manager>
@@ -452,7 +452,7 @@ source ~/.agent-forge.env
 
 1. Go to: `https://github.com/<owner>/<repo>/settings/access`
 2. Click: "Add people"
-3. Search: `<agent-username>` (e.g., `m0nk111-qwen-agent`)
+3. Search: `<agent-username>` (e.g., `your-agent`)
 4. Role: **Write** (can push to branches, create PRs)
 5. Click: "Add to this repository"
 
@@ -482,7 +482,7 @@ agents:
     
     # GitHub configuration
     github:
-      username: m0nk111-qwen-agent  # Machine user username
+      username: your-agent  # Machine user username
       email: flip+qwen@gmail.com     # Machine user email
       token: null  # Loaded from secrets/agents/my-bot-agent.token
       
@@ -785,6 +785,6 @@ sudo rm /etc/sudoers.d/flip-nopasswd
 
 ## Support
 
-- **Issues**: https://github.com/m0nk111/agent-forge/issues
+- **Issues**: https://github.com/your-org/your-project/issues
 - **Docs**: See docs/ directory
 - **Logs**: `sudo journalctl -u agent-forge -f --no-pager`

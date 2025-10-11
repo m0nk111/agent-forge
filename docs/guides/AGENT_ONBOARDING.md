@@ -9,9 +9,9 @@
 **Historical Context**: Previous agents confused this project with other workspaces, working on agent-forge issues in the Caramba project and vice versa. The `.github/copilot-instructions.md` file now has a prominent header to prevent this confusion.
 
 **Before starting ANY work:**
-1. ✅ Verify you're in `/home/flip/agent-forge/` directory
+1. ✅ Verify you're in `<project-root>/` directory
 2. ✅ Check `.github/copilot-instructions.md` confirms "AGENT-FORGE PROJECT ONLY"
-3. ✅ Confirm repository is `m0nk111/agent-forge` (not `m0nk111/caramba`)
+3. ✅ Confirm repository is `your-org/your-project` (not `your-org/example-project`)
 4. ✅ Read issue carefully - does it belong to THIS project?
 
 ## 📋 Quick Start Checklist

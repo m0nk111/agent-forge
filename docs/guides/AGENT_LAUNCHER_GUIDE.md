@@ -37,8 +37,8 @@ The launcher scans `config/agents/*.yaml` for agent profiles. Currently availabl
 
 - **gpt4-coding-agent**: OpenAI GPT-4 for commercial-grade code generation (~$0.25/issue)
 - **local-agent-qwen**: Local Qwen model via Ollama (free, good for development)
-- **m0nk111-qwen-agent**: Production Qwen agent with GitHub integration
-- **m0nk111-bot**: Bot agent for GitHub operations
+- **your-agent**: Production Qwen agent with GitHub integration
+- **your-bot-agent**: Bot agent for GitHub operations
 
 ## Setup
 
@@ -99,8 +99,8 @@ ID                        Name                      Provider        Model       
 ----------------------------------------------------------------------------------------------------
 gpt4-coding-agent         GPT-4 Code Generator      openai          gpt-4                developer 
 local-agent-qwen          Local Development Agent   local           qwen2.5-coder:7b     developer 
-m0nk111-bot               M0nk111 Bot Agent         local           qwen2.5-coder:7b     bot       
-m0nk111-qwen-agent        M0nk111 Qwen Agent        local           qwen2.5-coder:7b     developer 
+your-bot-agent               M0nk111 Bot Agent         local           qwen2.5-coder:7b     bot       
+your-agent        M0nk111 Qwen Agent        local           qwen2.5-coder:7b     developer 
 ====================================================================================================
 ```
 
@@ -123,8 +123,8 @@ Example session:
 Select an agent to launch:
   1. gpt4-coding-agent (openai gpt-4)
   2. local-agent-qwen (local qwen2.5-coder:7b)
-  3. m0nk111-bot (local qwen2.5-coder:7b)
-  4. m0nk111-qwen-agent (local qwen2.5-coder:7b)
+  3. your-bot-agent (local qwen2.5-coder:7b)
+  4. your-agent (local qwen2.5-coder:7b)
 
 Enter number or agent ID (or 'quit'): 1
 
@@ -199,7 +199,7 @@ Example output:
    Model: gpt-4
 🔌 Testing agent connection...
 ✅ Agent ready
-🎫 Handling issue #92 in m0nk111/agent-forge
+🎫 Handling issue #92 in your-org/your-project
 📝 Generating implementation...
 🧪 Running tests...
 ✅ Tests passed (coverage: 85%)

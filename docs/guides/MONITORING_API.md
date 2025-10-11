@@ -35,7 +35,7 @@ curl http://localhost:7997/api/agents | jq .
 {
   "agents": [
     {
-      "agent_id": "m0nk111-qwen-agent",
+      "agent_id": "your-agent",
       "agent_name": "Qwen Agent - Generic Project",
       "status": "idle",
       "current_task": null,
@@ -52,7 +52,7 @@ curl http://localhost:7997/api/agents | jq .
       "api_rate_limit_remaining": 5000
     },
     {
-      "agent_id": "m0nk111-post",
+      "agent_id": "your-bot-account",
       "agent_name": "GitHub Bot Agent",
       "status": "offline",
       "current_task": "Agent configured but not running",
@@ -127,13 +127,13 @@ Get detailed status for a specific agent.
 
 #### Request
 ```bash
-curl http://localhost:7997/api/agents/m0nk111-qwen-agent/status | jq .
+curl http://localhost:7997/api/agents/your-agent/status | jq .
 ```
 
 #### Response
 ```json
 {
-  "agent_id": "m0nk111-qwen-agent",
+  "agent_id": "your-agent",
   "agent_name": "Qwen Agent - Generic Project",
   "status": "working",
   "current_task": "Fixing bug in config_manager.py",
@@ -156,27 +156,27 @@ Get recent log entries for a specific agent.
 
 #### Request
 ```bash
-curl "http://localhost:7997/api/agents/m0nk111-qwen-agent/logs?limit=50" | jq .
+curl "http://localhost:7997/api/agents/your-agent/logs?limit=50" | jq .
 ```
 
 #### Response
 ```json
 {
-  "agent_id": "m0nk111-qwen-agent",
+  "agent_id": "your-agent",
   "logs": [
     {
       "timestamp": 1759876978.123456,
-      "agent_id": "m0nk111-qwen-agent",
+      "agent_id": "your-agent",
       "level": "INFO",
       "message": "Starting task: Fix config loading",
       "context": {
         "issue": 42,
-        "repo": "m0nk111/agent-forge"
+        "repo": "your-org/your-project"
       }
     },
     {
       "timestamp": 1759876980.234567,
-      "agent_id": "m0nk111-qwen-agent",
+      "agent_id": "your-agent",
       "level": "DEBUG",
       "message": "Reading file: engine/core/config_manager.py",
       "context": null
@@ -213,21 +213,21 @@ curl "http://localhost:7997/api/activity?limit=10" | jq .
   "events": [
     {
       "timestamp": 1759876978.123456,
-      "agent_id": "m0nk111-qwen-agent",
+      "agent_id": "your-agent",
       "event_type": "issue_claimed",
       "description": "Claimed issue #42: Fix config loading",
       "metadata": {
-        "repo": "m0nk111/agent-forge",
+        "repo": "your-org/your-project",
         "issue": 42
       }
     },
     {
       "timestamp": 1759876990.234567,
-      "agent_id": "m0nk111-qwen-agent",
+      "agent_id": "your-agent",
       "event_type": "pr_created",
       "description": "Created PR #43: Fix config manager",
       "metadata": {
-        "repo": "m0nk111/agent-forge",
+        "repo": "your-org/your-project",
         "pr": 43
       }
     }
@@ -270,7 +270,7 @@ ws.onmessage = (event) => {
 {
   "type": "agent_update",
   "agent": {
-    "agent_id": "m0nk111-qwen-agent",
+    "agent_id": "your-agent",
     "status": "working",
     "current_task": "Fixing bug",
     "progress": 50.0
@@ -282,7 +282,7 @@ ws.onmessage = (event) => {
 ```json
 {
   "type": "log_entry",
-  "agent_id": "m0nk111-qwen-agent",
+  "agent_id": "your-agent",
   "log": {
     "timestamp": 1759876978.123,
     "level": "INFO",
@@ -301,7 +301,7 @@ Real-time log stream for a specific agent.
 
 #### Connect
 ```javascript
-const agentId = 'm0nk111-qwen-agent';
+const agentId = 'your-agent';
 const ws = new WebSocket(`ws://localhost:7997/ws/logs/${agentId}`);
 
 ws.onmessage = (event) => {
@@ -323,8 +323,8 @@ ws.onmessage = (event) => {
 - `agent_runtime` - Unified agent runtime with role-based lifecycle management
 
 **Agents** (AI Workers):
-- `m0nk111-qwen-agent` - Developer agent (always-on, Qwen 2.5 Coder)
-- `m0nk111-bot` - Bot agent (on-demand, GitHub operations)
+- `your-agent` - Developer agent (always-on, Qwen 2.5 Coder)
+- `your-bot-agent` - Bot agent (on-demand, GitHub operations)
 
 Services are part of the infrastructure and managed by `service_manager`.  
 Agents are AI workers managed by `agent_runtime` (AgentRegistry) with role-based lifecycle:
@@ -354,7 +354,7 @@ curl -s http://localhost:7997/api/agents | jq '.agents[] | "\(.agent_id): \(.sta
 ### Monitor Agent Progress
 ```bash
 #!/bin/bash
-AGENT_ID="m0nk111-qwen-agent"
+AGENT_ID="your-agent"
 
 while true; do
   STATUS=$(curl -s http://localhost:7997/api/agents/${AGENT_ID}/status)

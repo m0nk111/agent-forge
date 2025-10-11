@@ -320,7 +320,7 @@ class TestGitHubIntegration:
             pytest.skip("GITHUB_TEST_TOKEN not set")
         
         self.client = GitHubClient(token=self.token)
-        self.repo = "m0nk111/agent-forge-test"
+        self.repo = "your-org/your-project-test"
     
     def test_fetch_open_issues(self):
         """Test fetching real open issues from GitHub."""
@@ -439,7 +439,7 @@ class TestOllamaIntegration:
         agent = CodeAgent(name="test-agent", model="qwen2.5-coder:7b")
         
         context = {
-            "repo": "m0nk111/agent-forge",
+            "repo": "your-org/your-project",
             "issue_title": "Add retry mechanism",
             "issue_body": "Implement exponential backoff for API calls",
             "files": ["engine/runners/bot_agent.py"]
@@ -508,10 +508,10 @@ class TestIssueProcessing:
         """
         # 1. Create test issue
         issue = create_test_issue(
-            repo="m0nk111/agent-forge-test",
+            repo="your-org/your-project-test",
             title="Add hello world function",
             body="Create a simple hello world function in Python",
-            assignee="m0nk111-bot"
+            assignee="your-bot-agent"
         )
         
         # 2. Wait for polling to detect issue (max 6 minutes)
@@ -519,7 +519,7 @@ class TestIssueProcessing:
         
         # 3. Check if PR was created
         pr = wait_for_pr(
-            repo="m0nk111/agent-forge-test",
+            repo="your-org/your-project-test",
             issue_number=issue["number"],
             timeout=600  # 10 minutes
         )

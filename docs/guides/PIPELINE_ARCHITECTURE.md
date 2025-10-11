@@ -53,7 +53,7 @@ from engine.core.pipeline_orchestrator import get_orchestrator, PipelineConfig
 
 # Configure pipeline
 config = PipelineConfig(
-    default_repos=["m0nk111/agent-forge"],
+    default_repos=["your-org/your-project"],
     auto_merge_on_approval=False,  # Safety first
     require_tests_passing=True
 )
@@ -63,7 +63,7 @@ orchestrator = get_orchestrator(config)
 
 # Handle new issue (async)
 result = await orchestrator.handle_new_issue(
-    repo="m0nk111/agent-forge",
+    repo="your-org/your-project",
     issue_number=84
 )
 
@@ -105,8 +105,8 @@ result = await orchestrator.handle_new_issue(repo, issue_number)
 ```yaml
 polling_interval: 300  # 5 minutes
 repositories:
-  - m0nk111/agent-forge
-username: m0nk111-bot
+  - your-org/your-project
+username: your-bot-agent
 labels:
   - agent-ready
 claim_timeout_minutes: 60
@@ -206,7 +206,7 @@ from engine.core.pipeline_orchestrator import get_orchestrator
 
 async def test():
     orch = get_orchestrator()
-    result = await orch.handle_new_issue('m0nk111/agent-forge', 84)
+    result = await orch.handle_new_issue('your-org/your-project', 84)
     print(f'Result: {result}')
 
 asyncio.run(test())

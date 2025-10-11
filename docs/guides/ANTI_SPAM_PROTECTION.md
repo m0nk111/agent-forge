@@ -83,7 +83,7 @@ helper = GitHubAPIHelper(token=token)
 
 # Automatically rate limited
 helper.create_issue_comment(
-    owner="m0nk111",
+    owner="your-org",
     repo="agent-forge",
     issue_number=80,
     body="Test comment"

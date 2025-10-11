@@ -64,7 +64,7 @@ Before contributing, ensure you have:
 
 2. **Add upstream remote**:
    ```bash
-   git remote add upstream git@github.com:m0nk111/agent-forge.git
+   git remote add upstream git@github.com:your-org/your-project.git
    git fetch upstream
    ```
 
@@ -91,7 +91,7 @@ Before contributing, ensure you have:
 6. **Configure environment**:
    ```bash
    # Create agent config files in config/agents/
-   cp config/agents/m0nk111-qwen-agent.yaml.example config/agents/your-agent.yaml
+   cp config/agents/your-agent.yaml.example config/agents/your-agent.yaml
    cp .env.example .env
    # Edit .env with your GitHub tokens
    ```
@@ -197,7 +197,7 @@ def process_issue(issue_number: int, repo: str) -> Dict[str, Any]:
         GitHubAPIError: If GitHub API call fails
         
     Example:
-        >>> result = process_issue(42, "m0nk111/agent-forge")
+        >>> result = process_issue(42, "your-org/your-project")
         >>> print(result['status'])
         'success'
     """
@@ -345,7 +345,7 @@ from agents.github_client import GitHubClient
 def test_github_issue_fetching():
     """Test fetching real GitHub issues."""
     client = GitHubClient(token=os.getenv("GITHUB_TOKEN"))
-    issues = client.get_issues("m0nk111/agent-forge", state="open")
+    issues = client.get_issues("your-org/your-project", state="open")
     
     assert isinstance(issues, list)
     assert len(issues) >= 0
@@ -450,7 +450,7 @@ Key Features:
 
 Example:
     >>> agent = BotAgent(name="bot-1", model="qwen2.5-coder:7b")
-    >>> agent.process_issue(issue_number=42, repo="m0nk111/agent-forge")
+    >>> agent.process_issue(issue_number=42, repo="your-org/your-project")
     
 See Also:
     - agents.code_agent: Code generation functionality
@@ -786,8 +786,8 @@ See [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for solutions to common proble
 
 ### Community
 
-- **Issues**: [GitHub Issues](https://github.com/m0nk111/agent-forge/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/m0nk111/agent-forge/discussions)
+- **Issues**: [GitHub Issues](https://github.com/your-org/your-project/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/your-org/your-project/discussions)
 - **Email**: [m0nk111@users.noreply.github.com](mailto:m0nk111@users.noreply.github.com)
 
 ### Questions?
@@ -806,7 +806,7 @@ If you have questions:
 ### Contributors
 
 All contributors are recognized in:
-- [GitHub Contributors Page](https://github.com/m0nk111/agent-forge/graphs/contributors)
+- [GitHub Contributors Page](https://github.com/your-org/your-project/graphs/contributors)
 - Release notes
 - CHANGELOG.md
 

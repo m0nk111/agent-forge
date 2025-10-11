@@ -244,7 +244,7 @@ def test_hello_agent_handle_task():
         task_type="greeting",
         payload={
             "issue_number": 42,
-            "repo": "m0nk111/agent-forge"
+            "repo": "your-org/your-project"
         }
     )
     
@@ -281,7 +281,7 @@ curl -X POST http://localhost:8080/agents/hello-agent/task \
     "task_type": "greeting",
     "payload": {
       "issue_number": 42,
-      "repo": "m0nk111/agent-forge"
+      "repo": "your-org/your-project"
     }
   }'
 ```

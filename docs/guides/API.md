@@ -248,7 +248,7 @@ curl http://localhost:8080/agents
         "mode": "production",
         "current_task": {
           "issue_number": 67,
-          "repo": "m0nk111/agent-forge",
+          "repo": "your-org/your-project",
           "started_at": "2025-10-06T14:28:00Z"
         },
         "tasks_completed": 15,
@@ -387,7 +387,7 @@ curl -X PUT http://localhost:8080/agents/bot-1/mode \
 curl -X POST http://localhost:8080/agents/bot-1/assign \
   -H "Content-Type: application/json" \
   -d '{
-    "repo": "m0nk111/agent-forge",
+    "repo": "your-org/your-project",
     "issue_number": 42,
     "priority": "high"
   }'
@@ -437,8 +437,8 @@ curl http://localhost:8080/config
       "monitoring_port": 7997,
       "web_ui_port": 8897,
       "polling_repos": [
-        "m0nk111/agent-forge",
-        "m0nk111/stepperheightcontrol"
+        "your-org/your-project",
+        "your-org/example-repo"
       ]
     },
     "agents": {
@@ -621,7 +621,7 @@ curl "http://localhost:8080/logs?limit=50&level=ERROR"
         "message": "Failed to create pull request",
         "details": {
           "error": "Validation Failed",
-          "repo": "m0nk111/agent-forge",
+          "repo": "your-org/your-project",
           "issue": 42
         }
       }
@@ -652,15 +652,15 @@ curl http://localhost:8080/github/repos
   "data": {
     "repositories": [
       {
-        "full_name": "m0nk111/agent-forge",
+        "full_name": "your-org/your-project",
         "polling_enabled": true,
-        "assignees": ["m0nk111-post"],
+        "assignees": ["your-bot-account"],
         "last_poll": "2025-10-06T14:25:00Z"
       },
       {
-        "full_name": "m0nk111/stepperheightcontrol",
+        "full_name": "your-org/example-repo",
         "polling_enabled": true,
-        "assignees": ["m0nk111-post"],
+        "assignees": ["your-bot-account"],
         "last_poll": "2025-10-06T14:25:00Z"
       }
     ]
@@ -676,7 +676,7 @@ curl http://localhost:8080/github/repos
 
 #### Request
 ```bash
-curl "http://localhost:8080/github/issues?repo=m0nk111/agent-forge&state=open"
+curl "http://localhost:8080/github/issues?repo=your-org/your-project&state=open"
 ```
 
 **Query Parameters**:
@@ -694,8 +694,8 @@ curl "http://localhost:8080/github/issues?repo=m0nk111/agent-forge&state=open"
         "number": 42,
         "title": "Add retry mechanism",
         "state": "open",
-        "repo": "m0nk111/agent-forge",
-        "assignee": "m0nk111-post",
+        "repo": "your-org/your-project",
+        "assignee": "your-bot-account",
         "labels": ["enhancement"],
         "created_at": "2025-10-06T10:00:00Z",
         "updated_at": "2025-10-06T14:20:00Z"
@@ -790,7 +790,7 @@ requests.post(f"{BASE_URL}/agents/bot-1/start")
 requests.post(
     f"{BASE_URL}/agents/bot-1/assign",
     json={
-        "repo": "m0nk111/agent-forge",
+        "repo": "your-org/your-project",
         "issue_number": 42
     }
 )
