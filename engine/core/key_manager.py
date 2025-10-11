@@ -105,7 +105,7 @@ class KeyManager:
     """
     Manages API keys for LLM providers.
     
-    Keys are stored in keys.json with the following structure:
+    Keys are stored in secrets/keys.json with the following structure:
     {
         "OPENAI_API_KEY": "sk-...",
         "ANTHROPIC_API_KEY": "sk-ant-...",
@@ -119,7 +119,7 @@ class KeyManager:
     - Validation before storage
     """
     
-    def __init__(self, keys_file: str = "/home/flip/agent-forge/keys.json"):
+    def __init__(self, keys_file: str = "/home/flip/agent-forge/secrets/keys.json"):
         self.keys_file = Path(keys_file)
         self.keys: Dict[str, str] = {}
         self._load_keys()

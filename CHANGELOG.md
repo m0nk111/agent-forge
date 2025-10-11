@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Secrets and Data Directory Organization** 🔐
+  - Moved `keys.json` → `secrets/keys.json` (secure secret storage)
+  - Moved `polling_state.json` → `data/polling_state.json` (runtime state)
+  - Created `data/` directory for runtime state files (in `.gitignore`)
+  - Updated all code references to use new paths:
+    - `engine/core/key_manager.py` - Default path now `secrets/keys.json`
+    - `engine/operations/issue_opener_agent.py` - Uses `secrets/keys.json`
+    - `engine/runners/polling_service.py` - Default state file now `data/polling_state.json`
+    - `scripts/launch_issue_opener.py` - Loads from `secrets/keys.json`
+    - `scripts/test_gpt5_pro_working.py` - Uses `secrets/keys.json`
+    - `scripts/quick_test_gpt5_pro.py` - Uses `secrets/keys.json`
+  - **Rationale**: Proper separation of secrets (sensitive) and runtime data (non-sensitive state)
+
 - **Root Directory Cleanup** 🧹
   - Enforced root directory rules: only README.md, CHANGELOG.md, LICENSE, ARCHITECTURE.md, and config files allowed
   - Moved `GITHUB_INTEGRATION_STATUS.md` → `docs/internal/`

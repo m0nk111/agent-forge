@@ -27,11 +27,11 @@ from engine.operations.issue_opener_agent import IssueOpenerAgent
 
 
 def load_keys():
-    """Load API keys from keys.json or environment."""
+    """Load API keys from secrets/keys.json or environment."""
     keys = {}
     
-    # Try keys.json first
-    keys_file = project_root / 'keys.json'
+    # Try secrets/keys.json first
+    keys_file = project_root / 'secrets' / 'keys.json'
     if keys_file.exists():
         with open(keys_file) as f:
             file_keys = json.load(f)
@@ -74,12 +74,12 @@ def main():
     
     if 'OPENAI_API_KEY' not in keys:
         print("❌ OPENAI_API_KEY not found")
-        print("   Set environment variable or add to keys.json")
+        print("   Set environment variable or add to secrets/keys.json")
         sys.exit(1)
     
     if 'BOT_GITHUB_TOKEN' not in keys:
         print("❌ BOT_GITHUB_TOKEN or GITHUB_TOKEN not found")
-        print("   Set environment variable or add to keys.json")
+        print("   Set environment variable or add to secrets/keys.json")
         sys.exit(1)
     
     # Create config

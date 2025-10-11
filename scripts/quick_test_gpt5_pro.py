@@ -12,7 +12,7 @@ import time
 def main():
     # Load API key
     try:
-        with open('/home/flip/agent-forge/keys.json') as f:
+        with open('/home/flip/agent-forge/secrets/keys.json') as f:
             keys = json.load(f)
             api_key = keys['OPENAI_API_KEY']
     except Exception as e:

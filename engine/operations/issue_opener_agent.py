@@ -569,10 +569,10 @@ Provide the complete modified file content. Only return the file content, no exp
 
 def main():
     """Test the Issue Opener Agent."""
-    # Load keys from keys.json
-    keys_path = project_root / 'keys.json'
+    # Load keys from secrets/keys.json
+    keys_path = project_root / 'secrets' / 'keys.json'
     if not keys_path.exists():
-        print("❌ keys.json not found")
+        print("❌ secrets/keys.json not found")
         sys.exit(1)
     
     with open(keys_path, 'r') as f:
@@ -589,11 +589,11 @@ def main():
     
     # Check required config
     if not config['github_token']:
-        print("❌ BOT_GITHUB_TOKEN or GITHUB_TOKEN not set in keys.json")
+        print("❌ BOT_GITHUB_TOKEN or GITHUB_TOKEN not set in secrets/keys.json")
         sys.exit(1)
     
     if not config['openai_api_key']:
-        print("❌ OPENAI_API_KEY not set in keys.json")
+        print("❌ OPENAI_API_KEY not set in secrets/keys.json")
         sys.exit(1)
     
     # Get issue number from args

@@ -105,7 +105,7 @@ class PollingConfig:
     watch_labels: List[str] = field(default_factory=lambda: ["agent-ready", "auto-assign"])  # labels
     max_concurrent_issues: int = 3
     claim_timeout_minutes: int = 60
-    state_file: str = "polling_state.json"
+    state_file: str = "data/polling_state.json"
     
     # PR Monitoring (NEW)
     pr_monitoring_enabled: bool = False

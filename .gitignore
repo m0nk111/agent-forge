@@ -53,3 +53,4 @@ keys.json
 *.pem
 .env
 polling_state.json
+data/

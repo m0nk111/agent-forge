@@ -17,7 +17,7 @@ from engine.core.llm_providers import OpenAIProvider, LLMMessage
 def load_api_key():
     """Load API key from keys.json"""
     try:
-        with open('/home/flip/agent-forge/keys.json') as f:
+        with open('/home/flip/agent-forge/secrets/keys.json') as f:
             keys = json.load(f)
             return keys['OPENAI_API_KEY']
     except Exception as e:
