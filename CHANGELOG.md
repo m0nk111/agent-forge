@@ -8,6 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Bug #6: Labels query gebruikt AND i.p.v. OR** (WORKAROUND)
+  - **Problem**: Polling service searched for `labels=agent-ready,auto-assign` which uses AND logic in GitHub API
+  - **Root cause**: comma-separated labels = ALL labels required, not ANY
+  - **Impact**: Issues with only `agent-ready` label were not found
+  - **Workaround**: Added `auto-assign` label to test issue #1
+  - **Proper fix TODO**: Implement OR logic by querying each label separately and merging results
+  - **File**: `engine/runners/polling_service.py` line 436
+
+- **Bug #7: Wrong agent type selected for workflow**
+  - **Problem**: Polling service tried to use bot agent (m0nk111-post) for code generation
+  - **Root cause**: `start_issue_workflow()` used `self.config.github_username` which is bot account
+  - **Impact**: "Agent 'm0nk111-post' not found in registry" error, workflow failed to start
+  - **Fix**: Implemented developer agent selection with priority list (agents with GitHub tokens first)
+  - **Priority order**: m0nk111-qwen-agent → m0nk111-coder1 → m0nk111-coder2 → gpt4-coding-agent → developer-agent
+  - **Benefits**:
+    * Automatically selects available developer agent
+    * Prioritizes agents with GitHub tokens for commits
+    * Fallback to non-token agents if needed
+  - **File**: `engine/runners/polling_service.py` lines 1063-1091
+
+### Fixed (Previous Bugs)
 - **Bug #1 - Token Authentication**: Fixed 401 Unauthorized errors in test mode by creating startup script with proper BOT_GITHUB_TOKEN environment variable loading
 - **Bug #2 - GitHubAPIClient TypeError**: Fixed `GitHubAPIClient.__init__()` unexpected keyword argument 'bot_account' error by removing parameter from PR Review Agent
 - **Bug #3 - Coordinator Agent Startup**: Temporarily disabled coordinator agents (enabled: false) until implementation is complete, preventing startup errors

@@ -1061,13 +1061,29 @@ class PollingService:
                 self.save_state()
                 return False
             
-            # Get the agent by agent_id (username is the agent_id in this case)
-            agent = self.agent_registry.get_agent(self.config.github_username)
+            # Select a developer agent (not bot agent) from registry
+            # Prefer agents with GitHub tokens for committing code
+            developer_agents = [
+                'm0nk111-qwen-agent',  # Primary: has token + Qwen model
+                'm0nk111-coder1',      # Backup 1: has token + Qwen model
+                'm0nk111-coder2',      # Backup 2: has token + Qwen model
+                'gpt4-coding-agent',   # Backup 3: no token but GPT-4
+                'developer-agent',     # Backup 4: no token
+            ]
+            
+            agent = None
+            agent_id = None
+            for candidate_id in developer_agents:
+                agent = self.agent_registry.get_agent(candidate_id)
+                if agent:
+                    agent_id = candidate_id
+                    break
+            
             if not agent:
-                logger.error(f"Agent '{self.config.github_username}' not found in registry")
+                logger.error(f"No developer agent found in registry (tried: {developer_agents})")
                 return False
             
-            logger.info(f"✅ Using agent: {self.config.github_username} for issue {issue_key}")
+            logger.info(f"✅ Using developer agent: {agent_id} for issue {issue_key}")
             
             # Use Pipeline Orchestrator for autonomous workflow
             from engine.core.pipeline_orchestrator import get_orchestrator, PipelineConfig
