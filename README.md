@@ -10,7 +10,19 @@
 
 Agent-Forge is an intelligent multi-agent system that automates GitHub workflows using specialized AI agents powered by various LLMs (OpenAI GPT-5, GPT-4, Anthropic, Google, local models). Features include **unified agent runtime** with role-based lifecycle management, **GPT-5 powered coordination** (50% faster than GPT-4o), autonomous issue detection, automated code reviews, real-time WebSocket monitoring, and comprehensive logging.
 
-## 🎯 Latest: GPT-5 Coordinator (October 2025)
+## � Project Evolution
+
+Watch the complete development journey of Agent-Forge visualized with flying files and organic repository growth:
+
+> **📹 Video Location**: `media/agent-forge-gource-latest.mp4`  
+> **Quality**: 1080p60 @ CRF 16, ~30 seconds, ~35 MB  
+> **Schedule**: Automatically regenerated at 08:00 and 20:00 via cron  
+> **Technology**: [Gource](https://gource.io/) visualization with Xvfb rendering  
+> **Script**: `/home/flip/scripts/update-gource-videos.sh`
+
+*Video maintained in `/media/` directory and tracked in Git for easy access.*
+
+## �🎯 Latest: GPT-5 Coordinator (October 2025)
 
 **Major Performance Upgrade!** The default coordinator now uses **GPT-5 Chat Latest**:
 
