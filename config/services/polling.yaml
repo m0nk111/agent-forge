@@ -16,10 +16,15 @@ github:
 
 # Repositories to monitor
 repositories:
-  - "m0nk111/stepperheightcontrol"
+  # Only agent-forge for now - other repos need bot account access
+  # TODO: Add bot account as collaborator to:
+  #   - m0nk111/stepperheightcontrol
+  #   - m0nk111/Mycodo
+  #   - m0nk111/caramba
   - "m0nk111/agent-forge"
-  - "m0nk111/Mycodo"
-  - "m0nk111/caramba"
+  # - "m0nk111/stepperheightcontrol"
+  # - "m0nk111/Mycodo"
+  # - "m0nk111/caramba"
 
 # Labels to watch for (issues must have at least one of these labels)
 watch_labels:

@@ -51,7 +51,7 @@ class TestPollingConfig:
         """Test default configuration values."""
         config = PollingConfig()
         assert config.interval_seconds == 300
-        assert config.github_username == "m0nk111-bot"
+        assert config.github_username == "m0nk111-post"  # Updated: m0nk111-bot suspended
         assert config.max_concurrent_issues == 3
         assert config.claim_timeout_minutes == 60
         assert "agent-ready" in config.watch_labels

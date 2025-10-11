@@ -615,7 +615,7 @@ tail -f logs/agent-forge.log | grep -i polling
 
 # Test GitHub API
 curl -H "Authorization: Bearer $GITHUB_TOKEN" \
-    "https://api.github.com/repos/m0nk111/agent-forge/issues?state=open&assignee=m0nk111-bot"
+    "https://api.github.com/repos/m0nk111/agent-forge/issues?state=open&assignee=m0nk111-post"
 ```
 
 **Solutions**:

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Final m0nk111-bot Cleanup** (October 11, 2025)
+  - Fixed last remaining test reference: `test_polling_service.py` now expects `m0nk111-post`
+  - Updated troubleshooting docs curl example to use `m0nk111-post`
+  - Verified: 0 active code/config references to suspended account
+  - All references now use correct bot account: `m0nk111-post`
+
 ### Added
 - **� Intelligent Issue Complexity & Agent Escalation System** (October 11, 2025)
   - **NEW FEATURE**: Two-stage issue processing with dynamic escalation
