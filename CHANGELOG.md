@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Test Import Path Correction** (October 11, 2025)
+  - **BUG FIX**: Fixed incorrect import in `tests/test_string_utils.py`
+    * User edited tests but used wrong import: `from string_utils import`
+    * Corrected to: `from engine.utils.string_utils import`
+    * All 14 string_utils tests passing ✅
+  - Reasoning: Imports must use full module path from project root
+
 - **Multiple Test and Code Generation Bugs** (October 11, 2025)
   - **BUG FIX**: Fixed syntax error in `engine/utils/string_utils.py` (code fence wrappers in Python file)
     * Agent generated file had ````python` and ```` wrappers causing syntax error
