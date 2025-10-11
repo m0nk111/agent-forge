@@ -6,8 +6,8 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=flip
-Group=flip
+User=root
+Group=root
 WorkingDirectory=/home/flip/agent-forge
 Environment="PATH=/home/flip/agent-forge/venv/bin:/usr/local/bin:/usr/bin:/bin"
 ExecStart=/home/flip/agent-forge/venv/bin/python /home/flip/agent-forge/api/auth_routes.py
@@ -18,10 +18,10 @@ StandardError=journal
 SyslogIdentifier=agent-forge-auth
 
 # Security hardening
-NoNewPrivileges=true
+NoNewPrivileges=false
 PrivateTmp=true
-ProtectSystem=strict
-ProtectHome=read-only
+# Note: PAM authentication requires root access to /etc/shadow
+# ProtectSystem and ProtectHome disabled for PAM to work
 ReadWritePaths=/home/flip/agent-forge/secrets
 
 [Install]

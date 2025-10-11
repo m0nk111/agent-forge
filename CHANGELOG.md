@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Auth Service PAM Permissions** (2025-10-11)
+  - Fixed authentication service to run as root for PAM access to `/etc/shadow`
+  - Problem: Service ran as user `flip` without permission to read shadow file
+  - Symptom: Login always failed with "authentication failure" even with correct password
+  - Error: `pam_unix(login:auth): authentication failure`
+  - Fix: Changed systemd service `User=flip` → `User=root`
+  - Security: Disabled hardening options (NoNewPrivileges, ProtectSystem, ProtectHome) required for PAM
+  - Impact: Dashboard login now works correctly with SSH credentials
+  - Files: `systemd/agent-forge-auth.service`
+  - Note: PAM authentication inherently requires elevated privileges for shadow file access
+
 - **Dashboard login CORS issue** (2025-10-11)
   - Fixed CORS configuration in auth service preventing dashboard login
   - Changed from restrictive origin whitelist to permissive `allow_origins=["*"]`
