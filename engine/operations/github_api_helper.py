@@ -533,6 +533,44 @@ class GitHubAPIHelper:
             
             logger.error(f"Failed to create PR in {owner}/{repo}: {e}")
             raise
+    
+    def list_pull_requests(self, owner: str, repo: str, state: str = 'open') -> List[Dict]:
+        """
+        List pull requests in a repository.
+        
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            state: PR state filter ('open', 'closed', 'all')
+            
+        Returns:
+            List of PR dictionaries
+        """
+        target = f"{owner}/{repo}"
+        
+        if not self.rate_limiter.can_proceed(OperationType.ISSUE_COMMENT):
+            raise RuntimeError(f"Rate limit exceeded for {target}")
+        
+        url = f"{self.BASE_URL}/repos/{owner}/{repo}/pulls"
+        params = {'state': state, 'per_page': 100}
+        
+        try:
+            response = self.session.get(url, params=params, timeout=30)
+            response.raise_for_status()
+            self._update_rate_limit_from_response(response)
+            
+            self._record_operation(OperationType.ISSUE_COMMENT, target,
+                                 f"Listed {state} PRs", success=True)
+            
+            prs = response.json()
+            logger.debug(f"🔍 Retrieved {len(prs)} {state} PRs from {target}")
+            return prs
+            
+        except requests.exceptions.RequestException as e:
+            self._record_operation(OperationType.ISSUE_COMMENT, target,
+                                 f"Failed to list PRs", success=False)
+            logger.error(f"Failed to list PRs in {target}: {e}")
+            raise
 
     def get_pull_request(self, owner: str, repo: str, pr_number: int) -> Dict:
         """

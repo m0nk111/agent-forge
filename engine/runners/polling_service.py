@@ -107,6 +107,20 @@ class PollingConfig:
     claim_timeout_minutes: int = 60
     state_file: str = "polling_state.json"
     
+    # PR Monitoring (NEW)
+    pr_monitoring_enabled: bool = False
+    pr_monitoring_interval: int = 600  # 10 minutes
+    pr_auto_review_users: List[str] = field(default_factory=list)
+    pr_skip_review_users: List[str] = field(default_factory=list)
+    pr_review_labels: List[str] = field(default_factory=list)
+    reviewer_agent_id: str = "reviewer-agent"
+    
+    # Issue Opener Integration (NEW)
+    issue_opener_enabled: bool = False
+    issue_opener_trigger_labels: List[str] = field(default_factory=list)
+    issue_opener_skip_labels: List[str] = field(default_factory=list)
+    issue_opener_agent_id: str = "issue-opener-agent"
+    
     def __post_init__(self):
         """Initialize default values."""
         if self.github_token is None:
@@ -158,6 +172,7 @@ class PollingService:
         self.monitor = None
         self.api_calls = 0  # Track API calls
         self.creative_logs_enabled = os.getenv("POLLING_CREATIVE_LOGS", "0") in {"1", "true", "TRUE"}
+        self.reviewed_prs: Set[str] = set()  # Track reviewed PRs to avoid duplicates
         
         # Initialize GitHub API helper
         self.github_api = GitHubAPIHelper(token=self.config.github_token)
@@ -246,6 +261,44 @@ class PollingService:
             state_file = data.get('state_file')
             if isinstance(state_file, str) and state_file.strip():
                 cfg.state_file = state_file.strip()
+            
+            # PR Monitoring (NEW)
+            pr_mon = data.get('pr_monitoring', {}) or {}
+            cfg.pr_monitoring_enabled = bool(pr_mon.get('enabled', False))
+            cfg.pr_monitoring_interval = int(pr_mon.get('interval_seconds', 600))
+            
+            auto_review_users = pr_mon.get('auto_review_users', [])
+            if isinstance(auto_review_users, list):
+                cfg.pr_auto_review_users = [str(u) for u in auto_review_users]
+            
+            skip_review_users = pr_mon.get('skip_review_users', [])
+            if isinstance(skip_review_users, list):
+                cfg.pr_skip_review_users = [str(u) for u in skip_review_users]
+            
+            review_labels = pr_mon.get('review_labels', [])
+            if isinstance(review_labels, list):
+                cfg.pr_review_labels = [str(l) for l in review_labels]
+            
+            reviewer_id = pr_mon.get('reviewer_agent_id')
+            if isinstance(reviewer_id, str) and reviewer_id.strip():
+                cfg.reviewer_agent_id = reviewer_id.strip()
+            
+            # Issue Opener Integration (NEW)
+            issue_opener = data.get('issue_opener', {}) or {}
+            cfg.issue_opener_enabled = bool(issue_opener.get('enabled', False))
+            
+            trigger_labels = issue_opener.get('trigger_labels', [])
+            if isinstance(trigger_labels, list):
+                cfg.issue_opener_trigger_labels = [str(l) for l in trigger_labels]
+            
+            skip_labels = issue_opener.get('skip_labels', [])
+            if isinstance(skip_labels, list):
+                cfg.issue_opener_skip_labels = [str(l) for l in skip_labels]
+            
+            opener_id = issue_opener.get('agent_id')
+            if isinstance(opener_id, str) and opener_id.strip():
+                cfg.issue_opener_agent_id = opener_id.strip()
+                
         except Exception as e:
             logger.error(f"❌ Error parsing YAML config values: {e}; continuing with partial defaults")
         return cfg
@@ -566,6 +619,223 @@ class PollingService:
             logger.error(f"Error checking claim status: {e}")
             return False  # Assume not claimed on error
     
+    async def check_pull_requests(self):
+        """Check for new PRs needing automatic review.
+        
+        Monitors open PRs from configured bot accounts and triggers reviewer agent.
+        """
+        if not self.config.pr_monitoring_enabled:
+            logger.debug("🔍 PR monitoring disabled, skipping")
+            return
+        
+        logger.info("🔍 Checking for PRs needing review...")
+        
+        for repo in self.config.repositories:
+            try:
+                owner, repo_name = repo.split('/')
+                
+                # Fetch open PRs
+                logger.debug(f"🔍 Fetching open PRs for {repo}")
+                prs = self.github_api.list_pull_requests(
+                    owner=owner,
+                    repo=repo_name,
+                    state='open'
+                )
+                
+                if not prs:
+                    logger.debug(f"🔍 No open PRs in {repo}")
+                    continue
+                
+                logger.info(f"🔍 Found {len(prs)} open PR(s) in {repo}")
+                
+                # Filter PRs for auto-review
+                for pr in prs:
+                    pr_number = pr.get('number')
+                    if not pr_number:
+                        logger.warning(f"⚠️ PR missing number field, skipping")
+                        continue
+                    
+                    pr_title = pr.get('title', 'Untitled')
+                    pr_user = pr.get('user', {}).get('login', '')
+                    pr_labels = [label.get('name', '') for label in pr.get('labels', [])]
+                    
+                    logger.debug(f"🔍 Checking PR #{pr_number} by {pr_user}: {pr_title}")
+                    
+                    # Check if user is in skip list (admin accounts)
+                    if pr_user in self.config.pr_skip_review_users:
+                        logger.debug(f"⏭️ Skipping PR #{pr_number} - user {pr_user} in skip list")
+                        continue
+                    
+                    # Check if user is in auto-review list (bot accounts)
+                    if self.config.pr_auto_review_users and pr_user not in self.config.pr_auto_review_users:
+                        logger.debug(f"⏭️ Skipping PR #{pr_number} - user {pr_user} not in auto-review list")
+                        continue
+                    
+                    # Check if PR has required labels (if configured)
+                    if self.config.pr_review_labels:
+                        has_required_label = any(label in self.config.pr_review_labels for label in pr_labels)
+                        if not has_required_label:
+                            logger.debug(f"⏭️ Skipping PR #{pr_number} - missing required labels")
+                            continue
+                    
+                    # Check if already reviewed
+                    pr_key = f"{repo}#{pr_number}"
+                    if pr_key in self.reviewed_prs:
+                        logger.debug(f"✅ Already reviewed PR #{pr_number}")
+                        continue
+                    
+                    # Trigger reviewer agent
+                    logger.info(f"🤖 Triggering review for PR #{pr_number}: {pr_title}")
+                    await self.trigger_pr_review(repo, pr_number, pr)
+                    
+            except Exception as e:
+                logger.error(f"❌ Error checking PRs for {repo}: {e}", exc_info=True)
+    
+    async def check_new_issues_for_opener(self):
+        """Check for new issues that should trigger Issue Opener Agent.
+        
+        Monitors new issues with trigger labels and dispatches to Issue Opener.
+        """
+        if not self.config.issue_opener_enabled:
+            logger.debug("🔍 Issue Opener monitoring disabled, skipping")
+            return
+        
+        logger.info("🔍 Checking for issues to auto-open...")
+        
+        for repo in self.config.repositories:
+            try:
+                owner, repo_name = repo.split('/')
+                
+                # Fetch open issues
+                logger.debug(f"🔍 Fetching open issues for {repo}")
+                issues = self.github_api.list_issues(
+                    owner=owner,
+                    repo=repo_name,
+                    state='open'
+                )
+                
+                if not issues:
+                    logger.debug(f"🔍 No open issues in {repo}")
+                    continue
+                
+                logger.info(f"🔍 Found {len(issues)} open issue(s) in {repo}")
+                
+                # Filter issues for auto-opening
+                for issue in issues:
+                    issue_number = issue.get('number')
+                    if not issue_number:
+                        logger.warning(f"⚠️ Issue missing number field, skipping")
+                        continue
+                    
+                    issue_title = issue.get('title', 'Untitled')
+                    issue_labels = [label.get('name', '') for label in issue.get('labels', [])]
+                    assignees = [user.get('login', '') for user in issue.get('assignees', [])]
+                    
+                    logger.debug(f"🔍 Checking issue #{issue_number}: {issue_title}")
+                    
+                    # Skip if already assigned
+                    if assignees:
+                        logger.debug(f"⏭️ Skipping issue #{issue_number} - already assigned to {assignees}")
+                        continue
+                    
+                    # Check for skip labels
+                    if any(label in self.config.issue_opener_skip_labels for label in issue_labels):
+                        logger.debug(f"⏭️ Skipping issue #{issue_number} - has skip label")
+                        continue
+                    
+                    # Check for trigger labels
+                    has_trigger_label = any(label in self.config.issue_opener_trigger_labels for label in issue_labels)
+                    if not has_trigger_label:
+                        logger.debug(f"⏭️ Skipping issue #{issue_number} - missing trigger label")
+                        continue
+                    
+                    # Check if already claimed
+                    issue_key = f"{repo}#{issue_number}"
+                    if self.is_issue_claimed(repo, issue_number):
+                        logger.debug(f"✅ Issue #{issue_number} already claimed")
+                        continue
+                    
+                    # Trigger Issue Opener Agent
+                    logger.info(f"🤖 Triggering Issue Opener for issue #{issue_number}: {issue_title}")
+                    await self.trigger_issue_opener(repo, issue_number, issue)
+                    
+            except Exception as e:
+                logger.error(f"❌ Error checking issues for {repo}: {e}", exc_info=True)
+    
+    async def trigger_pr_review(self, repo: str, pr_number: int, pr_data: Dict):
+        """Trigger PR Reviewer Agent for a pull request.
+        
+        Args:
+            repo: Repository (owner/repo)
+            pr_number: PR number
+            pr_data: PR data dictionary from GitHub API
+        """
+        try:
+            pr_key = f"{repo}#{pr_number}"
+            
+            # Get reviewer agent
+            if not self.agent_registry:
+                logger.warning(f"⚠️ Agent registry not available, cannot trigger review for {pr_key}")
+                return
+            
+            reviewer_agent = self.agent_registry.get_agent(self.config.reviewer_agent_id)
+            if not reviewer_agent:
+                logger.error(f"❌ Reviewer agent '{self.config.reviewer_agent_id}' not found in registry")
+                return
+            
+            logger.info(f"🤖 Starting PR review with agent {self.config.reviewer_agent_id}")
+            
+            # Call reviewer agent (assumes it has a review_pr method)
+            # The pr_reviewer.py module should be wrapped as an agent
+            result = await reviewer_agent.review_pr(
+                repo=repo,
+                pr_number=pr_number,
+                pr_data=pr_data
+            )
+            
+            # Mark as reviewed
+            self.reviewed_prs.add(pr_key)
+            
+            logger.info(f"✅ PR review completed for {pr_key}: {result.get('decision', 'UNKNOWN')}")
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to trigger PR review for {repo}#{pr_number}: {e}", exc_info=True)
+    
+    async def trigger_issue_opener(self, repo: str, issue_number: int, issue_data: Dict):
+        """Trigger Issue Opener Agent for an issue.
+        
+        Args:
+            repo: Repository (owner/repo)
+            issue_number: Issue number
+            issue_data: Issue data dictionary from GitHub API
+        """
+        try:
+            issue_key = f"{repo}#{issue_number}"
+            
+            # Get issue opener agent
+            if not self.agent_registry:
+                logger.warning(f"⚠️ Agent registry not available, cannot trigger Issue Opener for {issue_key}")
+                return
+            
+            opener_agent = self.agent_registry.get_agent(self.config.issue_opener_agent_id)
+            if not opener_agent:
+                logger.error(f"❌ Issue Opener agent '{self.config.issue_opener_agent_id}' not found in registry")
+                return
+            
+            logger.info(f"🤖 Starting Issue Opener with agent {self.config.issue_opener_agent_id}")
+            
+            # Call Issue Opener agent (should handle issue resolution)
+            result = await opener_agent.handle_issue(
+                repo=repo,
+                issue_number=issue_number,
+                issue_data=issue_data
+            )
+            
+            logger.info(f"✅ Issue Opener completed for {issue_key}: {result.get('status', 'UNKNOWN')}")
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to trigger Issue Opener for {repo}#{issue_number}: {e}", exc_info=True)
+    
     async def claim_issue(self, repo: str, issue_number: int) -> bool:
         """Claim an issue by adding a comment.
         
@@ -766,6 +1036,16 @@ class PollingService:
                     await self.start_issue_workflow(issue)
                     # Small delay between starts
                     await asyncio.sleep(2)
+            
+            # Check for PRs needing review (if enabled)
+            if self.config.pr_monitoring_enabled:
+                logger.info("🔍 Checking for PRs needing review...")
+                await self.check_pull_requests()
+            
+            # Check for new issues to auto-open (if enabled)
+            if self.config.issue_opener_enabled:
+                logger.info("🔍 Checking for issues to auto-open...")
+                await self.check_new_issues_for_opener()
             
         except Exception as e:
             logger.error(f"Error in polling cycle: {e}")
