@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **� Race Condition Prevention for PR Reviews** (October 11, 2025)
+- **🛡️ Self-Review Prevention for Bots** (October 11, 2025)
+  - **CRITICAL SECURITY FIX**: Prevents bots from reviewing and approving their own PRs
+  - **Implementation**:
+    - Added check at start of complete_pr_review_and_merge_workflow()
+    - Compares PR author login with reviewer bot account (m0nk111-{bot_account})
+    - Skips review if author matches reviewer
+    - Returns clear skip reason for logging/monitoring
+  - **Bot Account Mapping**:
+    - post → m0nk111-post
+    - coder1 → m0nk111-coder1
+    - coder2 → m0nk111-coder2
+    - qwen-agent → m0nk111-qwen-agent
+    - admin → m0nk111-admin
+  - **Testing**: Full test suite (5 tests) covering all bot accounts
+  - **Impact**: Prevents security vulnerability where malicious bot could approve own code
+  - **Rationale**: Without this check, a compromised bot could create PR with malicious code and auto-approve/merge it, bypassing review process
+
 - **⚡ GitHub API Rate Limit Handling** (October 11, 2025)
   - **CRITICAL FIX**: Prevents system failure when hitting GitHub API rate limits
   - **Enhanced _github_request() method**:

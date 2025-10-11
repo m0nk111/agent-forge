@@ -1269,6 +1269,27 @@ The PR was merged because it met quality standards, but these improvements shoul
             }
         
         try:
+            # 🛡️ Check for self-review (bot reviewing own PR)
+            owner, repo_name = repo.split('/')
+            pr_url = f"https://api.github.com/repos/{owner}/{repo_name}/pulls/{pr_number}"
+            pr_status, pr_data = self._github_request('GET', pr_url)
+            
+            if pr_status == 200 and pr_data:
+                pr_author = pr_data.get('user', {}).get('login', '')
+                reviewer_account = f"m0nk111-{self.bot_account}"
+                
+                # Check if PR author is same as reviewer bot
+                if pr_author == reviewer_account:
+                    logger.warning(f"🛡️  Skipping self-review: {reviewer_account} cannot review own PR")
+                    return {
+                        'skipped': True,
+                        'reason': f'Self-review prevented: {reviewer_account} is PR author',
+                        'pr_author': pr_author,
+                        'reviewer': reviewer_account,
+                        'review_result': None,
+                        'merge_decision': None
+                    }
+            
             # Run standard review workflow
             workflow_result = self.complete_pr_review_workflow(
                 repo=repo,
