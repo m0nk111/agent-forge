@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Bug #8: Module specification inference fails for documentation tasks** (DISCOVERED)
+  - **Problem**: Pipeline orchestrator crashes when trying to infer Python module from documentation-only issues
+  - **Root cause**: `code_generator._infer_module_from_issue()` assumes all tasks are Python code, not documentation
+  - **Impact**: "Could not infer module specification from issue" error, workflow fails immediately
+  - **Error**: `RuntimeError: Requirements parsing failed: Could not infer module specification from issue`
+  - **Phase**: parse_requirements
+  - **Workaround**: Update issue body with explicit file specification (e.g., `` `docs/WELCOME.md` ``)
+  - **Proper fix TODO**: Add fallback to IssueHandler or make code generator handle non-Python files
+  - **File**: `engine/operations/code_generator.py` (inference logic)
+  - **Status**: WORKAROUND APPLIED - Issue #1 body updated with explicit file path
+
 - **Bug #6: Labels query gebruikt AND i.p.v. OR** (WORKAROUND)
   - **Problem**: Polling service searched for `labels=agent-ready,auto-assign` which uses AND logic in GitHub API
   - **Root cause**: comma-separated labels = ALL labels required, not ANY
