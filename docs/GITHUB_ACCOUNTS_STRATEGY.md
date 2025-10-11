@@ -1,26 +1,60 @@
 # GitHub Accounts Strategy - Agent Forge
 
-## Current Situation Analysis
+> **Note**: This document describes the account strategy.  
+> For current configuration, see `config/system/github_accounts.yaml`  
+> For programmatic access, use `AccountManager` from `engine.core.account_manager`
 
-### Existing Accounts
-1. **m0nk111** (admin) - ✅ Working
-   - Personal account, manual interventions
-   - Should NOT be used for automation (email spam)
+## ✅ Current Implementation (October 2025)
 
-2. **m0nk111-post** (bot agent) - ✅ Working
+### Active Accounts (6 total)
+
+1. **m0nk111** (Admin) - ✅ Active
+   - Personal account, manual interventions only
+   - NOT used for automation (avoids email spam)
+
+2. **m0nk111-post** (Bot Agent) - ✅ Active
+   - Email: aicodingtime+post@gmail.com
    - Token: BOT_GITHUB_TOKEN
-   - Current use: Issue detection, PR creation, comments
-   - Problem: Used for BOTH bot operations AND code reviews
-   - Issue: Mixing responsibilities = confusion
+   - Role: Orchestration, issue monitoring, PR detection, repo creation
+   - Scopes: repo, admin:org, workflow, write:discussion
+   - Does NOT do code reviews (bot only)
 
-3. **m0nk111-qwen-agent** (code agent) - ✅ Working
+3. **m0nk111-coder1** (Primary GPT-5 Coder) - ✅ Active
+   - Email: aicodingtime+coder1@gmail.com
+   - Token: CODER1_GITHUB_TOKEN
+   - LLM: GPT-5 Chat Latest
+   - Role: Code generation, commits, PRs
+   - Can review: YES (peer review)
+   - Priority: PRIMARY
+
+4. **m0nk111-coder2** (Primary GPT-4o Coder) - ✅ Active
+   - Email: aicodingtime+coder2@gmail.com
+   - Token: CODER2_GITHUB_TOKEN
+   - LLM: GPT-4o
+   - Role: Code generation, commits, PRs
+   - Can review: YES (peer review)
+   - Priority: PRIMARY
+
+5. **m0nk111-reviewer** (Dedicated Reviewer) - ✅ Active
+   - Email: aicodingtime+reviewer@gmail.com
+   - Token: REVIEWER_GITHUB_TOKEN
+   - LLM: GPT-5 Chat Latest
+   - Role: PR reviews ONLY
+   - Can approve all PRs: YES (no conflicts)
+   - Priority: Always available
+
+6. **m0nk111-qwen-agent** (Reserve Coder) - ✅ Active
+   - Email: aicodingtime+qwen@gmail.com
    - Token: CODEAGENT_GITHUB_TOKEN
-   - Current use: Git commits, code changes
-   - Can also review (but shouldn't review own code)
+   - LLM: Qwen 2.5 Coder 32B (local)
+   - Role: Code generation, commits, PRs
+   - Can review: YES (peer review)
+   - Priority: RESERVE/FALLBACK
 
-4. **m0nk111-bot** - ❌ SUSPENDED (ignore)
+### Suspended Accounts
+- **m0nk111-bot** - ❌ SUSPENDED (replaced by m0nk111-post)
 
-## Agent Roles & Required Accounts
+## Agent Roles & Account Mapping
 
 ### Core Functional Roles
 
@@ -33,34 +67,34 @@
 #### 2. **Developer/Code Agent Role**
 - **Function**: Write code, implement features, fix bugs
 - **GitHub Needed**: YES (commits, pushes, branches)
-- **Account**: ✅ m0nk111-qwen-agent (existing)
-- **Token**: CODEAGENT_GITHUB_TOKEN
+- **Accounts**: 
+  - ✅ m0nk111-coder1 (primary, GPT-5)
+  - ✅ m0nk111-coder2 (primary, GPT-4o)
+  - ✅ m0nk111-qwen-agent (reserve, Qwen)
 
 #### 3. **Reviewer Role**
 - **Function**: Review PRs, approve/request changes
 - **GitHub Needed**: YES (PR reviews, comments)
-- **Account**: ❌ MISSING - Need dedicated account
-- **Recommended**: **m0nk111-reviewer**
-- **Token**: REVIEWER_GITHUB_TOKEN
-- **Why**: Cannot approve own PRs, needs separate identity
+- **Account**: ✅ m0nk111-reviewer (dedicated)
+- **Why**: Can approve ALL PRs without conflicts
 
 #### 4. **Bot/Automation Role**
-- **Function**: Issue monitoring, PR creation, status updates
-- **GitHub Needed**: YES (API calls, issue comments)
-- **Account**: ✅ m0nk111-post (existing)
+- **Function**: Issue monitoring, PR creation, status updates, repo creation
+- **GitHub Needed**: YES (API calls, issue comments, repo management)
+- **Account**: ✅ m0nk111-post
 - **Token**: BOT_GITHUB_TOKEN
-- **Clarification**: Should NOT be used for reviews
+- **Clarification**: Does NOT do code reviews
 
 #### 5. **Tester Role**
 - **Function**: Run tests, validate code
 - **GitHub Needed**: NO (local only, posts results via bot)
-- **Account**: None needed (can use bot account for posting)
+- **Account**: None needed (uses bot account for posting)
 
 #### 6. **Documenter Role**
 - **Function**: Write documentation, update READMEs
 - **GitHub Needed**: Optional (can commit via code agent)
-- **Account**: Can reuse m0nk111-qwen-agent OR m0nk111-post
-- **Decision**: Use code agent if docs with code, bot if standalone
+- **Account**: Uses primary coder accounts
+- **Decision**: Use code agent when docs bundled with code
 
 #### 7. **Researcher Role**
 - **Function**: Information gathering, analysis
@@ -70,14 +104,13 @@
 #### 8. **Issue Opener Agent**
 - **Function**: Autonomous issue resolution (create code + PR)
 - **GitHub Needed**: YES (commits, PR creation)
-- **Account**: Can reuse m0nk111-qwen-agent OR create dedicated
-- **Current**: Uses m0nk111-post (suboptimal)
-- **Recommendation**: Use m0nk111-qwen-agent or create m0nk111-coder
+- **Account**: Uses primary coder accounts (coder1, coder2)
+- **Current**: Integrated into polling service
 
 #### 9. **Bootstrap Agent**
 - **Function**: Create repositories, setup projects
 - **GitHub Needed**: YES (repo creation, team management)
-- **Account**: Needs admin-level token
+- **Account**: Uses m0nk111-post (has admin:org scope)
 - **Current**: Uses m0nk111-post token
 - **OK**: Can stay with post account (admin operations)
 
