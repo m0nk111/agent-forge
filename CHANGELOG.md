@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **PR Review Agent Phase 4 - Workflow Method Delegation** (October 11, 2025)
+  - **MAJOR REFACTORING**: `engine/operations/pr_review_agent.py` (-478 lines, 1,617→1,139 lines, -29.5%)
+    * Replaced `complete_pr_review_workflow()` method (120 lines → 35 lines delegation)
+    * Replaced `complete_pr_review_and_merge_workflow()` method (479 lines → 46 lines delegation)
+    * Both methods now delegate to `WorkflowOrchestrator` for execution
+    * Original logic preserved in orchestrator module (no functionality lost)
+  - **IMPACT**:
+    * **-597 lines total reduction** across Phase 3 + Phase 4
+    * pr_review_agent.py reduced from 1,691 → 1,139 lines (-32.7% since Phase 2)
+    * Main agent file is now clean coordinator (not monolithic implementation)
+    * All workflow logic centralized in dedicated orchestrator module
+  - **TESTING**: ✅ All 34 PR reviewer tests pass (no regressions)
+  - **BACKWARDS COMPATIBILITY**: ✅ Maintained - same method signatures, same return types
+  - **STRATEGY**: 
+    * Phase 4 completes delegation strategy (Phases 3+4 together)
+    * Methods marked as "DELEGATED TO ORCHESTRATOR" in docstrings
+    * Future maintenance only in orchestrator module (single source of truth)
+    * Agent becomes thin coordinator layer as intended
+
 ### Added
 - **PR Review Agent Phase 3 - Workflow Orchestration Extraction** (October 11, 2025)
   - **NEW MODULE**: `engine/operations/pr_workflow_orchestrator.py` (490 lines)
