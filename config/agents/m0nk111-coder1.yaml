@@ -1,0 +1,64 @@
+# m0nk111-coder1 Agent Configuration
+# Role: Code development with GPT-5
+# GitHub Account: m0nk111-coder1
+
+agent_id: m0nk111-coder1
+name: "GPT-5 Code Agent"
+role: developer
+
+# LLM Configuration
+llm:
+  provider: "openai"
+  model_name: "gpt-5-chat-latest"  # Primary GPT-5 coder
+  temperature: 0.7
+  max_tokens: 4096
+  api_key_name: "OPENAI_API_KEY"
+
+# GitHub Configuration
+github:
+  username: m0nk111-coder1
+  email: "m0nk111-coder1@users.noreply.github.com"
+  token: null  # Auto-loaded from secrets/agents/m0nk111-coder1.token
+  
+  # Commit signature
+  sign_commits: false
+  gpg_key_id: null
+
+# Developer Settings
+developer:
+  # Coding style
+  coding_style: "pythonic"  # or "typescript", "go", etc.
+  max_file_length: 500
+  prefer_small_functions: true
+  
+  # Testing
+  require_tests: true
+  min_test_coverage: 80
+  
+  # Documentation
+  require_docstrings: true
+  require_type_hints: true
+
+# Capabilities
+capabilities:
+  - code_generation
+  - bug_fixing
+  - refactoring
+  - testing
+  - documentation
+
+# Permissions
+permissions:
+  read_issues: true
+  write_issues: true
+  read_prs: true
+  write_prs: true
+  read_code: true
+  write_code: true
+  create_branches: true
+  merge_prs: false
+
+# Logging
+logging:
+  level: INFO
+  verbose: true

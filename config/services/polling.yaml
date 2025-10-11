@@ -59,13 +59,18 @@ pr_monitoring:
   # Available reviewer agents (used for round-robin/all strategies)
   # Each code agent can review, but won't review their own PRs
   reviewer_agents:
-    - agent_id: "code-agent-1"
-      username: "m0nk111-post"
-      llm_model: "gpt-5-chat-latest"  # Model used by this agent
-    - agent_id: "code-agent-2"  
+    - agent_id: "reviewer-agent"
+      username: "m0nk111-reviewer"
+      llm_model: "gpt-5-chat-latest"  # Dedicated reviewer
+    - agent_id: "coder-agent-1"
+      username: "m0nk111-coder1"
+      llm_model: "gpt-5-chat-latest"  # GPT-5 coder
+    - agent_id: "coder-agent-2"
+      username: "m0nk111-coder2"
+      llm_model: "gpt-4o"  # GPT-4o coder
+    - agent_id: "coder-agent-qwen"
       username: "m0nk111-qwen-agent"
-      llm_model: "qwen-2.5-coder-32b"  # Model used by this agent
-    # Add more code agents here as they become available
+      llm_model: "qwen-2.5-coder-32b"  # Qwen coder
 
 # Issue Opener Integration (NEW)
 # Automatically process new issues with issue-opener agent

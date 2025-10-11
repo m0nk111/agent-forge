@@ -1,0 +1,67 @@
+# m0nk111-reviewer Agent Configuration
+# Role: Dedicated PR reviewer
+# GitHub Account: m0nk111-reviewer
+
+agent_id: m0nk111-reviewer
+name: "PR Reviewer Agent"
+role: reviewer
+
+# LLM Configuration
+llm:
+  provider: "openai"
+  model_name: "gpt-5-chat-latest"  # Fast, high-quality reviews
+  temperature: 0.3  # Low temp for consistent reviews
+  max_tokens: 8192
+  api_key_name: "OPENAI_API_KEY"
+
+# GitHub Configuration
+github:
+  username: m0nk111-reviewer
+  email: "m0nk111-reviewer@users.noreply.github.com"
+  token: null  # Auto-loaded from secrets/agents/m0nk111-reviewer.token
+  
+  # Commit signature
+  sign_commits: false
+  gpg_key_id: null
+
+# Reviewer Settings
+reviewer:
+  # Review criteria
+  check_security: true
+  check_performance: true
+  check_style: true
+  check_tests: true
+  check_documentation: true
+  
+  # Review thresholds
+  min_code_quality_score: 80
+  min_security_score: 90
+  min_test_coverage: 70
+  
+  # Review behavior
+  auto_approve_threshold: 95  # Auto-approve if score >= 95
+  request_changes_threshold: 60  # Request changes if score < 60
+  
+# Capabilities
+capabilities:
+  - code_review
+  - security_audit
+  - quality_assurance
+  - style_checking
+  - best_practices
+
+# Permissions
+permissions:
+  read_issues: true
+  write_issues: false  # Reviewer doesn't create issues
+  read_prs: true
+  write_prs: true  # Can review and approve
+  read_code: true
+  write_code: false  # Reviewer doesn't commit code
+  create_branches: false
+  merge_prs: false  # Reviews only, no merging
+
+# Logging
+logging:
+  level: INFO
+  verbose: true
