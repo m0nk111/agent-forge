@@ -97,6 +97,21 @@ def count_consonants(text: str) -> int:
     consonants = 'bcdfghjklmnpqrstvwxyzBCDFGHJKLMNPQRSTVWXYZ'
     return sum(1 for char in text if char in consonants)
 
+def count_digits(text: str) -> int:
+    """
+    Count the number of digits in the input string.
+
+    Args:
+        text (str): The input string to count digits from.
+
+    Returns:
+        int: The total count of digits in the input string.
+    """
+    if not isinstance(text, str):
+        raise ValueError("Input must be a string")
+    
+    return sum(1 for char in text if char.isdigit())
+
 # Test suite using pytest
 import pytest
 
@@ -136,3 +151,8 @@ def test_count_consonants():
     assert count_consonants('BCDFGHJKLMNPQRSTVWXYZ') == 24
     with pytest.raises(ValueError):
         count_consonants(12345)
+
+def test_count_digits():
+    assert count_digits('hello world 123') == 3
+    assert count_digits('Python 3.8') == 1
+    assert count_digits('No digits here!') == 0

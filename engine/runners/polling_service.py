@@ -19,11 +19,17 @@ import logging
 import os
 import time
 import subprocess
-from dataclasses import dataclass, asdict, field, fields, MISSING
+from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 import yaml
+
+# Import refactored modules
+from engine.runners.polling_models import PollingConfig, IssueState
+from engine.runners.config_override_handler import ConfigOverrideHandler
+from engine.runners.state_manager import StateManager
+from engine.runners.issue_filter import IssueFilter
 
 
 def _utc_now() -> datetime:
@@ -94,69 +100,6 @@ class MonitorLogHandler(logging.Handler):
             pass
 
 
-@dataclass
-class PollingConfig:
-    """Configuration for the polling service."""
-    
-    interval_seconds: int = 300  # 5 minutes
-    github_token: Optional[str] = None
-    github_username: Optional[str] = None  # Must be configured via YAML or environment
-    repositories: List[str] = field(default_factory=list)  # ["owner/repo", ...]
-    watch_labels: List[str] = field(default_factory=lambda: ["agent-ready", "auto-assign"])  # labels
-    max_concurrent_issues: int = 3
-    claim_timeout_minutes: int = 60
-    state_file: str = "data/polling_state.json"  # Sensible default path
-    
-    # PR Monitoring (NEW)
-    pr_monitoring_enabled: bool = False
-    pr_monitoring_interval: int = 600  # 10 minutes
-    pr_auto_review_users: List[str] = field(default_factory=list)
-    pr_skip_review_users: List[str] = field(default_factory=list)
-    pr_review_labels: List[str] = field(default_factory=list)
-    pr_review_strategy: Optional[str] = None  # Must be configured: dedicated, round-robin, all
-    reviewer_agent_id: Optional[str] = None  # Must be configured via YAML
-    reviewer_agents: List[Dict[str, str]] = field(default_factory=list)  # [{"agent_id": "...", "username": "...", "llm_model": "..."}]
-    
-    # PR Review Configuration (NEW)
-    pr_use_llm: bool = True
-    pr_llm_model: Optional[str] = None  # Must be configured via YAML (e.g., "qwen2.5-coder:7b")
-    pr_bot_account: Optional[str] = None  # Must be configured via YAML (e.g., "admin")
-    pr_full_workflow: bool = True
-    pr_post_comments: bool = True
-    
-    # PR Merge Configuration (NEW)
-    pr_merge_enabled: bool = True
-    pr_auto_merge_if_approved: bool = True
-    pr_merge_with_suggestions: bool = False
-    pr_merge_method: Optional[str] = None  # Must be configured: merge, squash, or rebase
-    pr_merge_delay_seconds: int = 30
-    
-    # Issue Opener Integration (NEW)
-    issue_opener_enabled: bool = False
-    issue_opener_trigger_labels: List[str] = field(default_factory=list)
-    issue_opener_skip_labels: List[str] = field(default_factory=list)
-    issue_opener_agent_id: Optional[str] = None  # Must be configured via YAML
-    
-    def __post_init__(self):
-        """Initialize default values."""
-        if self.github_token is None:
-            self.github_token = os.getenv("BOT_GITHUB_TOKEN") or os.getenv("GITHUB_TOKEN")
-
-
-@dataclass
-class IssueState:
-    """State tracking for a single issue."""
-    
-    issue_number: int
-    repository: str
-    claimed_by: Optional[str]
-    claimed_at: Optional[str]
-    last_error: Optional[str] = None
-    error_count: int = 0
-    completed: bool = False
-    completed_at: Optional[str] = None
-
-
 class PollingService:
     """Service for autonomous GitHub issue polling and workflow initiation."""
     
@@ -181,13 +124,26 @@ class PollingService:
                 self._apply_config_overrides(config)
         self.agent_registry = agent_registry
         self.state_file = Path(self.config.state_file)
-        self.state: Dict[str, IssueState] = {}
-        self.load_state()
+        
+        # Initialize StateManager for state persistence
+        self.state_manager = StateManager(self.state_file)
+        self.state_manager.load()
+        
+        # Keep backwards compatibility with self.state
+        self.state = self.state_manager.state
+        
+        # Initialize IssueFilter for issue filtering logic
+        self.issue_filter = IssueFilter(
+            state_manager=self.state_manager,
+            watch_labels=self.config.watch_labels,
+            claim_timeout_minutes=self.config.claim_timeout_minutes,
+            creative_logs_enabled=os.getenv("POLLING_CREATIVE_LOGS", "0") in {"1", "true", "TRUE"}
+        )
+        
         self.running = False
         self.enable_monitoring = enable_monitoring
         self.monitor = None
         self.api_calls = 0  # Track API calls
-        self.creative_logs_enabled = os.getenv("POLLING_CREATIVE_LOGS", "0") in {"1", "true", "TRUE"}
         
         # Track reviewed PRs with timestamp and commit SHA to prevent memory leak
         # {pr_key: {'sha': head_sha, 'reviewed_at': timestamp}}
@@ -358,87 +314,25 @@ class PollingService:
 
     def _apply_config_overrides(self, override: PollingConfig):
         """Override YAML-loaded configuration with explicitly provided override values.
-
-        Only apply overrides for fields whose value differs from the dataclass default.
-        This prevents accidental replacement of YAML values with implicit defaults
-        coming from the override instance. Special-case github_token to avoid overriding
-        a YAML token with environment-derived values unless explicitly set.
+        
+        Uses ConfigOverrideHandler to apply only non-default overrides.
         """
-        # Build a map of default values from the dataclass definition (no __post_init__ effects)
-        defaults = {}
-        for f in fields(PollingConfig):
-            if f.default is not MISSING:
-                defaults[f.name] = f.default
-            elif f.default_factory is not MISSING:  # type: ignore[attr-defined]
-                defaults[f.name] = f.default_factory()  # type: ignore[misc]
-            else:
-                defaults[f.name] = None
-
-        # Apply only non-default overrides
-        for field_name, default_value in defaults.items():
-            value = getattr(override, field_name, None)
-            # Skip if no value or value equals the dataclass default (not explicitly overridden)
-            if value is None or value == default_value:
-                continue
-
-            # Avoid overriding YAML token with env-provided token unless explicitly different
-            if field_name == 'github_token':
-                env_token = os.getenv('BOT_GITHUB_TOKEN') or os.getenv('GITHUB_TOKEN')
-                # If the override token equals the env token, it's likely implicit -> skip
-                if value == env_token:
-                    continue
-
-            setattr(self.config, field_name, value)
+        handler = ConfigOverrideHandler(self.config)
+        handler.apply_overrides(override)
         
     def load_state(self):
         """Load polling state from disk."""
-        if self.state_file.exists():
-            try:
-                with self.state_file.open('r') as f:
-                    data = json.load(f)
-                    self.state = {
-                        key: IssueState(**value)
-                        for key, value in data.items()
-                    }
-                logger.info(f"Loaded state: {len(self.state)} tracked issues")
-            except Exception as e:
-                logger.error(f"Failed to load state: {e}")
-                self.state = {}
-        else:
-            logger.info("No existing state file, starting fresh")
-            self.state = {}
+        self.state_manager.load()
+        self.state = self.state_manager.state
     
     def save_state(self):
         """Save polling state to disk."""
-        try:
-            data = {
-                key: asdict(value)
-                for key, value in self.state.items()
-            }
-            with self.state_file.open('w') as f:
-                json.dump(data, f, indent=2)
-            logger.debug(f"Saved state: {len(self.state)} tracked issues")
-        except Exception as e:
-            logger.error(f"Failed to save state: {e}")
+        self.state_manager.save()
     
     def cleanup_old_state(self):
         """Remove old completed/closed issues from state."""
-        now = _utc_now()
-        cutoff = now - timedelta(days=7)
-        
-        to_remove = []
-        for key, issue_state in self.state.items():
-            if issue_state.completed and issue_state.completed_at:
-                completed_time = _parse_iso_timestamp(issue_state.completed_at)
-                if completed_time < cutoff:
-                    to_remove.append(key)
-        
-        for key in to_remove:
-            del self.state[key]
-            logger.info(f"Cleaned up old state: {key}")
-        
-        if to_remove:
-            self.save_state()
+        self.state_manager.cleanup_old_entries(days=7)
+        self.state = self.state_manager.state
     
     def update_metrics(self):
         """Update agent metrics in monitor."""
@@ -525,86 +419,21 @@ class PollingService:
     def filter_actionable_issues(self, issues: List[Dict]) -> List[Dict]:
         """Filter issues based on labels and state.
         
+        Uses IssueFilter for the filtering logic.
+        
         Args:
             issues: List of issue dictionaries
             
         Returns:
             Filtered list of actionable issues
         """
-        actionable = []
+        actionable = self.issue_filter.filter_actionable_issues(issues)
         
-        logger.info(f"🐛 DEBUG: Filtering {len(issues)} issues")
+        # Sync state back (IssueFilter may have modified it)
+        self.state = self.state_manager.state
         
-        for idx, issue in enumerate(issues):
-            try:
-                logger.info(f"🐛 DEBUG: Processing issue {idx+1}/{len(issues)}")
-                logger.info(f"🐛 DEBUG: Issue dict keys: {list(issue.keys())}")
-                logger.info(f"🐛 DEBUG: Issue repository: {issue.get('repository')}")
-                logger.info(f"🐛 DEBUG: Issue number: {issue.get('number')}")
-                issue_key = self.get_issue_key(issue['repository'], issue['number'])
-                
-                logger.info(f"🔍 Evaluating issue {issue_key}: {issue['title']}")
-                logger.info(f"   Labels: {[label['name'] for label in issue.get('labels', [])]}")
-                logger.info(f"   Watch labels: {self.config.watch_labels}")
-                logger.info(f"   In state: {issue_key in self.state}")
-                
-                # Skip if completed
-                if issue_key in self.state and self.state[issue_key].completed:
-                    logger.info(f"   ❌ Skipping: already completed")
-                    continue
-                
-                # Check if already processing with valid claim
-                if issue_key in self.state and not self.state[issue_key].completed:
-                    issue_state = self.state[issue_key]
-                    
-                    # If no claim exists (claimed_by is None), allow processing
-                    if issue_state.claimed_by is None:
-                        logger.info(f"   ⚠️  Issue in state but no claim - allowing processing")
-                    # If claim exists, check if it's expired
-                    elif issue_state.claimed_at:
-                        try:
-                            claimed_at = _parse_iso_timestamp(issue_state.claimed_at)
-                            now = _utc_now()
-                            age_minutes = (now - claimed_at).total_seconds() / 60
-                            timeout_minutes = self.config.claim_timeout_minutes
-                            
-                            logger.info(f"   Claim age: {age_minutes:.1f} min (timeout: {timeout_minutes} min)")
-                            
-                            if age_minutes < timeout_minutes:
-                                logger.info(f"   ❌ Skipping: claim still valid (expires in {timeout_minutes - age_minutes:.1f} min)")
-                                continue
-                            else:
-                                logger.info(f"   ⚠️  Claim expired ({age_minutes:.1f} min > {timeout_minutes} min) - allowing re-processing")
-                                # Remove expired state to allow fresh claim
-                                del self.state[issue_key]
-                        except Exception as e:
-                            logger.warning(f"   ⚠️  Error parsing claim timestamp: {e} - allowing processing")
-                    else:
-                        logger.info(f"   ⚠️  Claim exists but no timestamp - allowing processing")
-                
-                # Check labels
-                issue_labels = [label['name'] for label in issue.get('labels', [])]
-                has_watch_label = any(
-                    label in self.config.watch_labels
-                    for label in issue_labels
-                )
-                
-                logger.info(f"   Has watch label: {has_watch_label}")
-                
-                if has_watch_label:
-                    logger.info(f"   ✅ Issue is actionable!")
-                    actionable.append(issue)
-                    logger.info(f"Actionable issue found: {issue_key} - {issue['title']}")
-                    if self.creative_logs_enabled:
-                        motif = generate_issue_motif(issue.get('title', ''), [label['name'] for label in issue.get('labels', [])])
-                        logger.info("🎨 Creative pulse for %s:%s%s", issue_key, os.linesep, motif)
-                else:
-                    logger.info(f"   ❌ Skipping: no watch labels match")
-                    
-            except Exception as e:
-                logger.error(f"🐛 DEBUG: Error processing issue {idx+1}: {e}", exc_info=True)
-                continue
-        
+        return actionable
+    
         logger.info(f"🐛 DEBUG: filter_actionable_issues returning {len(actionable)} issues")
         return actionable
     
