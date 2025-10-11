@@ -905,26 +905,38 @@ class PollingService:
         try:
             issue_key = f"{repo}#{issue_number}"
             
-            # Get issue opener agent
+            # Get code agent from registry (IssueHandler is accessed via CodeAgent)
             if not self.agent_registry:
                 logger.warning(f"⚠️ Agent registry not available, cannot trigger Issue Opener for {issue_key}")
                 return
             
-            opener_agent = self.agent_registry.get_agent(self.config.issue_opener_agent_id)
-            if not opener_agent:
-                logger.error(f"❌ Issue Opener agent '{self.config.issue_opener_agent_id}' not found in registry")
+            # Get the code agent that has IssueHandler capability
+            code_agent = self.agent_registry.get_agent(self.config.issue_opener_agent_id)
+            if not code_agent:
+                logger.error(f"❌ Code agent '{self.config.issue_opener_agent_id}' not found in registry")
+                return
+            
+            # Verify the agent has IssueHandler
+            if not hasattr(code_agent, 'issue_handler'):
+                logger.error(f"❌ Agent '{self.config.issue_opener_agent_id}' does not have IssueHandler capability")
                 return
             
             logger.info(f"🤖 Starting Issue Opener with agent {self.config.issue_opener_agent_id}")
             
-            # Call Issue Opener agent (should handle issue resolution)
-            result = await opener_agent.handle_issue(
+            # Call IssueHandler via CodeAgent
+            result = code_agent.issue_handler.assign_to_issue(
                 repo=repo,
-                issue_number=issue_number,
-                issue_data=issue_data
+                issue_number=issue_number
             )
             
-            logger.info(f"✅ Issue Opener completed for {issue_key}: {result.get('status', 'UNKNOWN')}")
+            # Log result
+            if result.get('success'):
+                logger.info(f"✅ Issue Opener completed for {issue_key}")
+                logger.info(f"   📝 Files modified: {len(result.get('files_modified', []))}")
+                if result.get('pr_url'):
+                    logger.info(f"   🔀 PR created: {result['pr_url']}")
+            else:
+                logger.error(f"❌ Issue Opener failed for {issue_key}: {result.get('error', 'UNKNOWN')}")
             
         except Exception as e:
             logger.error(f"❌ Failed to trigger Issue Opener for {repo}#{issue_number}: {e}", exc_info=True)
