@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Project Structure Documentation** 📁
+  - Updated README.md project structure section to match current codebase
+  - Added missing engine/core modules: llm_providers, pipeline_orchestrator, context_manager, rate_limiter, key_manager, account_manager
+  - Added missing engine/operations modules: pr_review_agent, repo_manager, llm_file_editor, code_generator, issue_handler, creative_status, and 20+ more
+  - Added api/ directory with auth_routes.py and config_routes.py
+  - Added data/ directory for runtime state files
+  - Expanded secrets/ structure showing agents/ and keys/ subdirectories
+  - Added comprehensive scripts/ listing with all utility scripts
+  - Added systemd/ directory with service files
+  - Added engine/validation/ modules: instruction_validator, instruction_parser, security_auditor
+  - **Impact**: Documentation now accurately reflects current codebase organization after October 2025 refactoring
+
 ### Added
 - **PR Review Agent** 🔍
   - New module `engine/operations/pr_review_agent.py` for automated code reviews
