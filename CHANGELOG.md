@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **PR Review Agent Refactoring - Phase 1** (October 11, 2025)
+  - **NEW MODULE**: Extracted GitHub API operations into focused module:
+    * `pr_github_client.py`: GitHubAPIClient class (401 lines)
+    * Handles all GitHub API interactions
+    * 16 methods for PR operations (comments, labels, reviewers, merge, etc.)
+  - **SEPARATION OF CONCERNS**:
+    * API logic separated from review logic
+    * Retry and rate limiting centralized
+    * Reusable across different agents
+  - **NEXT**: Extract review logic and workflow orchestration
+  - Reasoning: Break down 1,771-line mega file into manageable modules
+
 - **Polling Service Refactoring - Phase 2 COMPLETE** (October 11, 2025)
   - **INTEGRATED**: New modules successfully integrated into polling_service.py
     * ConfigOverrideHandler: Replaces 40-line complexity 277 method → 4 lines ✅
