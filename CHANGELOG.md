@@ -8,7 +8,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **🐛 Rate Limiter Fix for PR List Operations** (October 11, 2025)
+- **� Intelligent Issue Complexity & Agent Escalation System** (October 11, 2025)
+  - **NEW FEATURE**: Two-stage issue processing with dynamic escalation
+  - **Components**:
+    1. **IssueComplexityAnalyzer** (`engine/operations/issue_complexity_analyzer.py`)
+       - Pre-flight complexity analysis before agent assignment
+       - 9 complexity signals: description length, task count, file mentions, code blocks, dependencies, keywords (refactor/architecture/multi-component), labels
+       - Scoring: 0-65 points with thresholds at 10 (simple) and 25 (complex)
+       - Three routing options:
+         * `simple` (≤10): Direct to code_agent
+         * `uncertain` (11-25): Code_agent with escalation enabled
+         * `complex` (>25): Coordinator orchestration required
+       - Optional LLM semantic analysis for deeper insight
+    2. **AgentEscalator** (`engine/operations/agent_escalator.py`)
+       - Mid-execution escalation when complexity discovered during work
+       - Escalation triggers:
+         * Too many files (>5)
+         * Too many components (>3)
+         * Failed attempts (≥2)
+         * Stuck too long (>30 min)
+         * Architecture changes needed
+         * Explicit coordination required
+       - Posts escalation comment to issue
+       - Triggers coordinator to create sub-issues and execution plan
+       - Adds `needs-coordination` label if coordinator unavailable
+  - **Architecture**:
+    * Phase 1: Polling service calls coordinator for quick triage (5-10s)
+    * Phase 2: Code_agent can escalate during execution if complexity emerges
+  - **Benefits**:
+    - Prevents simple issues from coordinator overhead
+    - Handles "looks simple but actually complex" scenarios
+    - Dynamic adaptation based on real work experience
+    - Scalable decision-making with objective criteria
+  - **Use Cases**:
+    - Issue starts simple but research reveals architecture implications
+    - Agent discovers multiple interconnected components
+    - Work stalls due to unexpected dependencies
+    - Manual intervention needed for complex orchestration
+  - **Files**: 
+    * `engine/operations/issue_complexity_analyzer.py` (363 lines, new)
+    * `engine/operations/agent_escalator.py` (354 lines, new)
+  - **Status**: Architecture designed, implementation ready for integration
+
+- **�🐛 Rate Limiter Fix for PR List Operations** (October 11, 2025)
   - **CRITICAL BUG FIX**: Fixed incorrect operation type for list_pull_requests
   - **Problem**:
     - `list_pull_requests()` was classified as ISSUE_COMMENT operation
