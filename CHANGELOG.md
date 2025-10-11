@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+- **Test Artifacts Cleanup** (October 11, 2025)
+  - **REMOVED FILES**: Cleaned up E2E validation test artifacts
+    * `/string_utils.py` - Root directory violation ❌
+    * `engine/operations/string_utils.py` - Duplicate in wrong location ❌
+    * `engine/utils/string_utils.py` - Test artifact ❌
+    * `tests/test_string_utils.py` - Tests for removed module ❌
+    * `tests/test_e2e_issue84.py` - E2E test for issue #84 ❌
+    * `tests/test_e2e_issue85.py` - E2E test for issue #85 ❌
+    * `tests/test_code_generator_direct.py` - Direct generator test ❌
+    * `tests/test_gpt4_calculator_direct.py` - GPT-4 calculator test ❌
+  - **REMOVED BRANCHES**: Deleted merged test issue branches
+    * `fix-issue-84-string-utils` (local + remote) ❌
+    * `fix-issue-85-health-checker` (local + remote) ❌
+    * `issue-92-calculator-module` (local + remote) ❌
+    * `issue-94-add-string-utility-functions` (local + remote) ❌
+  - **REASONING**:
+    * Issues #84, #85, #92, #94 were E2E validation tests
+    * Test artifacts were committed as production code
+    * `string_utils.py` violated Root Directory Rule (3 duplicates!)
+    * Files had their own bug-fix lifecycle (not intended)
+    * Calculator module kept (legitimate utility)
+  - **IMPACT**:
+    * Cleaner repository structure
+    * Root directory rule compliance restored
+    * No duplicate code
+    * All remaining tests still pass ✅
+
 ### Added
 - **PR Review Agent Refactoring - Phase 2 COMPLETE** (October 11, 2025)
   - **INTEGRATED**: Review logic modules successfully integrated into pr_review_agent.py
