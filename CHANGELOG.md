@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Centralized GitHub Account Configuration** 🔧
+  - Created `config/system/github_accounts.yaml` - Single source of truth for all GitHub accounts
+  - Created `engine/core/account_manager.py` - Account management API
+  - `AccountManager` class for loading and querying account configurations
+  - `GitHubAccount` dataclass with automatic token loading from files or environment
+  - Account groups: bots, coders, reviewers, primary_coders, reserve_coders, all_agents
+  - Trusted accounts list management
+  - Convenience functions: `get_account()`, `get_bot_account()`, `get_account_manager()`
+  - Support for role-based and capability-based filtering
+  - All 5 accounts configured with consistent email pattern: `aicodingtime+<suffix>@gmail.com`
+    - m0nk111-post: aicodingtime+post@gmail.com (bot orchestrator)
+    - m0nk111-coder1: aicodingtime+coder1@gmail.com (GPT-5 primary coder)
+    - m0nk111-coder2: aicodingtime+coder2@gmail.com (GPT-4o primary coder)
+    - m0nk111-reviewer: aicodingtime+reviewer@gmail.com (dedicated reviewer)
+    - m0nk111-qwen-agent: aicodingtime+qwen@gmail.com (reserve coder)
+
 - **Project Bootstrap Agent Implementation** 🚀
   - Implemented complete repository automation system for creating and configuring new GitHub repositories
   - Added 5 repository management methods to `GitHubAPIHelper`:
@@ -110,6 +126,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `scripts/test_gpt5_pro_working.py` - Comprehensive GPT-5 Pro test suite
   - **Discovery**: GPT-5 Pro IS available (created 2025-10-03)!
   - **Note**: Requires new /v1/responses endpoint (not /v1/chat/completions)
+
+### Changed
+- **Bot Operations Refactored to Use AccountManager**
+  - `engine/operations/bot_operations.py` now uses centralized account config
+  - Eliminates hardcoded username/email fallbacks
+  - Loads account details from `AccountManager` singleton
+  - Better error messages showing token file paths and env var names
+  - Support for using any configured account (not just default bot)
+
+- **Security Audit Uses Centralized Trusted Accounts**
+  - `config/rules/security_audit.yaml` references `github_accounts.yaml`
+  - No more duplicate trusted accounts lists
+  - Single source of truth for security bypass
+
+- **Trusted Agents Config Deprecated**
+  - `config/system/trusted_agents.yaml` marked as DEPRECATED
+  - Migration path documented to use `AccountManager`
+  - File kept for backwards compatibility only
+
+### Removed
+- **Suspended m0nk111-bot Account Eliminated**
+  - Deleted `config/agents/m0nk111-bot.yaml` (suspended account)
+  - Deleted `secrets/agents/m0nk111-bot.token` (old token)
+  - Deleted `secrets/agents/m0nk111-bot.token.example`
+  - Updated all references: m0nk111-bot → m0nk111-post throughout codebase
+  - Updated code: `bot_operations.py`, `bot_agent.py`, `polling_service.py`, `pipeline_orchestrator.py`
+  - Updated configs: `trusted_agents.yaml`, `coordinator.yaml`, `security_audit.yaml`
+  - Updated docs: `.github/copilot-instructions.md`, `agent_registry.py` comments
+  - ✅ 0 active code/config references to m0nk111-bot (verified)
 
 ### Fixed
 - **Polling Service: Agent Registry Initialization** (Issue #92) 🔧 **CRITICAL BUG**
