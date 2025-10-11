@@ -569,10 +569,19 @@ Provide the complete modified file content. Only return the file content, no exp
 
 def main():
     """Test the Issue Opener Agent."""
-    # Load config
+    # Load keys from keys.json
+    keys_path = project_root / 'keys.json'
+    if not keys_path.exists():
+        print("❌ keys.json not found")
+        sys.exit(1)
+    
+    with open(keys_path, 'r') as f:
+        keys = json.load(f)
+    
+    # Load config (case-insensitive key lookup)
     config = {
-        'github_token': os.getenv('BOT_GITHUB_TOKEN') or os.getenv('GITHUB_TOKEN'),
-        'openai_api_key': os.getenv('OPENAI_API_KEY'),
+        'github_token': keys.get('BOT_GITHUB_TOKEN') or keys.get('GITHUB_TOKEN'),
+        'openai_api_key': keys.get('OPENAI_API_KEY') or keys.get('openai_api_key'),
         'model': 'gpt-5-chat-latest',
         'repo': 'm0nk111/agent-forge',
         'project_root': project_root
@@ -580,11 +589,11 @@ def main():
     
     # Check required config
     if not config['github_token']:
-        print("❌ GITHUB_TOKEN or BOT_GITHUB_TOKEN not set")
+        print("❌ BOT_GITHUB_TOKEN or GITHUB_TOKEN not set in keys.json")
         sys.exit(1)
     
     if not config['openai_api_key']:
-        print("❌ OPENAI_API_KEY not set")
+        print("❌ OPENAI_API_KEY not set in keys.json")
         sys.exit(1)
     
     # Get issue number from args
