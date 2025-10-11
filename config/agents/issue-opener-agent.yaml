@@ -1,0 +1,179 @@
+# Issue Opener Agent Configuration
+# Autonomous agent that resolves GitHub issues and creates PRs
+
+agent_id: "issue-opener-agent"
+name: "Issue Opener Agent"
+description: |
+  Autonomous agent that monitors GitHub issues, analyzes requirements,
+  generates implementations, runs tests, and creates pull requests.
+  
+  Powered by GPT-5 Chat Latest for fast, high-quality code generation.
+
+# LLM Configuration
+llm:
+  provider: "openai"
+  model_name: "gpt-5-chat-latest"  # Fast and reliable (50% faster than GPT-4o)
+  temperature: 0.7
+  max_tokens: 4096
+  
+  # Fallback chain if primary model fails
+  fallback:
+    model: "gpt-4o"
+    secondary_fallback: "gpt-4-turbo"
+
+# GitHub Configuration
+github:
+  # Repository to monitor (can be overridden via command line)
+  repo: "m0nk111/agent-forge"
+  
+  # Labels that trigger autonomous resolution
+  trigger_labels:
+    - "auto-resolve"
+    - "agent-ready"
+    - "bot-task"
+  
+  # Labels to skip
+  skip_labels:
+    - "wontfix"
+    - "duplicate"
+    - "manual-only"
+  
+  # GitHub token (loaded from environment or keys.json)
+  # Use BOT_GITHUB_TOKEN to avoid email spam
+  token_env: "BOT_GITHUB_TOKEN"
+  
+  # Branch naming
+  branch_prefix: "issue"
+  
+  # PR configuration
+  pr:
+    auto_merge: false  # Set to true for automatic merging
+    request_reviews: true  # Request review from repo owner
+    draft: false  # Create as draft PR
+    labels:
+      - "automated"
+      - "bot-created"
+
+# Agent Capabilities
+capabilities:
+  # Code generation
+  generate_new_files: true
+  modify_existing_files: true
+  delete_files: false  # Disabled for safety
+  
+  # Testing
+  run_tests_before_pr: true
+  test_timeout: 300  # seconds
+  
+  # Validation
+  validate_syntax: true
+  check_linting: false  # Can be enabled if linter configured
+  
+  # Safety
+  max_files_per_pr: 10
+  max_lines_per_file: 500
+  require_tests: false  # Set true to require tests pass
+
+# Project Configuration
+project:
+  root: "/home/flip/agent-forge"
+  
+  # Files to exclude from modification
+  exclude_patterns:
+    - "external-code/**"
+    - "secrets/**"
+    - "keys.json"
+    - ".git/**"
+    - "__pycache__/**"
+  
+  # Test command
+  test_command: "pytest --tb=short -v"
+  
+  # Code style
+  style:
+    line_length: 100
+    indent: 4
+    quotes: "double"
+
+# Performance Settings
+performance:
+  # Timeout for LLM responses
+  llm_timeout: 60
+  
+  # Max retries for API calls
+  max_retries: 3
+  
+  # Delay between retries (seconds)
+  retry_delay: 5
+
+# Logging
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  
+  # Log files
+  file: "logs/issue_opener_agent.log"
+  max_size: "10MB"
+  backup_count: 5
+
+# Monitoring
+monitoring:
+  enabled: false  # Enable to send metrics to monitoring service
+  endpoint: "http://localhost:7997"
+  
+  # Metrics to track
+  metrics:
+    - "issues_processed"
+    - "prs_created"
+    - "success_rate"
+    - "average_time"
+
+# Notifications
+notifications:
+  enabled: false
+  
+  # Notify on success
+  on_success:
+    github_comment: true
+    message: "✅ Issue resolved! PR created: {pr_url}"
+  
+  # Notify on failure
+  on_failure:
+    github_comment: true
+    message: "❌ Failed to resolve automatically. Error: {error}"
+
+# Advanced Settings
+advanced:
+  # Use GPT-5 Pro for complex issues (slower but higher quality)
+  use_pro_for_complex: false
+  complexity_threshold: "high"  # low, medium, high
+  
+  # Code generation strategy
+  generation_strategy: "incremental"  # incremental or full
+  
+  # Parallel processing
+  parallel_files: false
+  max_parallel: 3
+
+# Notes
+notes: |
+  Performance Benchmarks (GPT-5 Chat Latest):
+  - Simple issues: 2-3s analysis + 30s code generation
+  - Medium issues: 3-5s analysis + 60s code generation
+  - Complex issues: 5-10s analysis + 120s code generation
+  
+  Best Practices:
+  - Use clear, structured issue descriptions
+  - Include acceptance criteria
+  - Specify files to modify when known
+  - Add "auto-resolve" label when ready
+  
+  Safety:
+  - Agent will not delete files by default
+  - Maximum 10 files per PR
+  - Tests run before PR creation
+  - All changes are reviewable in PR
+
+version: "1.0.0"
+created: "2025-10-11"
+updated: "2025-10-11"
