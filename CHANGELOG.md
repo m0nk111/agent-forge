@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Code Generator Test Failure Logging** 🔍
+  - Added detailed logging for test failures in `engine/operations/code_generator.py`
+  - Logs full pytest stdout/stderr when tests fail
+  - Captures returncode and detailed error messages
+  - Logs failures even when no specific FAILED patterns found
+  - **Impact**: Developers can now debug why code generation fails
+
 - **Agent Project Root Path Auto-Detection** 🔧
   - Fixed hardcoded `/opt/agent-forge` path in `engine/core/agent_registry.py`
   - Implemented dynamic project root detection using `Path(__file__).parent.parent.parent.resolve()`

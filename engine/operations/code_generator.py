@@ -231,8 +231,10 @@ class CodeGenerator:
                 result.test_results = test_results
                 
                 if not test_results['passed']:
+                    error_msg = f"Tests failed: {test_results['failures']}"
+                    logger.warning(f"   ❌ {error_msg}")
                     if result.errors:
-                        result.errors.append(f"Tests failed: {test_results['failures']}")
+                        result.errors.append(error_msg)
                     continue
                 
                 # Success!
@@ -502,9 +504,36 @@ This file will be saved as {spec.test_path}, NOT as implementation.
             
             # Extract failures if any
             if not result['passed']:
-                failure_pattern = r'FAILED (.*?) - (.*?)(?:\n|$)'
-                failures = re.findall(failure_pattern, pytest_output.stdout)
-                result['failures'] = [f"{test}: {msg}" for test, msg in failures[:5]]
+                # Log failure summary
+                logger.warning(f"   ⚠️ Tests failed (returncode: {pytest_output.returncode})")
+                
+                # Extract specific error details
+                failure_pattern = r'FAILED (.*?) - (.+?)(?=\n\n|$)'  # Match until double newline or end
+                failures = re.findall(failure_pattern, pytest_output.stdout, re.DOTALL)
+                
+                # Check for collection errors (import/syntax errors)
+                if 'collected 0 items / 1 error' in pytest_output.stdout or 'ERRORS =' in pytest_output.stdout:
+                    # Extract error section
+                    error_section = pytest_output.stdout.split('ERRORS =')
+                    if len(error_section) > 1:
+                        error_details = error_section[1].split('=====')[0].strip()[:800]
+                        result['failures'].append(f"Collection error: {error_details}")
+                        logger.error(f"   ❌ Collection error:\n{error_details}")
+                    else:
+                        result['failures'].append("Collection error: Unable to parse error details")
+                elif failures:
+                    result['failures'] = [f"{test}: {msg}" for test, msg in failures[:5]]
+                else:
+                    # Generic failure
+                    result['failures'].append(f"Test execution failed with code {pytest_output.returncode}")
+                    # Log first 1000 chars of output for debugging
+                    if pytest_output.stderr:
+                        result['failures'].append(f"STDERR: {pytest_output.stderr[:500]}")
+                    if pytest_output.stdout:
+                        # Log last part which usually has the summary
+                        stdout_lines = pytest_output.stdout.split('\n')
+                        relevant_output = '\n'.join(stdout_lines[-20:])
+                        logger.debug(f"   Test output (last 20 lines):\n{relevant_output}")
             
         except FileNotFoundError:
             result['failures'].append("pytest not installed")
