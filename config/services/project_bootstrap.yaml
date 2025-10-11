@@ -1,0 +1,123 @@
+# Project Bootstrap Agent Configuration
+# This file defines settings for automated repository creation and setup
+
+# Repository defaults
+repository:
+  # Default privacy setting (true = private, false = public)
+  default_private: false
+  
+  # Default branch protection settings
+  branch_protection:
+    enabled: true
+    default_branch: main
+    required_reviews: 1
+    require_code_owner_reviews: false
+    enforce_admins: false
+  
+  # Default license type (mit, apache-2.0, gpl-3.0)
+  default_license: mit
+
+# Bot collaborators configuration
+# These bots will be automatically invited to new repositories
+bot_collaborators:
+  - username: m0nk111-post
+    permission: push  # pull, push, admin, maintain, triage
+    description: Primary bot agent for issue and PR management
+    
+  - username: m0nk111-qwen-agent
+    permission: push
+    description: Qwen-based code agent for development
+    
+  # Uncomment when reviewer account is created
+  # - username: m0nk111-reviewer
+  #   permission: push
+  #   description: Dedicated PR reviewer agent
+
+# Team management settings
+team:
+  # Delay in seconds before attempting to auto-accept invitations
+  # GitHub needs time to propagate invitations
+  invitation_accept_delay: 10
+  
+  # Retry settings for invitation acceptance
+  max_retries: 3
+  retry_delay: 5
+
+# Project templates
+# Available templates with their configurations
+templates:
+  python:
+    description: Python project with pytest, setup.py, GitHub Actions
+    default_python_version: "3.10"
+    include_tests: true
+    include_docs: true
+    
+  typescript:
+    description: TypeScript/Node.js project with jest, tsconfig
+    default_node_version: "18"
+    include_tests: true
+    include_docs: true
+    
+  go:
+    description: Go project with modules structure
+    default_go_version: "1.21"
+    include_tests: true
+    include_docs: true
+
+# GitHub Actions CI/CD
+ci_cd:
+  # Enable GitHub Actions workflow generation
+  enabled: true
+  
+  # Workflow configurations per template
+  python:
+    - name: Tests
+      triggers: [push, pull_request]
+      python_versions: ["3.8", "3.9", "3.10"]
+      
+  typescript:
+    - name: Tests
+      triggers: [push, pull_request]
+      node_versions: ["16", "18", "20"]
+
+# Security features
+security:
+  # Enable Dependabot for dependency updates
+  dependabot_enabled: true
+  
+  # Enable CodeQL security scanning
+  codeql_enabled: true
+  
+  # Enable secret scanning
+  secret_scanning_enabled: true
+
+# Logging configuration
+logging:
+  # Log level (DEBUG, INFO, WARNING, ERROR)
+  level: INFO
+  
+  # Enable detailed operation logging
+  verbose: true
+  
+  # Log file path (null = stdout only)
+  log_file: null
+
+# Rate limiting and API usage
+api:
+  # Delay between operations to avoid rate limits (seconds)
+  operation_delay: 2
+  
+  # Retry failed operations
+  retry_on_failure: true
+  max_retries: 3
+
+# Notification settings (future feature)
+notifications:
+  # Enable notifications on bootstrap completion
+  enabled: false
+  
+  # Notification methods (email, slack, discord, github_issue)
+  methods: []
+  
+  # GitHub issue creation on completion
+  create_tracking_issue: false
