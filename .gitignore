@@ -47,6 +47,12 @@ Thumbs.db
 caramba/
 test_projects/
 
+# Test artifacts (E2E validation - should not be committed)
+string_utils.py
+engine/operations/string_utils.py
+engine/utils/string_utils.py
+tests/test_string_utils.py
+
 # Security - API Keys (Issue #31)
 keys.json
 *.key
