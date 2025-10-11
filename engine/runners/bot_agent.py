@@ -20,7 +20,7 @@ import asyncio
 import logging
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import subprocess
 import json
@@ -264,11 +264,13 @@ class BotAgent:
                 
                 self.metrics.rate_limit_remaining = remaining
                 if reset_timestamp:
-                    self.metrics.rate_limit_reset = datetime.fromtimestamp(reset_timestamp)
+                    # GitHub API timestamps are UTC
+                    self.metrics.rate_limit_reset = datetime.fromtimestamp(reset_timestamp, tz=timezone.utc)
                 
                 # Pause if below threshold
-                if remaining < self.rate_limit_threshold:
-                    wait_time = (self.metrics.rate_limit_reset - datetime.now()).total_seconds()
+                if remaining < self.rate_limit_threshold and self.metrics.rate_limit_reset:
+                    # Use UTC for proper comparison with GitHub timestamp
+                    wait_time = (self.metrics.rate_limit_reset - datetime.now(timezone.utc)).total_seconds()
                     if wait_time > 0:
                         logger.warning(
                             f"Rate limit low ({remaining} remaining). Pausing for {wait_time:.0f}s"

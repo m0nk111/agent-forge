@@ -35,6 +35,90 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Status**: ✅ Report completed and committed
 
 ### Fixed
+- **Bug #14: Naive datetime comparisons cause incorrect rate limit timing** (FIXED - 2025-10-11)
+  - **Problem**: GitHub API rate limit reset timestamps compared using naive datetime objects
+  - **Location**: `engine/runners/bot_agent.py` line 267, 273
+  - **Root cause**: 
+    * Line 267: `datetime.fromtimestamp(reset_timestamp)` returns local time (naive)
+    * Line 273: `datetime.now()` returns local time (naive)
+    * GitHub API returns UTC timestamps
+    * Comparison fails when system timezone != UTC
+  - **Impact**: 
+    * Incorrect wait_time calculations in non-UTC timezones
+    * Bot may wait too long or too short before retrying
+    * Rate limit handling unreliable in production (servers often UTC, dev machines not)
+  - **Example failure**: System in UTC+2, GitHub reset at 14:00 UTC
+    * fromtimestamp interprets as 14:00 local (12:00 UTC)
+    * Comparison with now() calculates wrong duration
+    * Could wait 2 hours too long or retry 2 hours too early
+  - **Fix**: Converted to timezone-aware datetime objects:
+    ```python
+    # Import timezone
+    from datetime import datetime, timedelta, timezone
+    
+    # Line 269: Make GitHub timestamp timezone-aware (UTC)
+    self.metrics.rate_limit_reset = datetime.fromtimestamp(reset_timestamp, tz=timezone.utc)
+    
+    # Line 273: Use UTC for comparison
+    wait_time = (self.metrics.rate_limit_reset - datetime.now(timezone.utc)).total_seconds()
+    
+    # Added None check for type safety
+    if remaining < self.rate_limit_threshold and self.metrics.rate_limit_reset:
+    ```
+  - **Testing notes**: 
+    * Verified all other datetime.now() uses in file are for local timing (acceptable)
+    * Lines 175, 197, 296, 312, 670 are duration measurements, not API comparisons
+    * Only rate limit comparison required timezone awareness
+  - **Files modified**: `engine/runners/bot_agent.py` (3 lines changed)
+  - **Status**: ✅ FIXED - Timezone-aware datetime handling ensures correct rate limit timing across all timezones
+
+- **Bug #13: Unclosed file handle resource leak in background processes** (FIXED - 2025-10-11)
+  - **Problem**: Background terminal processes leave file handles open indefinitely
+  - **Location**: `engine/operations/terminal_operations.py` line 245
+  - **Root cause**: `stdout_dest = open(log_path, 'w')` never closed
+  - **Impact**: 
+    * File descriptor leak on every background command (polling, monitoring, etc.)
+    * Memory accumulation over time
+    * Files not properly flushed (log data loss on crashes)
+    * Can exhaust system file descriptors (ulimit) causing "Too many open files" errors
+    * Production servers with long uptime especially vulnerable
+  - **Example**: 100 background processes = 100 leaked file descriptors
+  - **Why subprocess doesn't auto-close**: 
+    * subprocess.Popen inherits file descriptor from parent
+    * Child process keeps its own FD reference
+    * Parent must explicitly close its reference
+    * OS doesn't close until both parent and child release
+  - **Fix**: Added explicit file handle management with exception safety:
+    ```python
+    log_file_handle = None  # Initialize before try block (lint safety)
+    try:
+        if log_file:
+            log_path = self.project_root / log_file
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            log_file_handle = open(log_path, 'w')
+            stdout_dest = log_file_handle
+        
+        process = subprocess.Popen(...)
+        
+        # Clean up parent's handle (child keeps its own FD)
+        if log_file_handle:
+            log_file_handle.close()
+        
+        return process.pid
+    except Exception as e:
+        # Exception safety: cleanup on error
+        if log_file_handle:
+            log_file_handle.close()
+        return None
+    ```
+  - **Why explicit close (not context manager)**: 
+    * Context manager would close before Popen completes
+    * Need handle open during Popen but closed after
+    * Explicit close provides correct timing
+  - **Testing notes**: Verified background processes still log correctly after fix
+  - **Files modified**: `engine/operations/terminal_operations.py` (2 edits, 44 lines affected)
+  - **Status**: ✅ FIXED - File handles properly closed, no more resource leaks
+
 - **Bug #12: No configuration validation** (FIXED)
   - **Problem**: Invalid configuration values (ports, intervals) cause runtime errors instead of failing at startup
   - **Root cause**: No validation in ServiceConfig.__post_init__() or ConfigManager

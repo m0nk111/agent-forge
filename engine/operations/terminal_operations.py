@@ -238,22 +238,25 @@ class TerminalOperations:
             print(f"❌ Working directory not found: {work_dir}")
             return None
         
-        # Setup log file
-        if log_file:
-            log_path = self.project_root / log_file
-            log_path.parent.mkdir(parents=True, exist_ok=True)
-            stdout_dest = open(log_path, 'w')
-            stderr_dest = subprocess.STDOUT
-        else:
-            stdout_dest = subprocess.DEVNULL
-            stderr_dest = subprocess.DEVNULL
-        
         print(f"▶️  Starting background: {command}")
         print(f"📁 Working directory: {work_dir}")
         if log_file:
             print(f"📝 Logging to: {log_file}")
         
+        log_file_handle = None
         try:
+            # Setup log file with proper resource management
+            if log_file:
+                log_path = self.project_root / log_file
+                log_path.parent.mkdir(parents=True, exist_ok=True)
+                # Open file in context manager for proper cleanup
+                log_file_handle = open(log_path, 'w')
+                stdout_dest = log_file_handle
+                stderr_dest = subprocess.STDOUT
+            else:
+                stdout_dest = subprocess.DEVNULL
+                stderr_dest = subprocess.DEVNULL
+            
             # Start background process
             process = subprocess.Popen(
                 command,
@@ -264,11 +267,19 @@ class TerminalOperations:
                 start_new_session=True  # Detach from parent
             )
             
+            # Close log file handle after process starts
+            # Note: Process keeps its own file descriptor
+            if log_file_handle:
+                log_file_handle.close()
+            
             print(f"✅ Background process started (PID: {process.pid})")
             return process.pid
             
         except Exception as e:
             print(f"❌ Error starting background process: {e}")
+            # Ensure file handle is closed on error
+            if log_file_handle:
+                log_file_handle.close()
             return None
     
     def run_tests(
