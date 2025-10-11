@@ -16,6 +16,7 @@ Review Modes:
 
 import json
 import logging
+import re
 import subprocess
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -1398,7 +1399,7 @@ Once all critical issues are resolved, this PR can be merged."""
                         self.add_pr_comment(repo, pr_number, comment)
                         workflow_result['converted_to_draft'] = True
             
-            # Check for merge conflicts and handle them
+            # Check for merge conflicts and handle them intelligently
             owner, repo_name = repo.split('/')
             pr_url = f"https://api.github.com/repos/{owner}/{repo_name}/pulls/{pr_number}"
             pr_status, pr_data = self._github_request('GET', pr_url)
@@ -1407,7 +1408,88 @@ Once all critical issues are resolved, this PR can be merged."""
                 mergeable_state = pr_data.get('mergeable_state')
                 
                 if mergeable_state == 'dirty':  # Has conflicts
-                    logger.warning(f"⚠️ PR has merge conflicts - converting to draft and adding instructions")
+                    logger.warning(f"⚠️ PR has merge conflicts - analyzing complexity...")
+                    
+                    # Analyze conflict complexity to determine best action
+                    from engine.operations.conflict_analyzer import ConflictComplexityAnalyzer
+                    analyzer = ConflictComplexityAnalyzer(self.token)
+                    analysis = analyzer.analyze_pr_conflicts(owner, repo_name, pr_number)
+                    
+                    logger.info(f"📊 Conflict analysis: {analysis['complexity']} (score: {analysis['score']})")
+                    logger.info(f"💡 Recommended: {analysis['recommended_action']}")
+                    
+                    if analysis['recommended_action'] == 'close_and_recreate':
+                        # Conflicts too complex - close PR and reopen original issue
+                        logger.warning(f"🔄 Conflicts too complex - closing PR and reopening issue")
+                        
+                        # Get original issue number from PR body
+                        pr_body = pr_data.get('body', '')
+                        issue_match = re.search(r'#(\d+)', pr_body)
+                        issue_number = int(issue_match.group(1)) if issue_match else None
+                        
+                        # Close PR with explanation
+                        close_comment = f"""🔄 **Automatic PR Closure - Complex Merge Conflicts**
+
+This PR has been automatically closed due to complex merge conflicts.
+
+**Analysis:**
+- Complexity: {analysis['complexity']} (score: {analysis['score']}/{analysis['thresholds']['moderate']})
+- Reason: {analysis['reasoning']}
+
+**Metrics:**
+- Conflicted files: {analysis['metrics']['conflicted_files']}
+- Commits behind main: {analysis['metrics']['commits_behind']}
+- PR age: {analysis['metrics']['age_days']} days
+- Lines affected: {analysis['metrics']['lines_affected']}
+
+**What happens next:**
+1. This PR will be closed
+2. Original issue #{issue_number} will be reopened
+3. A new PR will be created with latest main branch
+4. This ensures clean implementation without conflict resolution overhead
+
+The automated system will pick up the issue and create a fresh PR."""
+                        
+                        self.add_pr_comment(repo, pr_number, close_comment)
+                        
+                        # Close the PR
+                        close_url = f"https://api.github.com/repos/{owner}/{repo_name}/pulls/{pr_number}"
+                        self._github_request('PATCH', close_url, {'state': 'closed'})
+                        
+                        # Reopen and prepare original issue if found
+                        if issue_number:
+                            logger.info(f"🔄 Reopening issue #{issue_number}")
+                            issue_url = f"https://api.github.com/repos/{owner}/{repo_name}/issues/{issue_number}"
+                            
+                            # Reopen issue
+                            self._github_request('PATCH', issue_url, {'state': 'open'})
+                            
+                            # Remove assignees
+                            self._github_request('DELETE', f"{issue_url}/assignees", 
+                                               {'assignees': [pr_data.get('user', {}).get('login')]})
+                            
+                            # Add agent-ready label
+                            self._github_request('POST', f"{issue_url}/labels", 
+                                               {'labels': ['agent-ready']})
+                            
+                            # Add comment explaining what happened
+                            reopen_comment = f"""🔄 **Issue Reopened - PR Automatically Closed**
+
+PR #{pr_number} was closed due to complex merge conflicts ({analysis['metrics']['commits_behind']} commits behind, {analysis['metrics']['age_days']} days old).
+
+A new PR will be created with the latest main branch to ensure clean implementation.
+
+The automated system will pick this up shortly."""
+                            
+                            self._github_request('POST', f"{issue_url}/comments", {'body': reopen_comment})
+                        
+                        workflow_result['pr_closed_and_recreating'] = True
+                        workflow_result['has_conflicts'] = True
+                        return workflow_result
+                    
+                    else:
+                        # Conflicts manageable - convert to draft with instructions
+                        logger.warning(f"⚠️ Conflicts manageable - converting to draft for manual fix")
                     
                     # Convert to draft
                     if self.convert_to_draft(repo, pr_number, "merge conflicts"):
