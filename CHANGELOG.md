@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Intelligent PR Merge Logic** 🔀
+  - Added `evaluate_merge_decision()` method for smart merge recommendations
+  - Added `merge_pull_request()` method for automated PR merging
+  - Added `complete_pr_review_and_merge_workflow()` for full review → merge pipeline
+  - Merge decision logic:
+    - **AUTO_MERGE**: Fully approved, no issues → safe to auto-merge
+    - **MERGE_WITH_CONSIDERATION**: Approved with suggestions → merge with user confirmation
+    - **MANUAL_REVIEW**: Critical issues or 3+ warnings → requires human review
+    - **DO_NOT_MERGE**: Changes requested → blocked from merging
+  - CLI flags: `--auto-merge-if-approved`, `--merge-with-suggestions`, `--merge-method`
+  - Detailed merge status checking: detects conflicts, draft status, blocked checks
+  - **Impact**: Full automation of PR review → merge workflow with safety checks
+
 - **Complete PR Review Workflow** 🔄
   - Added `complete_pr_review_workflow()` method for end-to-end PR management
   - Automated reviewer assignment (default: admin account for visibility)

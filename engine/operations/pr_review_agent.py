@@ -778,6 +778,223 @@ Be concise. Only report real issues, not nitpicks."""
             logger.error(f"❌ Error in PR review workflow: {e}")
             workflow_result['errors'].append(str(e))
             return workflow_result
+    
+    def evaluate_merge_decision(self, review_result: Dict) -> Dict:
+        """Evaluate whether PR should be merged based on review results.
+        
+        Decision logic:
+        - APPROVED (no issues): Auto-merge recommended
+        - APPROVED with minor suggestions: Merge with consideration
+        - CHANGES_REQUESTED: Do NOT merge
+        
+        Args:
+            review_result: Review results from review_pr()
+        
+        Returns:
+            Dict with merge_recommendation, should_auto_merge, reasoning
+        """
+        critical_count = sum(1 for issue in review_result['issues'] if 'CRITICAL' in issue or '❌' in issue)
+        warning_count = sum(1 for issue in review_result['issues'] if 'WARNING' in issue or '⚠️' in issue)
+        info_count = len(review_result['issues']) - critical_count - warning_count
+        
+        decision = {
+            'should_auto_merge': False,
+            'merge_recommendation': 'DO_NOT_MERGE',
+            'reasoning': [],
+            'critical_issues': critical_count,
+            'warnings': warning_count,
+            'info_suggestions': info_count,
+            'manual_review_needed': False
+        }
+        
+        if not review_result['approved']:
+            # Changes requested - definitely don't merge
+            decision['merge_recommendation'] = 'DO_NOT_MERGE'
+            decision['reasoning'].append(f"Changes requested: {critical_count} critical issue(s) found")
+            decision['manual_review_needed'] = True
+        elif critical_count > 0:
+            # Has critical issues - don't auto-merge even if approved
+            decision['merge_recommendation'] = 'MANUAL_REVIEW'
+            decision['reasoning'].append(f"Critical issues present: {critical_count} issue(s) need attention")
+            decision['manual_review_needed'] = True
+        elif warning_count > 3:
+            # Many warnings - human should review
+            decision['merge_recommendation'] = 'MANUAL_REVIEW'
+            decision['reasoning'].append(f"Multiple warnings ({warning_count}) - manual review recommended")
+            decision['manual_review_needed'] = True
+        elif warning_count > 0 or info_count > 0:
+            # Minor suggestions - can merge but with consideration
+            decision['should_auto_merge'] = False
+            decision['merge_recommendation'] = 'MERGE_WITH_CONSIDERATION'
+            decision['reasoning'].append(f"Approved with {warning_count} warning(s) and {info_count} suggestion(s)")
+            decision['reasoning'].append("Consider addressing suggestions in follow-up PR")
+        else:
+            # Fully approved, no issues
+            decision['should_auto_merge'] = True
+            decision['merge_recommendation'] = 'AUTO_MERGE'
+            decision['reasoning'].append("Fully approved with no issues - safe to merge")
+        
+        return decision
+    
+    def merge_pull_request(self, repo: str, pr_number: int, 
+                          merge_method: str = 'squash',
+                          commit_title: Optional[str] = None,
+                          commit_message: Optional[str] = None) -> bool:
+        """Merge a pull request.
+        
+        Args:
+            repo: Repository in owner/name format
+            pr_number: Pull request number
+            merge_method: Merge method: 'merge', 'squash', or 'rebase' (default: squash)
+            commit_title: Custom commit title (optional)
+            commit_message: Custom commit message (optional)
+        
+        Returns:
+            True if merged successfully
+        """
+        try:
+            owner, repo_name = repo.split('/')
+            
+            # First check if PR is mergeable
+            pr_url = f"https://api.github.com/repos/{owner}/{repo_name}/pulls/{pr_number}"
+            pr_status, pr_data = self._github_request('GET', pr_url)
+            
+            if pr_status == 200 and pr_data:
+                mergeable_state = pr_data.get('mergeable_state')
+                is_draft = pr_data.get('draft', False)
+                
+                # Check for common blocking conditions
+                if is_draft:
+                    logger.error(f"❌ PR #{pr_number} is a DRAFT - cannot merge draft PRs")
+                    logger.info("   Convert to ready-for-review first")
+                    return False
+                
+                if mergeable_state == 'dirty':
+                    logger.error(f"❌ PR #{pr_number} has CONFLICTS - resolve conflicts first")
+                    return False
+                
+                if mergeable_state == 'blocked':
+                    logger.error(f"❌ PR #{pr_number} is BLOCKED - check required status checks or branch protection")
+                    return False
+                
+                if mergeable_state == 'behind':
+                    logger.warning(f"⚠️  PR #{pr_number} is BEHIND base branch - updating branch may be needed")
+                
+                if mergeable_state == 'unstable':
+                    logger.warning(f"⚠️  PR #{pr_number} has FAILING or PENDING checks")
+            
+            # Attempt merge
+            merge_url = f"https://api.github.com/repos/{owner}/{repo_name}/pulls/{pr_number}/merge"
+            
+            data = {
+                'merge_method': merge_method
+            }
+            
+            if commit_title:
+                data['commit_title'] = commit_title
+            if commit_message:
+                data['commit_message'] = commit_message
+            
+            status, response = self._github_request('PUT', merge_url, json_data=data)
+            
+            if status in [200, 201]:
+                logger.info(f"✅ Successfully merged {repo}#{pr_number} using {merge_method}")
+                return True
+            elif status == 405:
+                logger.error(f"❌ PR #{pr_number} is not mergeable")
+                logger.error(f"   Possible reasons: conflicts, failing checks, branch protection, or not approved")
+                return False
+            elif status == 409:
+                logger.error(f"❌ PR #{pr_number} head SHA has changed - PR was updated")
+                logger.error(f"   Review the changes and try again")
+                return False
+            else:
+                logger.error(f"❌ Failed to merge PR #{pr_number}: status {status}")
+                if response:
+                    logger.error(f"   Response: {response}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"❌ Error merging PR: {e}")
+            return False
+    
+    def complete_pr_review_and_merge_workflow(self, repo: str, pr_number: int,
+                                              auto_merge_if_approved: bool = False,
+                                              merge_with_suggestions: bool = False,
+                                              merge_method: str = 'squash',
+                                              auto_assign_reviewers: bool = True,
+                                              auto_label: bool = True,
+                                              reviewers: Optional[list] = None,
+                                              post_comment: bool = True) -> Dict:
+        """Complete workflow: review, assign, label, and optionally merge.
+        
+        This extends complete_pr_review_workflow() with intelligent merge decision.
+        
+        Merge Logic:
+        - AUTO_MERGE: Fully approved, no issues → merge if auto_merge_if_approved=True
+        - MERGE_WITH_CONSIDERATION: Approved with suggestions → merge if merge_with_suggestions=True
+        - MANUAL_REVIEW: Critical issues or many warnings → never auto-merge
+        - DO_NOT_MERGE: Changes requested → never merge
+        
+        Args:
+            repo: Repository in owner/name format
+            pr_number: Pull request number
+            auto_merge_if_approved: Auto-merge if fully approved (no issues) (default: False)
+            merge_with_suggestions: Merge even if suggestions present (default: False)
+            merge_method: Merge method: 'merge', 'squash', 'rebase' (default: squash)
+            auto_assign_reviewers: Assign reviewers (default: True)
+            auto_label: Add labels (default: True)
+            reviewers: List of reviewers (default: ['m0nk111'])
+            post_comment: Post review comment (default: True)
+        
+        Returns:
+            Dict with workflow results including merge decision and status
+        """
+        # Run standard review workflow
+        workflow_result = self.complete_pr_review_workflow(
+            repo=repo,
+            pr_number=pr_number,
+            auto_assign_reviewers=auto_assign_reviewers,
+            auto_label=auto_label,
+            reviewers=reviewers,
+            post_comment=post_comment
+        )
+        
+        # Evaluate merge decision
+        review_result = workflow_result['review_result']
+        merge_decision = self.evaluate_merge_decision(review_result)
+        workflow_result['merge_decision'] = merge_decision
+        
+        # Log merge decision
+        logger.info(f"\n🤔 Merge Decision: {merge_decision['merge_recommendation']}")
+        for reason in merge_decision['reasoning']:
+            logger.info(f"   • {reason}")
+        
+        # Decide whether to merge
+        should_merge = False
+        if merge_decision['merge_recommendation'] == 'AUTO_MERGE' and auto_merge_if_approved:
+            should_merge = True
+            logger.info("   ✅ Will auto-merge (fully approved)")
+        elif merge_decision['merge_recommendation'] == 'MERGE_WITH_CONSIDERATION' and merge_with_suggestions:
+            should_merge = True
+            logger.info("   ⚠️  Will merge with suggestions (user enabled merge_with_suggestions)")
+        elif merge_decision['merge_recommendation'] == 'MANUAL_REVIEW':
+            logger.info("   👤 Manual review required - will NOT auto-merge")
+        elif merge_decision['merge_recommendation'] == 'DO_NOT_MERGE':
+            logger.info("   ❌ Changes requested - will NOT merge")
+        
+        # Perform merge if decided
+        workflow_result['merged'] = False
+        if should_merge:
+            logger.info(f"\n🔀 Merging PR #{pr_number} using {merge_method}...")
+            if self.merge_pull_request(repo, pr_number, merge_method):
+                workflow_result['merged'] = True
+                logger.info(f"   ✅ PR #{pr_number} merged successfully!")
+            else:
+                workflow_result['errors'].append("Merge failed (conflicts, checks, or permissions)")
+                logger.error(f"   ❌ Merge failed")
+        
+        return workflow_result
 
 
 def main():
@@ -811,6 +1028,14 @@ def main():
     parser.add_argument('--no-auto-assign', action='store_true',
                         help='Disable automatic reviewer assignment')
     
+    # Merge options
+    parser.add_argument('--auto-merge-if-approved', action='store_true',
+                        help='Auto-merge if fully approved (no issues)')
+    parser.add_argument('--merge-with-suggestions', action='store_true',
+                        help='Merge even if suggestions present (approved-with-suggestions)')
+    parser.add_argument('--merge-method', choices=['merge', 'squash', 'rebase'], default='squash',
+                        help='Merge method to use (default: squash)')
+    
     args = parser.parse_args()
     
     # Warn if using bot account (except admin/post which are visible)
@@ -837,16 +1062,31 @@ def main():
         print()
         
         # Use full workflow or simple review
-        if args.full_workflow or args.post_comment:
-            # Complete workflow: review + assign + label
-            workflow_result = reviewer.complete_pr_review_workflow(
-                repo=args.repo,
-                pr_number=args.pr_number,
-                auto_assign_reviewers=not args.no_auto_assign,
-                auto_label=not args.no_auto_label,
-                reviewers=args.reviewers,
-                post_comment=args.post_comment
-            )
+        if args.full_workflow or args.post_comment or args.auto_merge_if_approved or args.merge_with_suggestions:
+            # Check if merge is requested
+            if args.auto_merge_if_approved or args.merge_with_suggestions:
+                # Complete workflow with merge decision
+                workflow_result = reviewer.complete_pr_review_and_merge_workflow(
+                    repo=args.repo,
+                    pr_number=args.pr_number,
+                    auto_merge_if_approved=args.auto_merge_if_approved,
+                    merge_with_suggestions=args.merge_with_suggestions,
+                    merge_method=args.merge_method,
+                    auto_assign_reviewers=not args.no_auto_assign,
+                    auto_label=not args.no_auto_label,
+                    reviewers=args.reviewers,
+                    post_comment=args.post_comment or args.full_workflow
+                )
+            else:
+                # Standard workflow without merge
+                workflow_result = reviewer.complete_pr_review_workflow(
+                    repo=args.repo,
+                    pr_number=args.pr_number,
+                    auto_assign_reviewers=not args.no_auto_assign,
+                    auto_label=not args.no_auto_label,
+                    reviewers=args.reviewers,
+                    post_comment=args.post_comment
+                )
             
             result = workflow_result['review_result']
             
@@ -869,6 +1109,28 @@ def main():
             if 'labels' in workflow_result:
                 print(f"   Labels: {', '.join(workflow_result['labels'])}")
             print(f"✅ Assignees updated: {workflow_result['assignees_updated']}")
+            
+            # Show merge decision if available
+            if 'merge_decision' in workflow_result:
+                decision = workflow_result['merge_decision']
+                print(f"\n{'='*60}")
+                print("MERGE DECISION")
+                print('='*60)
+                print(f"Recommendation: {decision['merge_recommendation']}")
+                print(f"Issues breakdown:")
+                print(f"  • Critical: {decision['critical_issues']}")
+                print(f"  • Warnings: {decision['warnings']}")
+                print(f"  • Info/Suggestions: {decision['info_suggestions']}")
+                print(f"\nReasoning:")
+                for reason in decision['reasoning']:
+                    print(f"  • {reason}")
+                
+                if workflow_result.get('merged'):
+                    print(f"\n✅ PR #{args.pr_number} has been MERGED!")
+                elif decision['should_auto_merge']:
+                    print(f"\n⚠️  PR is approved for auto-merge but was not merged (check flags)")
+                else:
+                    print(f"\n❌ PR was NOT merged (see reasoning above)")
             
             if workflow_result['errors']:
                 print(f"\n⚠️  Errors encountered:")
