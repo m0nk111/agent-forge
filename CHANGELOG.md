@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Agent Project Root Path Auto-Detection** 🔧
+  - Fixed hardcoded `/opt/agent-forge` path in `engine/core/agent_registry.py`
+  - Implemented dynamic project root detection using `Path(__file__).parent.parent.parent.resolve()`
+  - Falls back to `config.shell_working_dir` if explicitly configured
+  - **Impact**: Agents can now write files to correct project directory, fixing "Permission denied" errors
+
+- **Ollama Model Configuration** 🔧
+  - Fixed default model name from `qwen2.5-coder` to `qwen2.5-coder:7b` in `engine/core/config_manager.py`
+  - Updated both `model_name` field default (line 63) and `model` field default (line 77)
+  - **Impact**: Agents using fallback to local Ollama will now use correct model tag and avoid "model not found" errors
+
+- **Polling Service Issue Opener Integration** 🐛
+  - Fixed `AttributeError: 'CodeAgent' object has no attribute 'handle_issue'` bug
+  - Updated `engine/runners/polling_service.py` to call `IssueHandler` via `CodeAgent.issue_handler.assign_to_issue()`
+  - Changed from direct `handle_issue()` method call to proper `IssueHandler` access pattern
+  - Added validation check for `issue_handler` attribute existence
+  - Improved result logging with file count and PR URL display
+  - Fixed state file path in `config/services/polling.yaml` to use `data/polling_state.json`
+  - **Impact**: Polling service can now successfully trigger issue resolution workflow
+
 ### Changed
 - **Secrets and Data Directory Organization** 🔐
   - Moved `keys.json` → `secrets/keys.json` (secure secret storage)

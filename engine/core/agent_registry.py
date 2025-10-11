@@ -231,11 +231,18 @@ class AgentRegistry:
         else:
             logger.warning(f"   GitHub: No token - operations may fail")
         
+        # Determine project root: use config or detect from current file location
+        if config.shell_working_dir:
+            project_root = config.shell_working_dir
+        else:
+            # Auto-detect: Go up from engine/core/agent_registry.py to project root
+            project_root = str(Path(__file__).parent.parent.parent.resolve())
+        
         # Create agent instance
         agent = CodeAgent(
             model=config.model_name,
             ollama_url=config.api_base_url or "http://localhost:11434",
-            project_root=config.shell_working_dir or "/opt/agent-forge",
+            project_root=project_root,
             enable_monitoring=True,
             agent_id=config.agent_id
         )

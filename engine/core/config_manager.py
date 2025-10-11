@@ -55,7 +55,7 @@ class AgentConfig:
     shell_permissions: Optional[str] = "developer"  # Permission preset: read_only, developer, admin
     # LLM provider configuration (Issue #31)
     model_provider: str = "local"  # openai, anthropic, google, local
-    model_name: str = "qwen2.5-coder"  # Specific model name
+    model_name: str = "qwen2.5-coder:7b"  # Specific model name (with version tag for Ollama)
     api_key_name: Optional[str] = None  # Reference to key in keys.json (e.g., "OPENAI_API_KEY")
     temperature: float = 0.7  # Temperature for generation (0.0-2.0)
     max_tokens: int = 4096  # Maximum tokens to generate
@@ -75,7 +75,7 @@ class AgentConfig:
             self.name = self.agent_id.replace('-', ' ').title()
         # Model not required for bots (role == "bot")
         if self.model is None and self.role != "bot":
-            self.model = "qwen2.5-coder"  # Default model
+            self.model = "qwen2.5-coder:7b"  # Default model with version tag
 
 
 @dataclass
