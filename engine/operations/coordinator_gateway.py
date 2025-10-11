@@ -51,7 +51,11 @@ class CoordinatorGateway:
         """
         Process issue through coordinator gateway.
         
-        This is the MANDATORY entry point. Coordinator analyzes and decides routing.
+        COORDINATOR = INTELLIGENCE LAYER (makes decisions)
+        POLLING = EXECUTION LAYER (executes decisions)
+        
+        This is the MANDATORY entry point. Coordinator analyzes and returns decision.
+        Polling service executes the decision.
         
         Args:
             owner: Repository owner
@@ -60,7 +64,7 @@ class CoordinatorGateway:
             issue_data: Full issue data from GitHub
         
         Returns:
-            Dict with routing decision and execution details
+            Dict with routing decision for polling service to execute
         """
         logger.info(f"🎯 COORDINATOR GATEWAY: Processing issue #{issue_number}")
         logger.info(f"   Repository: {owner}/{repo}")
@@ -84,24 +88,55 @@ class CoordinatorGateway:
         
         logger.info(f"🎯 Routing Decision: {decision['action']}")
         
-        # Step 3: Execute decision
+        # Step 3: Post decision comment and tag issue
+        self._post_decision_comment(owner, repo, issue_number, decision, analysis)
+        self._tag_issue_with_decision(owner, repo, issue_number, decision)
+        
+        # Step 4: Return decision for polling service to execute
         if decision['action'] == 'DELEGATE_SIMPLE':
-            return self._delegate_to_code_agent(
-                owner, repo, issue_number, issue_data,
-                escalation=False
-            )
+            return {
+                'status': 'decision_made',
+                'decision': 'SIMPLE',
+                'action': 'start_code_agent',
+                'escalation_enabled': False,
+                'reasoning': decision['reasoning'],
+                'analysis': analysis,
+                'instructions': {
+                    'agent_type': 'code_agent',
+                    'enable_escalation': False,
+                    'priority': 'normal'
+                }
+            }
         
         elif decision['action'] == 'DELEGATE_WITH_ESCALATION':
-            return self._delegate_to_code_agent(
-                owner, repo, issue_number, issue_data,
-                escalation=True
-            )
+            return {
+                'status': 'decision_made',
+                'decision': 'UNCERTAIN',
+                'action': 'start_code_agent',
+                'escalation_enabled': True,
+                'reasoning': decision['reasoning'],
+                'analysis': analysis,
+                'instructions': {
+                    'agent_type': 'code_agent',
+                    'enable_escalation': True,
+                    'priority': 'high'
+                }
+            }
         
         elif decision['action'] == 'ORCHESTRATE':
-            return self._orchestrate_complex_issue(
-                owner, repo, issue_number, issue_data,
-                analysis
-            )
+            return {
+                'status': 'decision_made',
+                'decision': 'COMPLEX',
+                'action': 'start_coordinator_orchestration',
+                'reasoning': decision['reasoning'],
+                'analysis': analysis,
+                'instructions': {
+                    'create_sub_issues': True,
+                    'build_execution_plan': True,
+                    'assign_multiple_agents': True,
+                    'priority': 'high'
+                }
+            }
         
         else:
             logger.error(f"❌ Unknown action: {decision['action']}")
@@ -150,179 +185,114 @@ class CoordinatorGateway:
                 'escalation': False  # Coordinator handles it
             }
     
-    def _delegate_to_code_agent(
+    def _tag_issue_with_decision(
         self,
         owner: str,
         repo: str,
         issue_number: int,
-        issue_data: Dict,
-        escalation: bool
-    ) -> Dict:
+        decision: Dict
+    ):
         """
-        Delegate issue to code_agent.
+        Tag issue with coordinator decision labels.
         
-        Args:
-            owner: Repository owner
-            repo: Repository name
-            issue_number: Issue number
-            issue_data: Full issue data
-            escalation: Whether to enable escalation
-        
-        Returns:
-            Dict with delegation details
+        Labels added:
+        - coordinator-approved-simple
+        - coordinator-approved-uncertain
+        - coordinator-approved-complex
         """
-        logger.info(f"👨‍💻 DELEGATING to code_agent (escalation: {escalation})")
+        import requests
         
-        # Post coordination comment
-        self._post_coordination_comment(
-            owner, repo, issue_number,
-            action='delegate',
-            escalation=escalation
-        )
+        # Determine label based on decision
+        if decision['action'] == 'DELEGATE_SIMPLE':
+            label = 'coordinator-approved-simple'
+        elif decision['action'] == 'DELEGATE_WITH_ESCALATION':
+            label = 'coordinator-approved-uncertain'
+        else:  # ORCHESTRATE
+            label = 'coordinator-approved-complex'
         
-        # Get code_agent from registry
-        code_agent = self.coordinator.get_available_agent(role='developer')
-        
-        if not code_agent:
-            logger.error("❌ No code_agent available in registry!")
-            return {
-                'status': 'error',
-                'message': 'No code_agent available',
-                'action': 'delegate_failed'
+        try:
+            token = os.getenv('GITHUB_TOKEN')
+            url = f"https://api.github.com/repos/{owner}/{repo}/issues/{issue_number}/labels"
+            headers = {
+                'Authorization': f'token {token}',
+                'Accept': 'application/vnd.github.v3+json'
             }
-        
-        # Start code_agent execution
-        # This would actually call the code_agent's execute method
-        logger.info(f"   Agent: {code_agent.agent_id}")
-        logger.info(f"   Escalation enabled: {escalation}")
-        
-        # Return delegation info for polling service
-        return {
-            'status': 'delegated',
-            'action': 'DELEGATE_WITH_ESCALATION' if escalation else 'DELEGATE_SIMPLE',
-            'agent_id': code_agent.agent_id,
-            'escalation_enabled': escalation,
-            'message': f"Delegated to {code_agent.agent_id}"
-        }
+            response = requests.post(url, json={'labels': [label]}, headers=headers)
+            response.raise_for_status()
+            logger.info(f"✅ Tagged issue with: {label}")
+        except Exception as e:
+            logger.error(f"❌ Failed to tag issue: {e}")
     
-    def _orchestrate_complex_issue(
+    def _post_decision_comment(
         self,
         owner: str,
         repo: str,
         issue_number: int,
-        issue_data: Dict,
+        decision: Dict,
         analysis: Dict
-    ) -> Dict:
-        """
-        Orchestrate complex issue with sub-tasks.
-        
-        Args:
-            owner: Repository owner
-            repo: Repository name
-            issue_number: Issue number
-            issue_data: Full issue data
-            analysis: Complexity analysis
-        
-        Returns:
-            Dict with orchestration details
-        """
-        logger.info(f"🎼 ORCHESTRATING complex issue")
-        
-        # Post coordination comment
-        self._post_coordination_comment(
-            owner, repo, issue_number,
-            action='orchestrate',
-            analysis=analysis
-        )
-        
-        # Create execution plan
-        plan = self.coordinator.create_execution_plan(
-            owner=owner,
-            repo=repo,
-            issue_number=issue_number,
-            issue_data=issue_data
-        )
-        
-        # Create sub-issues
-        sub_issues = self.coordinator.create_sub_issues(
-            owner=owner,
-            repo=repo,
-            parent_issue=issue_number,
-            plan=plan
-        )
-        
-        logger.info(f"✅ Created {len(sub_issues)} sub-issues")
-        for sub in sub_issues:
-            logger.info(f"   #{sub['number']}: {sub['title']}")
-        
-        # Assign agents to sub-issues
-        assignments = self.coordinator.assign_tasks(plan)
-        
-        return {
-            'status': 'orchestrating',
-            'action': 'ORCHESTRATE',
-            'plan_id': plan.plan_id,
-            'sub_issues': [s['number'] for s in sub_issues],
-            'assignments': assignments,
-            'message': f"Orchestrating with {len(sub_issues)} sub-issues"
-        }
-    
-    def _post_coordination_comment(
-        self,
-        owner: str,
-        repo: str,
-        issue_number: int,
-        action: str,
-        escalation: bool = False,
-        analysis: Optional[Dict] = None
     ):
         """Post comment explaining coordinator's decision."""
         import requests
         
-        if action == 'delegate':
-            if escalation:
-                comment = f"""🎯 **Coordinator Decision: Delegate with Monitoring**
-
-The coordinator has analyzed this issue and determined it needs a code agent with escalation capability.
-
-**Analysis:**
-- Complexity appears moderate
-- Starting with single agent approach
-- Escalation enabled if complexity increases during work
-
-**Next Steps:**
-1. Code agent will begin implementation
-2. Coordinator monitors progress
-3. If complexity emerges, agent can escalate back to coordinator
-
-⏳ Agent will begin work shortly...
-"""
-            else:
-                comment = f"""🎯 **Coordinator Decision: Simple Delegation**
+        action = decision['action']
+        
+        if action == 'DELEGATE_SIMPLE':
+            comment = f"""🎯 **Coordinator Decision: Simple Issue - Approved for Code Agent**
 
 The coordinator has analyzed this issue and determined it's straightforward.
 
 **Analysis:**
-- Issue is simple enough for single agent
+- Complexity: SIMPLE
+- Score: {analysis['score']} points (threshold: 10)
+- Confidence: {analysis['confidence']:.0%}
+- Reasoning: {analysis['reasoning']}
+
+**Decision:**
+✅ Issue approved for direct code agent execution
 - No orchestration needed
-- Direct implementation approach
+- Standard implementation approach
+- Escalation NOT enabled
 
 **Next Steps:**
-Code agent will begin implementation immediately.
+The polling service will now start a code agent to implement this issue.
 
 ⏳ Agent will begin work shortly...
 """
         
-        elif action == 'orchestrate':
-            metrics = analysis.get('signals', {}) if analysis else {}
-            comment = f"""🎯 **Coordinator Decision: Complex Issue Orchestration**
+        elif action == 'DELEGATE_WITH_ESCALATION':
+            comment = f"""🎯 **Coordinator Decision: Uncertain Complexity - Monitored Execution**
 
-The coordinator has analyzed this issue and determined it requires multi-agent orchestration.
+The coordinator has analyzed this issue and determined complexity is unclear.
+
+**Analysis:**
+- Complexity: UNCERTAIN
+- Score: {analysis['score']} points (threshold: 11-25)
+- Confidence: {analysis['confidence']:.0%}
+- Reasoning: {analysis['reasoning']}
+
+**Decision:**
+⚠️ Starting with code agent but ESCALATION ENABLED
+- Single agent approach initially
+- Coordinator monitoring enabled
+- If complexity increases during work, agent can escalate back
+- Coordinator ready to take over if needed
+
+**Next Steps:**
+The polling service will now start a code agent with escalation capability.
+
+⏳ Agent will begin work shortly...
+"""
+        
+        elif action == 'ORCHESTRATE':
+            metrics = analysis.get('signals', {})
+            comment = f"""🎯 **Coordinator Decision: Complex Issue - Orchestration Required**
+
+The coordinator has analyzed this issue and determined it requires multi-agent coordination.
 
 **Complexity Analysis:**
-- Score: {analysis.get('score', 'N/A')} points
-- Complexity: {analysis.get('complexity', 'N/A')}
-- Confidence: {analysis.get('confidence', 0):.0%}
+- Complexity: COMPLEX
+- Score: {analysis['score']} points (threshold: >25)
+- Confidence: {analysis['confidence']:.0%}
 
 **Detected Signals:**
 """
@@ -333,15 +303,19 @@ The coordinator has analyzed this issue and determined it requires multi-agent o
             if metrics.get('has_architecture_keywords'):
                 comment += "\n- Architecture changes detected"
             if metrics.get('has_refactor_keywords'):
-                comment += "\n- Refactoring needed"
+                comment += "\n- Refactoring required"
             
             comment += """
 
-**Coordinator Actions:**
-1. Breaking down into sub-issues
-2. Creating execution plan with dependencies
-3. Assigning specialized agents to each sub-issue
-4. Monitoring progress and coordinating work
+**Decision:**
+🎼 Coordinator will orchestrate multi-agent workflow
+1. Break down into sub-issues
+2. Create execution plan with dependencies
+3. Assign specialized agents to each sub-issue
+4. Monitor progress and coordinate work
+
+**Next Steps:**
+The polling service will now trigger coordinator orchestration.
 
 ⏳ Sub-issues will be created shortly...
 """
