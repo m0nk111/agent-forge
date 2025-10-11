@@ -100,7 +100,7 @@ class PollingConfig:
     
     interval_seconds: int = 300  # 5 minutes
     github_token: Optional[str] = None
-    github_username: str = "m0nk111-post"
+    github_username: Optional[str] = None  # Must be configured via YAML or environment
     repositories: List[str] = field(default_factory=list)  # ["owner/repo", ...]
     watch_labels: List[str] = field(default_factory=lambda: ["agent-ready", "auto-assign"])  # labels
     max_concurrent_issues: int = 3
@@ -852,7 +852,8 @@ class PollingService:
                 issues = self.github_api.list_issues(
                     owner=owner,
                     repo=repo_name,
-                    state='open'
+                    state='open',
+                    bypass_rate_limit=True  # Internal polling operation
                 )
                 
                 if not issues:

@@ -1,7 +1,7 @@
 # Agent-Forge Architecture
 
-> **Version**: 1.0.0  
-> **Last Updated**: 2025-10-06  
+> **Version**: 2.0.0  
+> **Last Updated**: 2025-10-11  
 > **Status**: Living Document
 
 ## 📋 Table of Contents
@@ -61,6 +61,28 @@ Agent-Forge is a multi-agent orchestration platform for GitHub automation with *
 - Agent onboarding checklist
 - Port reference guide with troubleshooting
 - Prevents agent confusion between projects
+
+**Intelligent Issue Routing & Complexity Analysis** (October 11, 2025):
+- **Coordinator-First Gateway**: ALL issues with `agent-ready` label MUST pass through coordinator first
+- **IssueComplexityAnalyzer**: Pre-flight complexity analysis with 9 metrics (0-65 points)
+- **AgentEscalator**: Mid-execution escalation from code agent back to coordinator
+- **Separation of Concerns**: Coordinator = Intelligence (decides), Polling = Execution (executes)
+- Routing decisions: SIMPLE (escalation disabled), UNCERTAIN (escalation enabled), COMPLEX (multi-agent orchestration)
+- See: [Intelligent Issue Routing Guide](docs/guides/INTELLIGENT_ISSUE_ROUTING.md)
+
+**PR Lifecycle Management** (October 11, 2025):
+- **ConflictComplexityAnalyzer**: Intelligent merge conflict analysis with 7 metrics (0-55 points)
+- **Automated PR Review**: LLM-powered and static analysis code reviews
+- **Smart Draft PR Recovery**: Automatic re-review when drafts become ready
+- **Conflict Resolution**: Auto-resolve simple conflicts, close/reopen for complex cases
+- **Rate Limiter**: Intelligent rate limit handling with retry logic and bypass for internal operations
+- **Self-Review Prevention**: Bot accounts never review their own PRs
+- **Race Condition Prevention**: File-based locking for concurrent PR operations
+
+**Repository Management** (October 2025):
+- Automated repository access management system
+- Configurable bot account selection for operations
+- Centralized GitHub account configuration (`config/system/github_accounts.yaml`)
 
 ### High-Level Architecture
 
@@ -295,6 +317,601 @@ Each agent has individual config:
 - Rate limit management
 
 **Configuration**: `polling_config.yaml`
+
+---
+
+## Coordinator-First Gateway Architecture
+
+### Overview
+
+**Philosophy**: The coordinator is the MANDATORY entry point for ALL issues with `agent-ready` label. No issue bypasses the coordinator's analysis.
+
+**User Requirement** (verbatim): 
+> "IK WIL DAT DE COORDINATOR ALS EERSTE BEPAALD, WAT IS DIT ISSUE. SIMPLE, MORERESEARCH, COMPLEX. geen precheck door de poller, de poller zet meteen de coordinator in."
+
+### Architecture Components
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   COORDINATOR-FIRST GATEWAY                  │
+│                                                               │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │  Polling Service (Execution Layer)                    │  │
+│  │  - Detects agent-ready issues                         │  │
+│  │  - Triggers coordinator gateway IMMEDIATELY           │  │
+│  │  - Receives decision from coordinator                 │  │
+│  │  - Executes decision (starts agents, monitors)        │  │
+│  └────────────────┬─────────────────────────────────────┘  │
+│                   │                                           │
+│                   ▼                                           │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │  Coordinator Gateway (Intelligence Layer)             │  │
+│  │  - Analyzes EVERY issue (MANDATORY)                   │  │
+│  │  - Determines complexity (SIMPLE/UNCERTAIN/COMPLEX)   │  │
+│  │  - Makes routing decision                             │  │
+│  │  - Tags issue with decision label                     │  │
+│  │  - Posts explanation comment                          │  │
+│  │  - Returns decision object (does NOT execute)         │  │
+│  └────────────────┬─────────────────────────────────────┘  │
+│                   │                                           │
+│                   ▼                                           │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │  IssueComplexityAnalyzer                              │  │
+│  │  - 9 complexity signals (0-65 points)                 │  │
+│  │  - LLM semantic analysis (optional)                   │  │
+│  │  - Returns: complexity, score, routing, confidence    │  │
+│  └──────────────────────────────────────────────────────┘  │
+│                                                               │
+└─────────────────────────────────────────────────────────────┘
+                         │
+                         ▼
+          ┌──────────────────────────┐
+          │  Routing Decision         │
+          │                           │
+          │  SIMPLE:                  │
+          │  → start_code_agent       │
+          │  → escalation=False       │
+          │                           │
+          │  UNCERTAIN:               │
+          │  → start_code_agent       │
+          │  → escalation=True        │
+          │                           │
+          │  COMPLEX:                 │
+          │  → start_coordinator      │
+          │  → multi-agent            │
+          └──────────────────────────┘
+```
+
+### Separation of Concerns
+
+**Intelligence Layer** (Coordinator Gateway):
+- **Purpose**: Analysis, decision-making, explanation
+- **Responsibilities**:
+  - Analyze issue complexity using IssueComplexityAnalyzer
+  - Consult LLM for semantic understanding (optional)
+  - Make routing decision (SIMPLE/UNCERTAIN/COMPLEX)
+  - Tag issue with decision label (`coordinator-approved-simple`, etc.)
+  - Post detailed explanation comment for humans
+  - Return decision object to polling service
+- **Does NOT**: Execute decisions, start agents, manage workflows
+- **File**: `engine/operations/coordinator_gateway.py` (~380 lines)
+
+**Execution Layer** (Polling Service):
+- **Purpose**: Workflow execution, agent lifecycle management
+- **Responsibilities**:
+  - Detect agent-ready issues
+  - Trigger coordinator gateway for EVERY issue
+  - Receive decision object from coordinator
+  - Execute decision: start agents, configure escalation, monitor progress
+  - Handle agent failures, timeouts, escalations
+- **Does NOT**: Make routing decisions, analyze complexity
+- **File**: `engine/runners/polling_service.py`
+
+**Benefits**:
+- **Testability**: Mock decisions independently of execution
+- **Flexibility**: Change routing logic without touching execution
+- **Transparency**: Explicit decision trail with labels and comments
+- **Scalability**: Add new decision types without execution refactor
+
+### IssueComplexityAnalyzer
+
+**File**: `engine/operations/issue_complexity_analyzer.py` (363 lines)
+
+**Purpose**: Objective, metrics-based complexity analysis BEFORE agent assignment
+
+**9 Complexity Signals** (0-65 points total):
+
+1. **Description Length** (0-5 points):
+   - `<100 chars`: 0 pts
+   - `100-500 chars`: 1-3 pts
+   - `>500 chars`: 4-5 pts
+
+2. **Task Count** (0-10 points):
+   - Detects: "TODO", "task", numbered lists, bullet points
+   - `1-2 tasks`: 2 pts
+   - `3-5 tasks`: 5 pts
+   - `>5 tasks`: 10 pts
+
+3. **File Mentions** (0-8 points):
+   - Detects: file paths, file extensions
+   - `1-2 files`: 2 pts
+   - `3-5 files`: 5 pts
+   - `>5 files`: 8 pts
+
+4. **Code Blocks** (0-3 points):
+   - Detects: triple backticks, code fences
+   - `1 block`: 1 pt
+   - `2 blocks`: 2 pts
+   - `>2 blocks`: 3 pts
+
+5. **Dependency Mentions** (0-5 points):
+   - Keywords: "dependency", "import", "require", "install"
+   - Each mention: +1 pt (max 5)
+
+6. **Refactoring Keywords** (0-8 points):
+   - Keywords: "refactor", "restructure", "reorganize", "migrate"
+   - Each mention: +2 pts (max 8)
+
+7. **Architecture Keywords** (0-10 points):
+   - Keywords: "architecture", "design", "pattern", "system", "integration"
+   - Each mention: +2 pts (max 10)
+
+8. **Multi-Component Keywords** (0-6 points):
+   - Keywords: "multiple", "several", "all", "across", "various"
+   - Each mention: +2 pts (max 6)
+
+9. **Complex Labels** (0-10 points):
+   - Labels: "complex", "architecture", "refactor", "breaking-change"
+   - Each label: +5 pts (max 10)
+
+**Thresholds**:
+- **SIMPLE**: ≤10 points (straightforward, single-component)
+- **UNCERTAIN**: 11-25 points (needs investigation, possible escalation)
+- **COMPLEX**: >25 points (multi-component, architecture changes)
+
+**LLM Integration** (optional):
+- Semantic analysis via CoordinatorAgent
+- Validates metric-based score
+- Provides reasoning and confidence score
+
+**Returns**:
+```python
+{
+    'complexity': 'simple' | 'uncertain' | 'complex',
+    'score': 0-65,
+    'routing': 'start_code_agent' | 'start_coordinator_orchestration',
+    'confidence': 0.0-1.0,
+    'reasoning': str,
+    'escalation_enabled': bool
+}
+```
+
+### AgentEscalator
+
+**File**: `engine/operations/agent_escalator.py` (354 lines)
+
+**Purpose**: Allow code agent to escalate mid-execution when complexity exceeds initial assessment
+
+**Escalation Triggers**:
+
+1. **File Count**: >5 files modified
+2. **Component Count**: >3 components/directories touched
+3. **Failed Attempts**: ≥2 consecutive failures
+4. **Stuck Time**: >30 minutes without progress
+5. **Architecture Changes**: Detected structural modifications
+6. **Explicit Request**: Agent determines coordination needed
+
+**EscalationContext** (dataclass):
+```python
+{
+    # Work metrics
+    'files_modified': int,
+    'components_touched': set[str],
+    'failed_attempts': int,
+    'work_duration_minutes': int,
+    
+    # Discovery metrics
+    'architecture_changes_detected': bool,
+    'unexpected_dependencies': list[str],
+    'coordination_needed': bool
+}
+```
+
+**Escalation Workflow**:
+1. Code agent calls `should_escalate(context)` during work
+2. If True: `escalate_to_coordinator(issue, context, progress_summary)`
+3. AgentEscalator:
+   - Posts escalation comment explaining reasons
+   - Adds `needs-coordination` label
+   - Triggers coordinator with progress report
+   - Returns control to coordinator
+
+**Integration**:
+- Code agent checks escalation triggers after each major step
+- Escalation preserves work progress (branch, commits)
+- Coordinator can continue work or reassign to different agent
+
+### CoordinatorGateway
+
+**File**: `engine/operations/coordinator_gateway.py` (~380 lines)
+
+**Purpose**: Mandatory gateway implementing separation of concerns
+
+**Key Method**: `process_issue(owner, repo, issue_number, issue_data)`
+
+**Workflow**:
+```python
+def process_issue(self, owner, repo, issue_number, issue_data):
+    # 1. ANALYZE (Intelligence)
+    analysis = self.coordinator.analyze_issue_complexity(
+        issue_data,
+        use_llm=True  # Optional semantic analysis
+    )
+    
+    # 2. DECIDE (Intelligence)
+    decision = self._make_routing_decision(analysis)
+    
+    # 3. TAG (Intelligence)
+    self._tag_issue_with_decision(
+        owner, repo, issue_number, decision
+    )
+    
+    # 4. EXPLAIN (Intelligence)
+    self._post_decision_comment(
+        owner, repo, issue_number, decision, analysis
+    )
+    
+    # 5. RETURN (NOT execute)
+    return {
+        'status': 'decision_made',
+        'decision': decision,  # SIMPLE | UNCERTAIN | COMPLEX
+        'action': 'start_code_agent' | 'start_coordinator_orchestration',
+        'escalation_enabled': True/False,
+        'instructions': str
+    }
+```
+
+**Routing Decisions**:
+
+1. **DELEGATE_SIMPLE** (score ≤10):
+   - Action: `start_code_agent`
+   - Escalation: False
+   - Label: `coordinator-approved-simple`
+   - Comment: "Straightforward task, code agent can handle independently"
+
+2. **DELEGATE_WITH_ESCALATION** (score 11-25):
+   - Action: `start_code_agent`
+   - Escalation: True
+   - Label: `coordinator-approved-uncertain`
+   - Comment: "Initial work delegated, escalation enabled if complexity emerges"
+
+3. **ORCHESTRATE** (score >25):
+   - Action: `start_coordinator_orchestration`
+   - Multi-agent: True
+   - Label: `coordinator-approved-complex`
+   - Comment: "Complex task requiring coordination and multi-agent approach"
+
+**Decision Labels**:
+- `coordinator-approved-simple`: Simple task, no escalation
+- `coordinator-approved-uncertain`: Uncertain complexity, escalation enabled
+- `coordinator-approved-complex`: Complex task, multi-agent orchestration
+
+**Comments Posted**:
+```markdown
+🎯 **Coordinator Analysis Complete**
+
+**Complexity Assessment**: UNCERTAIN (18 points)
+
+**Key Indicators**:
+- 3 files mentioned
+- Architecture keywords detected: "design", "integration"
+- 4 tasks identified
+
+**Routing Decision**: DELEGATE_WITH_ESCALATION
+- Code agent will start work
+- Escalation enabled if complexity emerges
+- Coordinator monitoring progress
+
+**Confidence**: 85%
+```
+
+### Workflow Example
+
+**Scenario**: Issue #123 "Refactor authentication system"
+
+```
+1. GitHub Issue Created
+   - Title: "Refactor authentication system"
+   - Body: Mentions "auth.py", "database.py", "api.py", "OAuth integration"
+   - Label: agent-ready
+
+2. Polling Service
+   - Detects agent-ready issue
+   - Triggers: coordinator_gateway.process_issue(#123)
+
+3. Coordinator Gateway (Intelligence)
+   - IssueComplexityAnalyzer runs:
+     * File mentions: 3 files = 5 pts
+     * Architecture keywords: "refactor", "system", "integration" = 8 pts
+     * Refactor keywords: 2 pts
+     * Total: 15 pts → UNCERTAIN
+   
+   - LLM Analysis (optional):
+     * Semantic: "Authentication refactor affects multiple components"
+     * Confidence: 80%
+   
+   - Decision: DELEGATE_WITH_ESCALATION
+   
+   - Tags: coordinator-approved-uncertain
+   
+   - Comment: "Delegating to code agent with escalation enabled..."
+   
+   - Returns: {decision: UNCERTAIN, action: start_code_agent, escalation: True}
+
+4. Polling Service (Execution)
+   - Receives decision object
+   - Calls: issue_handler.start_code_agent(#123, escalation_enabled=True)
+   - Monitors: code agent progress
+
+5. Code Agent
+   - Starts work on issue #123
+   - Modifies auth.py, database.py
+   - Discovers: "OAuth requires changes to 8 files, not 3"
+   - EscalationContext: files_modified=2, unexpected_dependencies=True
+   
+   - Calls: agent_escalator.should_escalate(context)
+   - Result: True (unexpected dependencies)
+   
+   - Calls: agent_escalator.escalate_to_coordinator(#123, context, progress)
+
+6. AgentEscalator
+   - Posts: "🚀 Escalating to coordinator: Found 8 files need changes, not 3"
+   - Adds label: needs-coordination
+   - Triggers: coordinator orchestration with progress report
+   
+7. Coordinator (Orchestration)
+   - Reviews: code agent's progress (branch, commits)
+   - Decision: "Too complex for single agent, split into 2 PRs"
+   - Assigns: PR #1 (auth.py, database.py) to code agent
+   - Assigns: PR #2 (OAuth integration) to specialized reviewer
+```
+
+### Configuration
+
+**Coordinator Gateway**: `config/services/coordinator.yaml`
+```yaml
+coordinator:
+  gateway:
+    use_llm_analysis: true  # Enable semantic analysis
+    llm_model: "gpt-4"
+    confidence_threshold: 0.7
+```
+
+**Complexity Analyzer**: `engine/operations/issue_complexity_analyzer.py`
+```python
+SIMPLE_THRESHOLD = 10   # ≤10 points = simple
+COMPLEX_THRESHOLD = 25  # >25 points = complex
+```
+
+**Escalation Triggers**: `engine/operations/agent_escalator.py`
+```python
+MAX_FILES_SIMPLE = 5            # Escalate if >5 files
+MAX_COMPONENTS_SIMPLE = 3       # Escalate if >3 components
+MAX_FAILED_ATTEMPTS = 2         # Escalate after 2 failures
+MAX_STUCK_TIME_MINUTES = 30     # Escalate if stuck >30min
+```
+
+### Testing
+
+**Unit Tests**:
+- `tests/test_issue_complexity_analyzer.py`: All 9 metrics, thresholds
+- `tests/test_agent_escalator.py`: Trigger conditions, escalation workflow
+- `tests/test_coordinator_gateway.py`: Decision logic, labeling, comments
+
+**Integration Tests**:
+- `tests/test_integration_coordinator_gateway.py`: End-to-end workflow
+- Mock GitHub API, verify labels and comments
+
+**See Also**:
+- [Intelligent Issue Routing Guide](docs/guides/INTELLIGENT_ISSUE_ROUTING.md) (~700 lines)
+- [Separation of Concerns Guide](docs/guides/SEPARATION_OF_CONCERNS.md) (~600 lines)
+
+---
+
+## PR Lifecycle Management
+
+### Overview
+
+Automated PR management system with intelligent conflict resolution, code review, and lifecycle tracking.
+
+### ConflictComplexityAnalyzer
+
+**File**: `engine/operations/conflict_analyzer.py` (266 lines)
+
+**Purpose**: Analyze PR merge conflicts to determine auto-resolve vs manual intervention vs close/reopen
+
+**7 Conflict Metrics** (0-55 points total):
+
+1. **Conflicted Files** (0-10 points):
+   - `1-2 files`: 3 pts
+   - `3-5 files`: 6 pts
+   - `>5 files`: 10 pts
+
+2. **Conflict Markers** (0-10 points):
+   - Count of `<<<<<<<`, `=======`, `>>>>>>>`
+   - `1-5 markers`: 2 pts
+   - `6-10 markers`: 5 pts
+   - `>10 markers`: 10 pts
+
+3. **Lines Affected** (0-10 points):
+   - Total lines in conflict regions
+   - `<50 lines`: 2 pts
+   - `50-200 lines`: 5 pts
+   - `>200 lines`: 10 pts
+
+4. **Files Overlap** (0-5 points):
+   - Percentage of PR files in conflict
+   - `<25%`: 1 pt
+   - `25-50%`: 3 pts
+   - `>50%`: 5 pts
+
+5. **Age Days** (0-5 points):
+   - PR age since creation
+   - `<7 days`: 1 pt
+   - `7-30 days`: 3 pts
+   - `>30 days`: 5 pts
+
+6. **Commits Behind** (0-10 points):
+   - How many commits behind base branch
+   - `<5 commits`: 2 pts
+   - `5-20 commits`: 5 pts
+   - `>20 commits`: 10 pts
+
+7. **Core Files Affected** (0-5 points):
+   - Conflicts in critical files (e.g., main.py, __init__.py, config files)
+   - Each core file: +2 pts (max 5)
+
+**Thresholds**:
+- **SIMPLE**: ≤8 points (auto-resolve)
+- **MODERATE**: 9-14 points (manual fix)
+- **COMPLEX**: ≥15 points (close/reopen)
+
+**Actions**:
+1. **auto_resolve**: Simple conflicts, automatic resolution
+2. **manual_fix**: Moderate conflicts, request human intervention
+3. **close_and_recreate**: Complex conflicts, close PR and reopen issue
+
+**Integration**: PR review agent checks conflicts before review/merge
+
+### PR Review Agent
+
+**File**: `engine/operations/pr_review_agent.py`
+
+**Features**:
+- **Static Analysis**: Automated code quality checks (always)
+- **LLM Review**: Deep semantic code review (optional, `--use-llm`)
+- **Conflict Handling**: ConflictComplexityAnalyzer integration
+- **Self-Review Prevention**: Bot never reviews own PRs
+- **Rate Limit Handling**: Intelligent retry with exponential backoff
+- **Race Condition Prevention**: File-based locking for concurrent operations
+
+**Workflow**:
+```
+1. PR Detected
+   ↓
+2. Check Conflicts
+   ↓
+3. ConflictComplexityAnalyzer.analyze()
+   ↓
+4a. SIMPLE → Attempt auto-resolve
+4b. MODERATE → Comment requesting manual fix
+4c. COMPLEX → Close PR, reopen issue with agent-ready label
+   ↓
+5. (If no conflicts) Perform Code Review
+   ↓
+6. (If approved) Merge PR
+```
+
+**Review Methods**:
+- Static Analysis: File extension checks, basic linting
+- LLM Review: GPT-4/Claude semantic analysis, best practices
+
+**Review Comments**:
+```markdown
+## 🤖 Automated Code Review
+
+**Review Method**: Static Analysis
+**LLM Model**: N/A
+
+### Analysis Results
+✅ **Approved**: Code meets quality standards
+
+- File structure looks good
+- No obvious issues detected
+```
+
+### Smart Draft PR Recovery
+
+**File**: `engine/runners/polling_service.py`
+
+**Feature**: Automatically re-review draft PRs when they become ready
+
+**Workflow**:
+1. Draft PR detected → Skip review, mark as `draft:pending`
+2. Draft PR becomes ready → Trigger automatic re-review
+3. Memory leak prevention: Periodic cleanup of old PR states
+
+**Configuration**: `config/services/polling.yaml`
+```yaml
+polling:
+  draft_pr_recovery: true
+  memory_cleanup_hours: 24  # Clean up PR state older than 24h
+```
+
+### Rate Limiter
+
+**Purpose**: Prevent GitHub API rate limit exhaustion
+
+**Features**:
+- **Intelligent Bypass**: Internal operations (list PRs, list issues) bypass limiter
+- **Retry Logic**: Exponential backoff on rate limit errors
+- **Operation Types**:
+  - `ISSUE_COMMENT`: Normal rate limiting (5 req/min)
+  - `API_READ`: Bypass limiter (no delay)
+
+**Configuration**: `engine/operations/rate_limiter.py`
+```python
+RATE_LIMITS = {
+    'ISSUE_COMMENT': 5,  # 5 comments per minute
+    'API_READ': 0        # No limit (bypass)
+}
+```
+
+**Integration**: GitHub API helper checks rate limits before operations
+
+### GitHub Actions Integration
+
+**File**: `.github/workflows/pr-review.yml`
+
+**Triggers**:
+- `pull_request`: [opened, synchronize, reopened, ready_for_review]
+
+**Workflow**:
+1. PR event triggers GitHub Action
+2. Action calls polling service: `curl http://localhost:7997/api/trigger/pr-review`
+3. Polling service detects PR and triggers review workflow
+
+### Configuration
+
+**PR Review**: `config/services/pr_review.yaml`
+```yaml
+pr_review:
+  enable_llm_review: false  # Static analysis by default
+  llm_model: "gpt-4"
+  auto_merge: true          # Auto-merge approved PRs
+  conflict_analyzer: true   # Enable conflict complexity analysis
+```
+
+**Polling**: `config/services/polling.yaml`
+```yaml
+polling:
+  pr_review_enabled: true
+  draft_pr_recovery: true
+  rate_limiter_bypass_internal: true
+```
+
+### Testing
+
+**Unit Tests**:
+- `tests/test_conflict_analyzer.py`: All 7 metrics, thresholds, actions
+- `tests/test_pr_review_agent.py`: Review workflow, conflict handling
+
+**Integration Tests**:
+- `tests/test_draft_pr_monitoring.py`: Draft PR recovery workflow
+- `tests/test_merge_workflow.py`: End-to-end PR lifecycle
+
+**See Also**:
+- [PR Lifecycle Management Entry](CHANGELOG.md#pr-lifecycle-management)
 
 ---
 

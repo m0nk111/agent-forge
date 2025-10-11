@@ -51,7 +51,7 @@ class TestPollingConfig:
         """Test default configuration values."""
         config = PollingConfig()
         assert config.interval_seconds == 300
-        assert config.github_username == "m0nk111-post"  # Updated: m0nk111-bot suspended
+        assert config.github_username is None  # No hardcoded default - must be configured
         assert config.max_concurrent_issues == 3
         assert config.claim_timeout_minutes == 60
         assert "agent-ready" in config.watch_labels
@@ -61,11 +61,13 @@ class TestPollingConfig:
         """Test custom configuration."""
         config = PollingConfig(
             interval_seconds=60,
+            github_username="test-bot",
             repositories=["test/repo"],
             watch_labels=["custom-label"],
             max_concurrent_issues=5
         )
         assert config.interval_seconds == 60
+        assert config.github_username == "test-bot"
         assert config.repositories == ["test/repo"]
         assert config.watch_labels == ["custom-label"]
         assert config.max_concurrent_issues == 5

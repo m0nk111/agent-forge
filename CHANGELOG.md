@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Removed Hardcoded Bot Username** (October 11, 2025)
+  - Removed hardcoded `github_username = "m0nk111-post"` from `PollingConfig` dataclass
+  - Username now must be configured via `config/services/polling.yaml` or environment
+  - Updated tests to verify no hardcoded default exists
+  - Service correctly loads username from YAML config: ✅ `'github_username': 'm0nk111-post'`
+  - Reasoning: No hardcoded values in code - all config must come from configuration files
+
 - **Final m0nk111-bot Cleanup** (October 11, 2025)
   - Fixed last remaining test reference: `test_polling_service.py` now expects `m0nk111-post`
   - Updated troubleshooting docs curl example to use `m0nk111-post`

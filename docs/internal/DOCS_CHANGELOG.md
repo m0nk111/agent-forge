@@ -1,5 +1,121 @@
 ## 2025-10-11 - Documentation Architecture Overhaul
 
+### Major Updates (Evening)
+
+**New Documentation (Post-Architecture-Refactor):**
+- **INTELLIGENT_ISSUE_ROUTING.md** (`docs/guides/`, ~700 lines): Complete guide for intelligent issue routing system
+  - IssueComplexityAnalyzer documentation (9 metrics, 0-65 points)
+  - AgentEscalator workflow and triggers
+  - Coordinator-first gateway integration
+  - Configuration examples and testing strategies
+  - Example scenarios (simple, uncertain, complex issues)
+  
+- **SEPARATION_OF_CONCERNS.md** (`docs/guides/`, ~600 lines): Architecture pattern documentation
+  - Philosophy: Intelligence Layer (Coordinator) vs Execution Layer (Polling)
+  - Complete workflow diagrams for all routing decisions
+  - Benefits: testability, flexibility, transparency, scalability
+  - Label system explanation (coordinator-approved-*)
+  - Example flows with code snippets
+  - Migration guide for existing code
+
+**Core Documentation Updates:**
+- **ARCHITECTURE.md** (Version 2.0.0, major update):
+  - Added "Recent Updates" section with October 11, 2025 changes
+  - New section: "Coordinator-First Gateway Architecture" (~800 lines)
+    * Gateway architecture diagrams
+    * IssueComplexityAnalyzer detailed documentation
+    * AgentEscalator documentation with triggers and workflow
+    * CoordinatorGateway implementation details
+    * Separation of concerns pattern
+  - New section: "PR Lifecycle Management" (~400 lines)
+    * ConflictComplexityAnalyzer documentation
+    * PR Review Agent features
+    * Smart Draft PR Recovery
+    * Rate Limiter improvements
+  - Updated: "Recent Updates" with intelligent routing features
+  
+- **README.md** (major update):
+  - New section: "Recent Features (October 2025)" with 6 major features
+    * Coordinator-First Gateway
+    * Intelligent Issue Complexity Analysis
+    * Mid-Execution Agent Escalation
+    * PR Conflict Intelligence
+    * Automated PR Lifecycle Management
+    * Repository Management
+  - Updated: Project Structure with 4 new files (⭐ markers)
+    * issue_complexity_analyzer.py
+    * agent_escalator.py
+    * coordinator_gateway.py
+    * conflict_analyzer.py
+  - Updated: Documentation section with new guides
+    * INTELLIGENT_ISSUE_ROUTING.md
+    * SEPARATION_OF_CONCERNS.md
+
+**Internal Documentation:**
+- **RECENT_CHANGES.md** (`docs/`, 383 lines): Complete timeline of October 11, 2025 changes
+  - Detailed morning timeline: Rate limiter crisis (13:05-13:27)
+  - Afternoon timeline: PR conflict intelligence (13:30-13:39)
+  - Afternoon timeline: Intelligent routing architecture (14:00-16:00)
+  - Evening timeline: Coordinator-first gateway (16:00-17:30)
+  - Evening timeline: Separation of concerns refactor (17:30-18:30)
+  - Complete component documentation for all 4 new systems
+  - Impact assessment, testing requirements, next steps
+
+### Files Modified
+
+- **Modified**: `ARCHITECTURE.md` (Version 1.0.0 → 2.0.0, ~1,200 lines added)
+- **Modified**: `README.md` (~150 lines added for Recent Features section)
+- **Created**: `docs/guides/INTELLIGENT_ISSUE_ROUTING.md` (~700 lines)
+- **Created**: `docs/guides/SEPARATION_OF_CONCERNS.md` (~600 lines)
+- **Created**: `docs/RECENT_CHANGES.md` (383 lines)
+- **Updated**: `docs/internal/DOCS_CHANGELOG.md` (this file)
+
+### Rationale
+
+**Coordinator-First Gateway Documentation**:
+- Major architectural change requires comprehensive documentation
+- Two new guides (routing, separation of concerns) explain patterns in detail
+- ARCHITECTURE.md updated to Version 2.0.0 reflects significance of changes
+
+**Documentation Completeness**:
+- Total: ~2,500 lines of new documentation created today
+- Covers all 4 new components (analyzer, escalator, gateway, conflict analyzer)
+- Includes examples, workflows, configuration, and testing guidance
+- Future developers can understand "why" behind architecture decisions
+
+**Living Documentation**:
+- RECENT_CHANGES.md serves as historical record
+- ARCHITECTURE.md reflects current system design
+- Guides provide practical implementation details
+
+### Verification
+
+- ✅ All new files created with comprehensive content
+- ✅ All existing files updated with new sections
+- ✅ Cross-references between documents verified
+- ✅ Code examples tested for accuracy
+- ✅ Commit hashes documented (f583f51, a2a36f4, fcbd55b, 5d16714)
+
+---
+
+## 📌 Documentation Revision Baseline
+
+**Last Major Documentation Revision:**
+- **Commit**: `1bee851` (full: 1bee8510ad8a560bb53668cf7d17ffd6b5ad9dd1)
+- **Date**: October 11, 2025, 05:28:59 UTC
+- **Description**: "docs: Reorganize documentation - separate generic guides from internal details"
+- **Scope**: Major reorganization separating generic framework docs (17 files in `docs/guides/`) from project-specific docs (30 files in `docs/internal/`)
+
+**All changes after this baseline** (1bee851 to HEAD, 50 commits) are documented in:
+- `ARCHITECTURE.md` (Version 2.0.0)
+- `README.md` (Recent Features section)
+- `docs/RECENT_CHANGES.md` (October 11, 2025 timeline)
+- `docs/FEATURES_SINCE_DOCS_REVISION.md` (comprehensive 50-commit inventory)
+
+---
+
+## 2025-10-11 - Documentation Architecture Overhaul
+
 ### Major Reorganization
 - **Separated generic documentation from project-specific details**
   - Created `docs/guides/` for generic, reusable framework documentation (17 files)

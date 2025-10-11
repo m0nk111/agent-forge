@@ -60,6 +60,45 @@ Agent-Forge is an intelligent multi-agent system that automates GitHub workflows
 - 🧭 **Workspace Awareness**: Clear project identification prevents agent confusion
 - 🌞 **Creative ASCII Illustrations**: Issues that ask for drawings (sun, chair, car, etc.) trigger the agent to craft playful Markdown art and open a PR
 
+### Recent Features (October 2025)
+
+**🎯 Coordinator-First Gateway**:
+- ALL issues with `agent-ready` label MUST pass through coordinator analysis
+- Intelligent routing: SIMPLE (no escalation) → UNCERTAIN (escalation enabled) → COMPLEX (multi-agent)
+- Separation of concerns: Coordinator decides, Polling executes
+- See: [Intelligent Issue Routing Guide](docs/guides/INTELLIGENT_ISSUE_ROUTING.md)
+
+**🧠 Intelligent Issue Complexity Analysis**:
+- **IssueComplexityAnalyzer**: 9 metrics, 0-65 point scoring system
+- Pre-flight analysis: description length, task count, file mentions, code blocks, dependencies
+- Keywords: refactoring, architecture, multi-component detection
+- Objective thresholds: SIMPLE (≤10), UNCERTAIN (11-25), COMPLEX (>25)
+
+**🚀 Mid-Execution Agent Escalation**:
+- **AgentEscalator**: Escalate from code agent to coordinator mid-execution
+- Triggers: >5 files, >3 components, 2+ failures, stuck >30min, architecture changes
+- Preserves work progress (branch, commits) during escalation
+- Automatic handoff with progress summary
+
+**🔀 PR Conflict Intelligence**:
+- **ConflictComplexityAnalyzer**: 7 metrics, 0-55 point scoring
+- Actions: auto-resolve (simple), manual-fix (moderate), close-and-reopen (complex)
+- Integrated into PR review workflow
+- Automatic issue reopening with `agent-ready` label for complex conflicts
+
+**🤖 Automated PR Lifecycle Management**:
+- LLM-powered code reviews with static analysis fallback
+- Smart draft PR recovery (auto re-review when ready)
+- Self-review prevention (bots never review own PRs)
+- Rate limiter with intelligent bypass for internal operations
+- Race condition prevention with file-based locking
+
+**📦 Repository Management**:
+- Automated repository access management
+- Configurable bot account selection
+- Centralized GitHub account configuration
+- GitHub Actions integration for PR review triggers
+
 ---
 
 ## 🤖 AI-Generated Codebase
@@ -213,6 +252,10 @@ agent-forge/
 │   │   ├── code_generator.py   # Code generation
 │   │   ├── issue_handler.py    # Issue resolution
 │   │   ├── issue_opener_agent.py # Issue creation agent
+│   │   ├── issue_complexity_analyzer.py # Issue complexity analysis ⭐
+│   │   ├── agent_escalator.py  # Mid-execution escalation ⭐
+│   │   ├── coordinator_gateway.py # Coordinator-first gateway ⭐
+│   │   ├── conflict_analyzer.py # PR conflict complexity ⭐
 │   │   ├── pr_review_agent.py  # Automated PR reviews
 │   │   ├── pr_reviewer.py      # PR review operations
 │   │   ├── repo_manager.py     # Repository access management
@@ -269,7 +312,9 @@ agent-forge/
 │   │   ├── INSTRUCTION_VALIDATION_GUIDE.md # Validation guide
 │   │   ├── ASCII_AUTOMATION_WORKFLOW.md # ASCII art workflow
 │   │   ├── PIPELINE_ARCHITECTURE.md # Pipeline documentation
-│   │   └── ANTI_SPAM_PROTECTION.md # Spam prevention
+│   │   ├── ANTI_SPAM_PROTECTION.md # Spam prevention
+│   │   ├── INTELLIGENT_ISSUE_ROUTING.md # Issue routing guide ⭐
+│   │   └── SEPARATION_OF_CONCERNS.md # Architecture pattern ⭐
 │   ├── diagrams/               # Architecture diagrams (Mermaid)
 │   ├── internal/               # Internal documentation
 │   └── archive/                # Archived documentation
