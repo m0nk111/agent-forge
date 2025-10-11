@@ -1,0 +1,64 @@
+# Environment Configuration
+# Defines different environments for Agent-Forge deployment
+
+# Active environment (default: production)
+# Options: development, test, production
+active: production
+
+environments:
+  # Development - Local testing, dry-run mode
+  development:
+    description: "Local development environment"
+    dry_run: true
+    repositories:
+      - "m0nk111/agent-forge-test"
+    max_concurrent_issues: 1
+    claim_timeout_minutes: 30  # Shorter timeout for faster iteration
+    auto_merge: false
+    notifications:
+      enabled: false
+    
+  # Test - Dedicated test repository, safe for automated testing
+  test:
+    description: "Test environment with dedicated test repository"
+    dry_run: false  # Actually execute but in test repo only
+    repositories:
+      - "m0nk111/agent-forge-test"
+    max_concurrent_issues: 2
+    claim_timeout_minutes: 60
+    auto_merge: true  # Safe to auto-merge in test
+    notifications:
+      enabled: true
+      channels: ["test-notifications"]
+    
+  # Production - Real repositories, careful operations
+  production:
+    description: "Production environment with real repositories"
+    dry_run: false
+    repositories:
+      - "m0nk111/agent-forge"
+      # - "m0nk111/stepperheightcontrol"
+      # - "m0nk111/Mycodo"
+      # - "m0nk111/caramba"
+    max_concurrent_issues: 3
+    claim_timeout_minutes: 1440  # 24 hours
+    auto_merge: false  # Manual merge approval in production
+    notifications:
+      enabled: true
+      channels: ["production-alerts"]
+
+# Environment-specific settings
+settings:
+  # Prevent test commits from reaching production
+  test_mode_indicators:
+    - "TEST:"
+    - "[TEST]"
+    - "🧪"
+  
+  # Repositories that are test-only (never monitored in production)
+  test_only_repos:
+    - "m0nk111/agent-forge-test"
+  
+  # Repositories that are production-only (never monitored in test)
+  production_only_repos:
+    - "m0nk111/agent-forge"

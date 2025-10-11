@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Test Repository & Environment Management** (October 11, 2025)
+  - **NEW REPOSITORY**: Created `m0nk111/agent-forge-test` for safe testing
+    * Dedicated test repository prevents test commits from reaching production
+    * All 3 bot accounts configured with write access (m0nk111-post, m0nk111-qwen-agent, m0nk111-coder1)
+    * Test issue #1 created: "Create welcome documentation"
+  - **NEW MODULE**: `engine/utils/environment_config.py` (248 lines)
+    * Environment management system (dev/test/prod separation)
+    * Repository access validation (test-only vs production-only repos)
+    * Environment-specific settings (timeouts, auto-merge, notifications)
+    * Environment variable support: `AGENT_FORGE_ENV=test|dev|prod`
+  - **NEW CONFIG**: `config/system/environments.yaml`
+    * **Development**: Dry-run mode, short timeouts (30min), test repo only
+    * **Test**: Safe execution, auto-merge enabled, test repo only (60min timeout)
+    * **Production**: Real operations, manual merge, production repos (24h timeout)
+  - **RATIONALE**:
+    * Prevent test commits/PRs from polluting production repositories
+    * Safe environment for testing new features and agents
+    * Clear separation between development, testing, and production
+    * Repository access validation prevents cross-environment contamination
+  - **USAGE**:
+    ```bash
+    # Production mode (default)
+    python engine/utils/environment_config.py
+    
+    # Test mode
+    AGENT_FORGE_ENV=test python engine/utils/environment_config.py
+    
+    # Development mode (dry-run)
+    AGENT_FORGE_ENV=development python polling_service.py
+    ```
+
 ### Changed
 - **PR Review Agent Phase 4 - Workflow Method Delegation** (October 11, 2025)
   - **MAJOR REFACTORING**: `engine/operations/pr_review_agent.py` (-478 lines, 1,617→1,139 lines, -29.5%)
