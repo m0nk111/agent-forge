@@ -64,7 +64,8 @@ class PRReviewAgent:
     
     def _load_github_token(self) -> str:
         """Load GitHub token from secrets."""
-        token_path = self.project_root / 'secrets' / 'agents' / 'm0nk111.token'
+        # Use dedicated reviewer bot account to avoid spam to admin email
+        token_path = self.project_root / 'secrets' / 'agents' / 'm0nk111-reviewer.token'
         
         if not token_path.exists():
             raise FileNotFoundError(f"GitHub token not found: {token_path}")
