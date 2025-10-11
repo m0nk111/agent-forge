@@ -8,8 +8,11 @@ audit_enabled: true
 # Trusted agent accounts that bypass security audit
 # These are verified bot/agent accounts that create PRs programmatically
 trusted_agents:
-  - m0nk111-bot
+  - m0nk111-post
   - m0nk111-qwen-agent
+  - m0nk111-coder1
+  - m0nk111-coder2
+  - m0nk111-reviewer
   - dependabot[bot]
   - github-actions[bot]
 
