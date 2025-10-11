@@ -45,7 +45,9 @@ async def main():
     # Initialize reviewer
     reviewer = PRReviewer(
         github_username='m0nk111-reviewer-bot',  # Different username to avoid "own PR" skip
-        criteria=ReviewCriteria()
+        criteria=ReviewCriteria(),
+        llm_model="gpt-5-pro",  # Specify LLM model
+        agent_id="reviewer-agent-test"  # Specify agent ID
     )
     
     print(f"\n🤖 Starting PR review...")

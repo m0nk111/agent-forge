@@ -61,8 +61,10 @@ pr_monitoring:
   reviewer_agents:
     - agent_id: "code-agent-1"
       username: "m0nk111-post"
+      llm_model: "gpt-5-chat-latest"  # Model used by this agent
     - agent_id: "code-agent-2"  
       username: "m0nk111-qwen-agent"
+      llm_model: "qwen-2.5-coder-32b"  # Model used by this agent
     # Add more code agents here as they become available
 
 # Issue Opener Integration (NEW)

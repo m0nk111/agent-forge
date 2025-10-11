@@ -66,7 +66,9 @@ class PRReviewer:
         github_username: str,
         criteria: Optional[ReviewCriteria] = None,
         llm_agent = None,
-        github_api = None
+        github_api = None,
+        llm_model: Optional[str] = None,
+        agent_id: Optional[str] = None
     ):
         """
         Initialize PR reviewer.
@@ -76,11 +78,15 @@ class PRReviewer:
             criteria: Review criteria configuration
             llm_agent: LLM agent for intelligent code analysis
             github_api: GitHubAPIHelper instance for posting reviews
+            llm_model: LLM model name (e.g., "gpt-5-pro", "qwen-2.5-coder")
+            agent_id: Agent identifier (e.g., "reviewer-agent", "code-agent-1")
         """
         self.github_username = github_username
         self.criteria = criteria or ReviewCriteria()
         self.llm_agent = llm_agent
         self.github_api = github_api
+        self.llm_model = llm_model or "unknown"
+        self.agent_id = agent_id or "unknown"
         
         # Review templates
         self.review_templates = self._load_review_templates()
@@ -88,7 +94,7 @@ class PRReviewer:
         # Reviewed PRs cache (to avoid duplicate reviews)
         self.reviewed_prs: Dict[str, datetime] = {}
         
-        logger.info(f"🤖 PR Reviewer initialized for {github_username}")
+        logger.info(f"🤖 PR Reviewer initialized for {github_username} (model: {self.llm_model}, agent: {self.agent_id})")
     
     async def review_pr(
         self,
@@ -726,6 +732,7 @@ Now review the code:
         # Footer
         lines.append("---")
         lines.append(f"*🤖 Automated Security Audit by {self.github_username} • Agent Forge Security System v1.0*")
+        lines.append(f"*🧠 Powered by: **{self.llm_model}** • Agent: `{self.agent_id}`*")
         lines.append(f"*Audit configuration: `config/security_audit.yaml` • Trusted agents: `config/agents.yaml`*")
         
         return "\n".join(lines)
@@ -819,6 +826,7 @@ Now review the code:
         
         lines.append("\n---")
         lines.append(f"*Automated review by {self.github_username} • Agent Forge PR Reviewer v1.0*")
+        lines.append(f"*🧠 Powered by: **{self.llm_model}** • Agent: `{self.agent_id}`*")
         
         return "\n".join(lines)
     
