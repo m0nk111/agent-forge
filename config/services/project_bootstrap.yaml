@@ -24,14 +24,22 @@ bot_collaborators:
     permission: push  # pull, push, admin, maintain, triage
     description: Primary bot agent for issue and PR management
     
-  - username: m0nk111-qwen-agent
+  - username: m0nk111-coder1
     permission: push
-    description: Qwen-based code agent for development
+    description: Primary GPT-5 code agent for development
     
-  # Uncomment when reviewer account is created
-  # - username: m0nk111-reviewer
+  - username: m0nk111-coder2
+    permission: push
+    description: Primary GPT-4o code agent for development
+    
+  - username: m0nk111-reviewer
+    permission: push
+    description: Dedicated PR reviewer agent
+    
+  # Reserve/fallback coder (invite only when needed)
+  # - username: m0nk111-qwen-agent
   #   permission: push
-  #   description: Dedicated PR reviewer agent
+  #   description: Reserve Qwen-based code agent
 
 # Team management settings
 team:

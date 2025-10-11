@@ -42,8 +42,10 @@ pr_monitoring:
   interval_seconds: 600
   # Auto-review PRs from these users (whitelist)
   auto_review_users:
-    - "m0nk111-post"      # Bot agent PRs
-    - "m0nk111-qwen-agent" # Code agent PRs
+    - "m0nk111-post"       # Bot agent PRs
+    - "m0nk111-coder1"     # Primary GPT-5 coder
+    - "m0nk111-coder2"     # Primary GPT-4o coder
+    - "m0nk111-qwen-agent" # Reserve/fallback Qwen coder
   # Skip auto-review for PRs from these trusted users
   skip_review_users:
     - "m0nk111"  # Admin account (trusted)
@@ -58,19 +60,20 @@ pr_monitoring:
   reviewer_agent_id: "reviewer-agent"
   # Available reviewer agents (used for round-robin/all strategies)
   # Each code agent can review, but won't review their own PRs
+  # Priority order: reviewer > coder1 > coder2 > qwen (reserve)
   reviewer_agents:
     - agent_id: "reviewer-agent"
       username: "m0nk111-reviewer"
-      llm_model: "gpt-5-chat-latest"  # Dedicated reviewer
+      llm_model: "gpt-5-chat-latest"  # Dedicated reviewer (always available)
     - agent_id: "coder-agent-1"
       username: "m0nk111-coder1"
-      llm_model: "gpt-5-chat-latest"  # GPT-5 coder
+      llm_model: "gpt-5-chat-latest"  # Primary GPT-5 coder (can review)
     - agent_id: "coder-agent-2"
       username: "m0nk111-coder2"
-      llm_model: "gpt-4o"  # GPT-4o coder
+      llm_model: "gpt-4o"  # Primary GPT-4o coder (can review)
     - agent_id: "coder-agent-qwen"
       username: "m0nk111-qwen-agent"
-      llm_model: "qwen-2.5-coder-32b"  # Qwen coder
+      llm_model: "qwen-2.5-coder-32b"  # Reserve/fallback coder (can review)
 
 # Issue Opener Integration (NEW)
 # Automatically process new issues with issue-opener agent
