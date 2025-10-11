@@ -555,14 +555,19 @@ This file will be saved as {spec.test_path}, NOT as implementation.
                 
                 # Check for collection errors (import/syntax errors)
                 if 'collected 0 items / 1 error' in pytest_output.stdout or 'ERRORS =' in pytest_output.stdout:
-                    # Extract error section
+                    # Extract error section - full details
+                    logger.error(f"   ❌ Collection error detected - Full pytest output:")
+                    logger.error(f"   STDOUT:\n{pytest_output.stdout}")
+                    logger.error(f"   STDERR:\n{pytest_output.stderr}")
+                    
                     error_section = pytest_output.stdout.split('ERRORS =')
                     if len(error_section) > 1:
-                        error_details = error_section[1].split('=====')[0].strip()[:800]
+                        error_details = error_section[1].split('=====')[0].strip()[:1500]  # Increased from 800
                         result['failures'].append(f"Collection error: {error_details}")
-                        logger.error(f"   ❌ Collection error:\n{error_details}")
+                        logger.error(f"   📋 Extracted error details:\n{error_details}")
                     else:
                         result['failures'].append("Collection error: Unable to parse error details")
+                        logger.error(f"   ⚠️ Could not parse ERRORS section")
                 elif failures:
                     result['failures'] = [f"{test}: {msg}" for test, msg in failures[:5]]
                 else:
