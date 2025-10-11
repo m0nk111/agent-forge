@@ -8,6 +8,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **🚀 GitHub Actions Workflow for PR Review** (October 11, 2025)
+  - Created `.github/workflows/pr-review.yml` for event-driven PR reviews
+  - Auto-triggers on PRs from bot accounts (m0nk111-post, coder1, coder2, qwen-agent)
+  - Manual trigger via workflow_dispatch for any PR with custom merge strategy
+  - Features:
+    - Automated Ollama installation and qwen2.5-coder:7b model pull
+    - Full review + merge workflow integration
+    - Success/failure comments on PRs
+    - Comprehensive error handling and logging
+  - Configuration options:
+    - `auto-merge-if-approved`: Default for auto-triggered reviews
+    - `merge-with-suggestions`: Option for manual triggers
+  - Documentation: Added `.github/workflows/README.md` with usage guide
+  - **Impact**: Event-driven alternative to polling service, faster response to new PRs
+
+- **🔄 Polling Service Integration for PR Review** (October 11, 2025)
+  - Integrated intelligent PR review and merge into polling service
+  - Configuration in `config/services/polling.yaml`:
+    - `review_config`: LLM settings, bot account, workflow flags
+    - `merge_config`: Auto-merge rules, merge method, safety delay
+  - Enhanced `trigger_pr_review()` to use `PRReviewAgent` directly
+  - Supports `complete_pr_review_and_merge_workflow()` with config-driven behavior
+  - Merge decision logging and result tracking
+  - **Impact**: Continuous PR monitoring with automatic review and intelligent merge
+
 - **✅ TESTED: Intelligent PR Merge Logic** 🔀
   - Added `evaluate_merge_decision()` method for smart merge recommendations
   - Added `merge_pull_request()` method for automated PR merging
@@ -21,6 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Detailed merge status checking: detects conflicts, draft status, blocked checks
   - **✅ Successfully tested on PR #97**: Full workflow from review to merge
   - **Merge commit**: 4cd6fec9364d0b03ea2eeadd1b9a163e0f1335c4 (October 11, 2025)
+  - **✅ Validated on PRs #90, #93, #95**: Critical issues correctly block merge, conflicts detected
   - **Impact**: Full automation of PR review → merge workflow with safety checks
 
 - **Complete PR Review Workflow** 🔄
