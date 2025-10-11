@@ -35,7 +35,7 @@ class PRReviewAgent:
         github_token: Optional[str] = None,
         use_llm: bool = False,
         llm_model: str = "qwen2.5-coder:7b",
-        bot_account: str = "post"
+        bot_account: str = "post"  # Default to 'post' - only account that exists
     ):
         """
         Initialize PR Review Agent.
