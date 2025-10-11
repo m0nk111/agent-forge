@@ -31,8 +31,56 @@ export PYTHONPATH="$PROJECT_ROOT"
 echo "✅ PYTHONPATH: $PYTHONPATH"
 
 echo ""
+echo "🤖 Starting service manager (includes agents + monitoring)..."
+echo ""
+
+# Start service manager in background with minimal services
+# This handles agent registry initialization properly
+python3 -m engine.core.service_manager \
+    --no-polling \
+    --no-web-ui \
+    --monitor-port 7998 &
+
+SERVICE_MGR_PID=$!
+echo "✅ Service manager started (PID: $SERVICE_MGR_PID)"
+
+# Wait for agents to initialize
+echo "⏳ Waiting 15 seconds for agents to initialize..."
+sleep 15
+
+echo ""
 echo "🚀 Starting polling service..."
 echo ""
 
+# Trap to cleanup on exit
+cleanup() {
+    echo ""
+    echo "🛑 Shutting down..."
+    if [ ! -z "$POLLING_PID" ]; then
+        echo "   Stopping polling service..."
+        kill $POLLING_PID 2>/dev/null || true
+    fi
+    if [ ! -z "$SERVICE_MGR_PID" ]; then
+        echo "   Stopping service manager (agents)..."
+        kill $SERVICE_MGR_PID 2>/dev/null || true
+    fi
+    echo "✅ Cleanup complete"
+}
+
+trap cleanup EXIT INT TERM
+
 # Run polling service
-python3 engine/runners/polling_service.py
+python3 engine/runners/polling_service.py &
+POLLING_PID=$!
+
+echo "✅ Polling service started (PID: $POLLING_PID)"
+echo ""
+echo "📊 Services running:"
+echo "   • Service Manager (Agents): PID $SERVICE_MGR_PID"
+echo "   • Polling Service: PID $POLLING_PID"
+echo ""
+echo "Press Ctrl+C to stop all services"
+echo ""
+
+# Wait for polling service
+wait $POLLING_PID
