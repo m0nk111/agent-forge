@@ -498,7 +498,7 @@ class GitHubAPIHelper:
         target = f"{owner}/{repo}"
         
         # Check rate limit
-        if not self.rate_limiter.can_proceed(OperationType.ISSUE_COMMENT):
+        if not self._check_rate_limit(OperationType.ISSUE_COMMENT, target):
             logger.warning(f"⚠️ Rate limit reached, cannot create PR in {target}")
             raise RuntimeError("Rate limit exceeded for GitHub operations")
         
@@ -548,7 +548,7 @@ class GitHubAPIHelper:
         """
         target = f"{owner}/{repo}"
         
-        if not self.rate_limiter.can_proceed(OperationType.ISSUE_COMMENT):
+        if not self._check_rate_limit(OperationType.ISSUE_COMMENT, target):
             raise RuntimeError(f"Rate limit exceeded for {target}")
         
         url = f"{self.BASE_URL}/repos/{owner}/{repo}/pulls"
@@ -586,7 +586,7 @@ class GitHubAPIHelper:
         """
         target = f"{owner}/{repo}"
         
-        if not self.rate_limiter.can_proceed(OperationType.ISSUE_COMMENT):
+        if not self._check_rate_limit(OperationType.ISSUE_COMMENT, target):
             raise RuntimeError(f"Rate limit exceeded for {target}")
         
         url = f"{self.BASE_URL}/repos/{owner}/{repo}/pulls/{pr_number}"
@@ -618,7 +618,7 @@ class GitHubAPIHelper:
         """
         target = f"{owner}/{repo}"
         
-        if not self.rate_limiter.can_proceed(OperationType.ISSUE_COMMENT):
+        if not self._check_rate_limit(OperationType.ISSUE_COMMENT, target):
             raise RuntimeError(f"Rate limit exceeded for {target}")
         
         url = f"{self.BASE_URL}/repos/{owner}/{repo}/pulls/{pr_number}/files"
@@ -650,7 +650,7 @@ class GitHubAPIHelper:
         """
         target = f"{owner}/{repo}"
         
-        if not self.rate_limiter.can_proceed(OperationType.ISSUE_COMMENT):
+        if not self._check_rate_limit(OperationType.ISSUE_COMMENT, target):
             raise RuntimeError(f"Rate limit exceeded for {target}")
         
         url = f"{self.BASE_URL}/repos/{owner}/{repo}/pulls/{pr_number}"
@@ -684,7 +684,7 @@ class GitHubAPIHelper:
         """
         target = f"{owner}/{repo}"
         
-        if not self.rate_limiter.can_proceed(OperationType.ISSUE_COMMENT):
+        if not self._check_rate_limit(OperationType.ISSUE_COMMENT, target):
             raise RuntimeError(f"Rate limit exceeded for {target}")
         
         url = f"{self.BASE_URL}/repos/{owner}/{repo}/issues/{pr_number}/comments"
@@ -726,12 +726,12 @@ class GitHubAPIHelper:
         """
         target = f"{owner}/{repo}"
         
-        if not self.rate_limiter.can_proceed(OperationType.ISSUE_COMMENT):
+        if not self._check_rate_limit(OperationType.ISSUE_COMMENT, target):
             raise RuntimeError(f"Rate limit exceeded for {target}")
         
         url = f"{self.BASE_URL}/repos/{owner}/{repo}/pulls/{pr_number}/reviews"
         payload = {
-            "body": body,
+            "body": body if body else "Automated review",  # GitHub requires non-empty body
             "event": event
         }
         
@@ -751,6 +751,14 @@ class GitHubAPIHelper:
             return review_data
             
         except requests.exceptions.RequestException as e:
+            # Log response body for debugging 422 errors
+            if hasattr(e, 'response') and e.response is not None:
+                try:
+                    error_detail = e.response.json()
+                    logger.error(f"GitHub API error details: {error_detail}")
+                except:
+                    logger.error(f"GitHub API error response: {e.response.text}")
+            
             self._record_operation(OperationType.ISSUE_COMMENT, target,
                                  f"Failed to submit review on PR #{pr_number}", success=False)
             logger.error(f"Failed to submit PR review to {owner}/{repo}#{pr_number}: {e}")
