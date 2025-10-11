@@ -90,49 +90,138 @@ class PRReviewAgent:
         self,
         method: str,
         url: str,
-        json_data: Optional[Dict] = None
+        json_data: Optional[Dict] = None,
+        max_retries: int = 3
     ) -> Tuple[int, Optional[Dict]]:
         """
-        Make GitHub API request.
+        Make GitHub API request with rate limit handling.
+        
+        Features:
+        - Detects 403 (forbidden, often rate limit) and 429 (too many requests)
+        - Respects X-RateLimit-Remaining and X-RateLimit-Reset headers
+        - Implements exponential backoff for retries
+        - Logs rate limit information for monitoring
         
         Args:
             method: HTTP method (GET, POST, PATCH, PUT, DELETE)
             url: API endpoint URL
             json_data: Optional JSON data for request body
+            max_retries: Maximum retry attempts (default: 3)
         
         Returns:
             Tuple of (status_code, response_json)
         """
+        import time
+        
         headers = {
             "Authorization": f"token {self.github_token}",
             "Accept": "application/vnd.github.v3+json"
         }
         
-        try:
-            if method == 'GET':
-                resp = requests.get(url, headers=headers)
-            elif method == 'POST':
-                resp = requests.post(url, headers=headers, json=json_data)
-            elif method == 'PATCH':
-                resp = requests.patch(url, headers=headers, json=json_data)
-            elif method == 'PUT':
-                resp = requests.put(url, headers=headers, json=json_data)
-            elif method == 'DELETE':
-                resp = requests.delete(url, headers=headers)
-            else:
-                raise ValueError(f"Unsupported method: {method}")
-            
-            if resp.status_code in [200, 201, 204]:
-                try:
-                    return resp.status_code, resp.json() if resp.text else None
-                except:
-                    return resp.status_code, None
-            else:
-                return resp.status_code, None
+        retry_count = 0
+        base_wait = 5  # Base wait time in seconds
         
-        except Exception as e:
-            logger.error(f"GitHub API error: {e}")
-            return 0, None
+        while retry_count <= max_retries:
+            try:
+                # Make request
+                if method == 'GET':
+                    resp = requests.get(url, headers=headers)
+                elif method == 'POST':
+                    resp = requests.post(url, headers=headers, json=json_data)
+                elif method == 'PATCH':
+                    resp = requests.patch(url, headers=headers, json=json_data)
+                elif method == 'PUT':
+                    resp = requests.put(url, headers=headers, json=json_data)
+                elif method == 'DELETE':
+                    resp = requests.delete(url, headers=headers)
+                else:
+                    raise ValueError(f"Unsupported method: {method}")
+                
+                # Check rate limit headers
+                rate_limit_remaining = resp.headers.get('X-RateLimit-Remaining')
+                rate_limit_reset = resp.headers.get('X-RateLimit-Reset')
+                
+                # Log rate limit info if getting low
+                if rate_limit_remaining:
+                    remaining = int(rate_limit_remaining)
+                    if remaining < 100:
+                        logger.warning(f"⚠️  GitHub API rate limit low: {remaining} requests remaining")
+                        if rate_limit_reset:
+                            reset_time = int(rate_limit_reset)
+                            wait_seconds = reset_time - int(time.time())
+                            if wait_seconds > 0:
+                                logger.warning(f"   Rate limit resets in {wait_seconds}s")
+                
+                # Handle rate limit responses
+                if resp.status_code == 429:  # Too Many Requests
+                    retry_after = int(resp.headers.get('Retry-After', 60))
+                    logger.error(f"❌ GitHub API rate limited (429): Retry after {retry_after}s")
+                    
+                    if retry_count < max_retries:
+                        logger.info(f"⏳ Waiting {retry_after}s before retry {retry_count + 1}/{max_retries}...")
+                        time.sleep(retry_after)
+                        retry_count += 1
+                        continue
+                    else:
+                        logger.error("❌ Max retries reached, giving up")
+                        return 429, None
+                
+                elif resp.status_code == 403:  # Forbidden (possibly rate limit)
+                    # Check if it's rate limit related
+                    if rate_limit_remaining and int(rate_limit_remaining) == 0:
+                        if rate_limit_reset:
+                            reset_time = int(rate_limit_reset)
+                            wait_seconds = max(0, reset_time - int(time.time()))
+                            logger.error(f"❌ GitHub API rate limit exceeded (403): Resets in {wait_seconds}s")
+                            
+                            if retry_count < max_retries:
+                                # Wait until reset + small buffer
+                                wait_time = wait_seconds + 5
+                                logger.info(f"⏳ Waiting {wait_time}s for rate limit reset (retry {retry_count + 1}/{max_retries})...")
+                                time.sleep(wait_time)
+                                retry_count += 1
+                                continue
+                    
+                    # Not rate limit related, don't retry
+                    logger.error(f"❌ GitHub API forbidden (403): {url}")
+                    return 403, None
+                
+                # Handle other errors with exponential backoff
+                elif resp.status_code >= 500:  # Server errors
+                    if retry_count < max_retries:
+                        wait_time = base_wait * (2 ** retry_count)  # Exponential backoff
+                        logger.warning(f"⚠️  GitHub API server error ({resp.status_code}): Retrying in {wait_time}s...")
+                        time.sleep(wait_time)
+                        retry_count += 1
+                        continue
+                    else:
+                        logger.error(f"❌ Max retries reached for server error")
+                        return resp.status_code, None
+                
+                # Success or client error (don't retry client errors like 404)
+                if resp.status_code in [200, 201, 204]:
+                    try:
+                        return resp.status_code, resp.json() if resp.text else None
+                    except:
+                        return resp.status_code, None
+                else:
+                    return resp.status_code, None
+            
+            except requests.exceptions.RequestException as e:
+                # Network errors - retry with exponential backoff
+                if retry_count < max_retries:
+                    wait_time = base_wait * (2 ** retry_count)
+                    logger.warning(f"⚠️  Network error: {e}. Retrying in {wait_time}s...")
+                    time.sleep(wait_time)
+                    retry_count += 1
+                    continue
+                else:
+                    logger.error(f"❌ Network error after {max_retries} retries: {e}")
+                    return 0, None
+            
+            except Exception as e:
+                logger.error(f"❌ GitHub API error: {e}")
+                return 0, None
     
     def review_pr(self, repo: str, pr_number: int) -> Dict:
         """

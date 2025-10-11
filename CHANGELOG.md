@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **� Race Condition Prevention for PR Reviews** (October 11, 2025)
+- **⚡ GitHub API Rate Limit Handling** (October 11, 2025)
+  - **CRITICAL FIX**: Prevents system failure when hitting GitHub API rate limits
+  - **Enhanced _github_request() method**:
+    - Detects 403 (forbidden) and 429 (too many requests) responses
+    - Respects X-RateLimit-Remaining and X-RateLimit-Reset headers
+    - Logs warnings when rate limit gets low (<100 requests)
+    - Automatic retry with exponential backoff for server errors (5xx)
+    - Network error retry with exponential backoff
+  - **Rate Limit Strategies**:
+    - 429 (Too Many Requests): Wait for Retry-After header duration, then retry
+    - 403 with rate limit exceeded: Wait until X-RateLimit-Reset timestamp, then retry
+    - 403 without rate limit: Don't retry (permission issue)
+    - Server errors (500-599): Exponential backoff (5s, 10s, 20s)
+    - Network errors: Exponential backoff with max retries
+  - **Configuration**: max_retries parameter (default: 3)
+  - **Testing**: Full test suite (9 tests) covering all scenarios
+  - **Impact**: System gracefully handles rate limits instead of failing
+  - **Rationale**: GitHub API has 5000 requests/hour limit. Without handling, system would crash when limit exceeded. Now waits and retries automatically.
+
   - **CRITICAL FIX**: Prevents concurrent reviews by multiple processes
   - **New Module**: `engine/utils/review_lock.py` - File-based locking system
   - **Features**:
