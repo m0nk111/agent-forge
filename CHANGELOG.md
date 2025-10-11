@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **GPT-5 Pro Discovery**: Test scripts to check GPT-5 Pro availability (Issue #discovery)
+  - `scripts/get_openai_org.py` - Get OpenAI account and model access info
+  - `scripts/check_gpt5_pro.py` - Check GPT-5 Pro availability with org ID support
+  - `scripts/test_gpt5_pro_responses.py` - Test GPT-5 Pro with /v1/responses endpoint
+  - `scripts/quick_test_gpt5_pro.py` - Quick GPT-5 Pro connectivity test
+  - **Discovery**: GPT-5 Pro IS available (created 2025-10-03)!
+  - **Note**: Requires new /v1/responses endpoint (not /v1/chat/completions)
+  - **Next**: Implement /v1/responses endpoint support for GPT-5 Pro access
+
 ### Changed - BREAKING
 - **Default Coordinator: GPT-5 Chat Latest** ⭐ **MAJOR UPGRADE**
   - coordinator-agent.yaml now uses gpt-5-chat-latest (was gpt-4-turbo)
