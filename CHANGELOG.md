@@ -8,6 +8,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Zombie Pytest Processes & Service Cleanup** (October 11, 2025)
+  - **BUG FIX**: Killed 4+ zombie pytest processes from failed Issue Opener runs
+    * Processes were stuck from infinite test generation loop
+    * PIDs: 21466, 25059, 32805, 45479, 49295
+    * Each consuming ~50MB memory
+  - **SERVICE FIX**: Stopped runaway polling service
+    * Service was still actively regenerating tests every 10 minutes
+    * Latest file modification: 16:05:18 UTC (during this bug hunt!)
+  - Created final stable test suite with proper docstrings
+  - All 6 tests passing ✅
+  - Reasoning: Zombie processes waste system resources
+
+- **Code Quality Issues Identified** (October 11, 2025)
+  - **IDENTIFIED**: 20 bare except statements across codebase (not fixed yet)
+    * Files: codebase_search.py, pr_review_agent.py, repo_manager.py, test_runner.py
+    * Risk: Catches ALL exceptions including KeyboardInterrupt and SystemExit
+    * Should use specific exception types
+  - **IDENTIFIED**: 10+ hardcoded time.sleep() statements
+    * Should use configurable timeouts
+  - **IDENTIFIED**: 4 TODO/FIXME comments
+    * engine/core/agent_registry.py: "TODO: Implement coordinator agent"
+  - Reasoning: Document technical debt for future fixes
+
 - **Issue Opener Test Generation Loop** (October 11, 2025)
   - **CRITICAL BUG**: Polling service Issue Opener constantly regenerating `tests/test_string_utils.py`
     * Agent in infinite loop trying to solve issue #84/#94
