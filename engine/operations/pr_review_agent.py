@@ -24,6 +24,8 @@ from typing import Dict, List, Optional, Tuple
 import requests
 
 from engine.utils.review_lock import ReviewLock
+from engine.operations.pr_review_logic import ReviewLogic
+from engine.operations.pr_github_client import GitHubAPIClient
 
 
 logger = logging.getLogger(__name__)
@@ -63,7 +65,20 @@ class PRReviewAgent:
         else:
             self.github_token = self._load_github_token()
         
-        # LLM configuration
+        # Initialize GitHub API client
+        self.github_client = GitHubAPIClient(
+            github_token=self.github_token,
+            bot_account=bot_account
+        )
+        
+        # Initialize review logic
+        self.review_logic = ReviewLogic(
+            use_llm=use_llm,
+            llm_model=llm_model,
+            ollama_url="http://localhost:11434/api/generate"
+        )
+        
+        # LLM configuration (keep for backwards compatibility)
         self.use_llm = use_llm
         self.llm_model = llm_model
         self.ollama_url = "http://localhost:11434/api/generate"
@@ -351,9 +366,38 @@ class PRReviewAgent:
             logger.error(f"❌ Error getting PR files: {e}")
             return []
     
+    def _get_file_content(self, repo: str, pr_number: int, filename: str, patch: str) -> str:
+        """
+        Get full file content from patch or reconstruct from diff.
+        
+        Args:
+            repo: Repository name
+            pr_number: PR number
+            filename: File path
+            patch: Git diff patch
+        
+        Returns:
+            Full file content (best effort reconstruction)
+        """
+        try:
+            # Try to reconstruct content from patch
+            lines = []
+            for line in patch.split('\n'):
+                if line.startswith('+') and not line.startswith('+++'):
+                    lines.append(line[1:])  # Remove + prefix
+                elif not line.startswith('-') and not line.startswith('@@'):
+                    lines.append(line)
+            
+            return '\n'.join(lines)
+        except Exception as e:
+            logger.warning(f"⚠️ Could not reconstruct file content for {filename}: {e}")
+            return patch  # Fallback to patch
+    
     def _review_python_file(self, repo: str, pr_number: int, file_data: Dict) -> List[str]:
         """
         Review a Python file for code quality issues.
+        
+        Delegates to ReviewLogic module.
         
         Args:
             repo: Repository name
@@ -363,112 +407,57 @@ class PRReviewAgent:
         Returns:
             List of issues found
         """
-        issues = []
         filename = file_data['filename']
-        
-        # Check for large files
-        if file_data.get('changes', 0) > 500:
-            issues.append(f"⚠️ Large file: {filename} has {file_data['changes']} changes. Consider splitting.")
-        
-        # Check if patch data available
         patch = file_data.get('patch', '')
+        
         if not patch:
+            issues = []
+            # Check for large files
+            if file_data.get('changes', 0) > 500:
+                issues.append(f"⚠️ Large file: {filename} has {file_data['changes']} changes. Consider splitting.")
             return issues
         
-        # Analyze patch for common issues
-        lines = patch.split('\n')
+        # Detect if this is a new file
+        is_new_file = file_data.get('status') == 'added'
         
-        # Check for print statements (should use logging)
-        print_lines = [i for i, line in enumerate(lines) if 'print(' in line and line.strip().startswith('+')]
-        if print_lines:
-            issues.append(f"💡 Consider using logging instead of print() in {filename} (lines: {len(print_lines)})")
+        # Get full file content if available (for better analysis)
+        file_content = self._get_file_content(repo, pr_number, filename, patch)
         
-        # Check for TODO/FIXME comments
-        todo_lines = [i for i, line in enumerate(lines) if ('TODO' in line or 'FIXME' in line) and line.strip().startswith('+')]
-        if todo_lines:
-            issues.append(f"📝 TODOs found in {filename}: {len(todo_lines)} items")
-        
-        # Check for except: pass (bad error handling)
-        for i, line in enumerate(lines):
-            if line.strip().startswith('+') and 'except:' in line:
-                if i + 1 < len(lines) and 'pass' in lines[i + 1]:
-                    issues.append(f"❌ CRITICAL: Silent exception handling in {filename}. Use specific exceptions and logging.")
-        
-        # Check for missing docstrings in new functions
-        func_lines = [(i, line) for i, line in enumerate(lines) if line.strip().startswith('+ def ') or line.strip().startswith('+def ')]
-        for i, func_line in func_lines:
-            # Check if docstring follows
-            if i + 2 < len(lines):
-                next_lines = ''.join(lines[i+1:i+3])
-                if '"""' not in next_lines and "'''" not in next_lines:
-                    func_name = func_line.split('def ')[1].split('(')[0]
-                    issues.append(f"⚠️ Missing docstring for function '{func_name}' in {filename}")
-        
-        # LLM review (if enabled)
-        if self.use_llm:
-            llm_issues = self._llm_review_file(filename, patch)
-            issues.extend(llm_issues)
-        
-        return issues
+        # Delegate to review logic
+        return self.review_logic.review_python_file(filename, patch, file_content, is_new_file)
     
     def _run_tests(self, test_files: List[str]) -> Dict:
         """
         Run tests for changed test files.
         
+        Delegates to ReviewLogic module.
+        
         Args:
             test_files: List of test file paths
         
         Returns:
-            Dictionary with test results
+            Dictionary with test results (keys: passed, failed, output)
         """
-        result = {
-            'passed': False,
-            'failed_count': 0,
-            'output': ''
+        result = self.review_logic.run_tests(test_files)
+        
+        # Log test results
+        if result['passed']:
+            logger.info(f"✅ Tests passed")
+        else:
+            logger.info(f"❌ Tests failed: {result['failed']} failure(s)")
+        
+        # Adapt result format for backwards compatibility
+        return {
+            'passed': result['passed'],
+            'failed_count': result['failed'],
+            'output': result['output']
         }
-        
-        try:
-            # Run pytest on changed test files
-            cmd = ['python3', '-m', 'pytest'] + test_files + ['-v', '--tb=short']
-            
-            process = subprocess.run(
-                cmd,
-                cwd=self.project_root,
-                capture_output=True,
-                text=True,
-                timeout=60
-            )
-            
-            result['output'] = process.stdout + process.stderr
-            result['passed'] = process.returncode == 0
-            
-            # Count failures
-            if not result['passed']:
-                for line in result['output'].split('\n'):
-                    if 'failed' in line.lower():
-                        try:
-                            parts = line.split()
-                            for i, part in enumerate(parts):
-                                if 'failed' in part.lower() and i > 0:
-                                    result['failed_count'] = int(parts[i-1])
-                                    break
-                        except:
-                            pass
-            
-            logger.info(f"✅ Tests {'passed' if result['passed'] else 'failed'}: {result['failed_count']} failures")
-        
-        except subprocess.TimeoutExpired:
-            logger.error("❌ Test execution timed out")
-            result['failed_count'] = 1
-        except Exception as e:
-            logger.error(f"❌ Test execution error: {e}")
-            result['failed_count'] = 1
-        
-        return result
     
     def _llm_review_file(self, filename: str, patch: str, file_content: Optional[str] = None) -> List[str]:
         """
         Perform LLM-powered code review of a file.
+        
+        Delegates to ReviewLogic module.
         
         Args:
             filename: Name of the file being reviewed
@@ -478,76 +467,7 @@ class PRReviewAgent:
         Returns:
             List of LLM-identified issues
         """
-        if not self.use_llm:
-            return []
-        
-        issues = []
-        
-        try:
-            logger.info(f"🤖 LLM reviewing: {filename} (model: {self.llm_model})")
-            
-            # Prepare prompt
-            prompt = f"""You are an expert code reviewer. Review this code change and provide specific, actionable feedback.
-
-File: {filename}
-
-Changes (git diff):
-```
-{patch[:2000]}  # Limit to prevent huge prompts
-```
-
-Analyze for:
-1. Logic errors or bugs
-2. Performance issues
-3. Security vulnerabilities
-4. Design pattern violations
-5. Code maintainability concerns
-
-Provide feedback in this format:
-- [CRITICAL/WARNING/INFO] Issue description
-
-Be concise. Only report real issues, not nitpicks."""
-
-            # Query Ollama
-            response = requests.post(
-                self.ollama_url,
-                json={
-                    "model": self.llm_model,
-                    "prompt": prompt,
-                    "stream": False,
-                    "options": {
-                        "temperature": 0.3,  # Lower temperature for more focused reviews
-                        "num_predict": 500   # Limit response length
-                    }
-                },
-                timeout=30
-            )
-            
-            if response.status_code == 200:
-                llm_response = response.json().get('response', '').strip()
-                
-                if llm_response and len(llm_response) > 10:
-                    # Parse LLM response into issues
-                    lines = llm_response.split('\n')
-                    for line in lines:
-                        line = line.strip()
-                        if line.startswith('-') and any(x in line.upper() for x in ['CRITICAL', 'WARNING', 'INFO']):
-                            issues.append(f"🤖 LLM: {line.lstrip('-').strip()}")
-                    
-                    if not issues and llm_response:
-                        # LLM found issues but not in expected format
-                        issues.append(f"🤖 LLM feedback for {filename}: {llm_response[:200]}")
-                    
-                    logger.info(f"   Found {len(issues)} LLM-identified issue(s)")
-            else:
-                logger.warning(f"   LLM API error: status {response.status_code}")
-        
-        except requests.exceptions.Timeout:
-            logger.warning(f"   LLM review timeout for {filename}")
-        except Exception as e:
-            logger.error(f"   LLM review error: {e}")
-        
-        return issues
+        return self.review_logic.llm_review_file(filename, patch, file_content)
     
     def assign_reviewers(self, repo: str, pr_number: int, reviewers: list) -> bool:
         """Assign reviewers to a PR.
