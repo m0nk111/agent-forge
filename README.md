@@ -209,15 +209,19 @@ agent-forge/
 │
 ├── config/                      # Configuration files (YAML)
 │   ├── agents/                  # Per-agent configs
-│   │   ├── m0nk111-qwen-agent.yaml  # Developer agent config
-│   │   └── m0nk111-bot.yaml         # Bot agent config
+│   │   ├── m0nk111-post.yaml        # Bot agent config
+│   │   ├── m0nk111-coder1.yaml      # GPT-5 coder config
+│   │   ├── m0nk111-coder2.yaml      # GPT-4o coder config
+│   │   ├── m0nk111-reviewer.yaml    # Reviewer config
+│   │   └── m0nk111-qwen-agent.yaml  # Qwen coder config (reserve)
 │   ├── services/                # Service configs
 │   │   ├── coordinator.yaml     # Coordinator config
 │   │   └── polling.yaml         # Polling config
 │   ├── system/                  # System configs
 │   │   ├── system.yaml          # Global system settings
 │   │   ├── repositories.yaml    # Monitored repositories
-│   │   └── trusted_agents.yaml  # Agent trust list
+│   │   ├── github_accounts.yaml # GitHub accounts (centralized) ⭐
+│   │   └── trusted_agents.yaml  # Agent trust list (deprecated)
 │   └── rules/                   # Validation rules
 │       ├── instruction_rules.yaml   # Instruction validation
 │       ├── review_criteria.yaml     # PR review criteria
@@ -236,9 +240,12 @@ agent-forge/
 │   └── diagrams/               # Architecture diagrams
 │
 ├── secrets/                     # Secrets (gitignored)
-│   └── agents/                 # Agent tokens
-│       ├── m0nk111-qwen-agent.token
-│       └── m0nk111-bot.token
+│   └── agents/                 # Agent tokens (600 permissions)
+│       ├── m0nk111-post.token       # Bot orchestrator
+│       ├── m0nk111-coder1.token     # GPT-5 primary coder
+│       ├── m0nk111-coder2.token     # GPT-4o primary coder
+│       ├── m0nk111-reviewer.token   # Dedicated reviewer
+│       └── m0nk111-qwen-agent.token # Reserve coder
 │
 ├── scripts/                     # Utility scripts
 │   ├── sync-to-production.sh   # Production deployment

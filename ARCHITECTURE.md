@@ -223,8 +223,11 @@ Each agent has individual config:
 - `code_agent` - Code agent runtime wrapper (service that runs the agent)
 
 **Agents** (AI Workers):
-- `m0nk111-qwen-agent` - Developer agent (Qwen 2.5 Coder, role: developer)
-- `m0nk111-bot` - GitHub bot agent (role: bot)
+- `m0nk111-post` - Bot agent for orchestration (role: bot)
+- `m0nk111-coder1` - Primary GPT-5 developer agent (role: developer)
+- `m0nk111-coder2` - Primary GPT-4o developer agent (role: developer)
+- `m0nk111-reviewer` - Dedicated PR reviewer (role: reviewer)
+- `m0nk111-qwen-agent` - Reserve Qwen developer agent (role: developer)
 
 **Key Differences**:
 - **Services** are managed by `service_manager` and register via `self.services` dict
@@ -234,7 +237,7 @@ Each agent has individual config:
 
 **API Endpoints**:
 - `GET /api/services` - Infrastructure service health (polling, monitoring, web_ui, code_agent)
-- `GET /api/agents` - AI agent status (m0nk111-qwen-agent, m0nk111-bot)
+- `GET /api/agents` - AI agent status (all bot and coder agents)
 
 ### 1. Bot Agent (`engine/runners/bot_agent.py`)
 
@@ -420,8 +423,11 @@ agent-forge/
 │
 ├── config/                  # ⭐ CONFIGURATION (YAML files)
 │   ├── agents/              # Agent configurations
-│   │   ├── m0nk111-qwen-agent.yaml   # Developer agent
-│   │   └── m0nk111-bot.yaml          # Bot agent
+│   │   ├── m0nk111-post.yaml         # Bot agent
+│   │   ├── m0nk111-coder1.yaml       # GPT-5 coder
+│   │   ├── m0nk111-coder2.yaml       # GPT-4o coder
+│   │   ├── m0nk111-reviewer.yaml     # Dedicated reviewer
+│   │   └── m0nk111-qwen-agent.yaml   # Reserve coder
 │   │
 │   ├── services/            # Service configurations
 │   │   ├── coordinator.yaml          # Coordinator settings
@@ -430,7 +436,8 @@ agent-forge/
 │   ├── system/              # System-wide configurations
 │   │   ├── system.yaml               # System settings
 │   │   ├── repositories.yaml         # Monitored repos
-│   │   └── trusted_agents.yaml       # Agent permissions
+│   │   ├── github_accounts.yaml      # GitHub accounts (centralized) ⭐
+│   │   └── trusted_agents.yaml       # Agent permissions (deprecated)
 │   │
 │   ├── rules/               # Policy & validation rules
 │   │   ├── instruction_rules.yaml    # Copilot instructions
@@ -441,9 +448,12 @@ agent-forge/
 │       └── test_task.yaml            # Test task definitions
 │
 ├── secrets/                 # ⭐ SECRETS (DO NOT COMMIT)
-│   └── agents/              # Agent tokens
-│       ├── m0nk111-qwen-agent.token  # Developer token
-│       └── m0nk111-bot.token         # Bot token
+│   └── agents/              # Agent tokens (600 permissions)
+│       ├── m0nk111-post.token        # Bot orchestrator
+│       ├── m0nk111-coder1.token      # GPT-5 primary coder
+│       ├── m0nk111-coder2.token      # GPT-4o primary coder
+│       ├── m0nk111-reviewer.token    # Dedicated reviewer
+│       └── m0nk111-qwen-agent.token  # Reserve coder
 │
 ├── frontend/                # Web dashboards
 │   ├── dashboard.html              # ⭐ DEFAULT DASHBOARD
