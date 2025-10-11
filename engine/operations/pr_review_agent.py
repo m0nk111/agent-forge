@@ -99,7 +99,7 @@ class PRReviewAgent:
         Make GitHub API request.
         
         Args:
-            method: HTTP method (GET, POST, PATCH, PUT)
+            method: HTTP method (GET, POST, PATCH, PUT, DELETE)
             url: API endpoint URL
             json_data: Optional JSON data for request body
         
@@ -120,6 +120,8 @@ class PRReviewAgent:
                 resp = requests.patch(url, headers=headers, json=json_data)
             elif method == 'PUT':
                 resp = requests.put(url, headers=headers, json=json_data)
+            elif method == 'DELETE':
+                resp = requests.delete(url, headers=headers)
             else:
                 raise ValueError(f"Unsupported method: {method}")
             
