@@ -27,11 +27,11 @@ This directory contains two types of documentation:
 
 **Location**: `docs/internal/`
 
-**Purpose**: Specific implementation details for THIS project (agent-forge for m0nk111).
+**Purpose**: Specific implementation details for THIS project.
 
 **Characteristics**:
-- ⚠️ Contains actual account names (m0nk111-post, m0nk111-coder1, etc.)
-- ⚠️ Real email addresses (aicodingtime+*)
+- ⚠️ Contains actual account names (your specific bot/coder accounts)
+- ⚠️ Real email addresses
 - ⚠️ Project-specific decisions and configurations
 - ⚠️ Token locations and environment variable names
 - ⚠️ Actual repository references
@@ -114,10 +114,10 @@ mv docs/GITHUB_TOKEN_SCOPES.md docs/internal/
 ```
 
 ### Phase 2: Genericize Releasable Docs
-- Replace `m0nk111-*` with `your-bot-account`, `your-coder-1`
-- Replace `aicodingtime+*` with `your-email+bot@domain.com`
-- Replace `agent-forge` with `your-project`
-- Replace specific paths with template paths
+- Replace specific account names with generic placeholders (`your-bot-account`, `your-coder-1`)
+- Replace real email addresses with template emails (`your-email+suffix@domain.com`)
+- Replace project-specific repo names with generic examples (`your-org/your-project`)
+- Replace specific paths with template paths (`<project-root>`, `<user-bin-path>`)
 
 ### Phase 3: Update References
 - Update all internal doc cross-references
@@ -151,7 +151,7 @@ For project-specific account setup, see your internal documentation.
 
 **In internal docs**:
 ```markdown
-This document contains project-specific details for agent-forge.
+This document contains project-specific details for this project.
 See docs/guides/INSTALLATION.md for generic setup instructions.
 ```
 
@@ -164,8 +164,8 @@ export BOT_GITHUB_TOKEN="<your-token>"
 export BOT_GITHUB_USERNAME="<your-bot-username>"
 
 # Internal (docs/internal/)
-export BOT_GITHUB_TOKEN="ghp_..."
-export BOT_GITHUB_USERNAME="m0nk111-post"
+export BOT_GITHUB_TOKEN="ghp_ActualTokenHere123"
+export BOT_GITHUB_USERNAME="your-actual-bot-username"
 ```
 
 ---
@@ -181,9 +181,9 @@ When preparing a release:
 
 2. **Check generic docs have no sensitive info**:
    ```bash
-   grep -r "m0nk111" docs/guides/
-   grep -r "aicodingtime" docs/guides/
-   # Should return no results
+   grep -r "your-org-name" docs/guides/
+   grep -r "your-email-domain" docs/guides/
+   # Should return no results (replace with your actual sensitive keywords)
    ```
 
 3. **Update package/release script** to exclude `docs/internal/`
