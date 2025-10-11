@@ -113,7 +113,9 @@ class PollingConfig:
     pr_auto_review_users: List[str] = field(default_factory=list)
     pr_skip_review_users: List[str] = field(default_factory=list)
     pr_review_labels: List[str] = field(default_factory=list)
+    pr_review_strategy: str = "dedicated"  # dedicated, round-robin, all
     reviewer_agent_id: str = "reviewer-agent"
+    reviewer_agents: List[Dict[str, str]] = field(default_factory=list)  # [{"agent_id": "...", "username": "..."}]
     
     # Issue Opener Integration (NEW)
     issue_opener_enabled: bool = False
@@ -279,9 +281,21 @@ class PollingService:
             if isinstance(review_labels, list):
                 cfg.pr_review_labels = [str(l) for l in review_labels]
             
+            strategy = pr_mon.get('strategy')
+            if isinstance(strategy, str) and strategy.strip():
+                cfg.pr_review_strategy = strategy.strip()
+            
             reviewer_id = pr_mon.get('reviewer_agent_id')
             if isinstance(reviewer_id, str) and reviewer_id.strip():
                 cfg.reviewer_agent_id = reviewer_id.strip()
+            
+            reviewer_agents = pr_mon.get('reviewer_agents', [])
+            if isinstance(reviewer_agents, list):
+                cfg.reviewer_agents = [
+                    {"agent_id": str(a.get('agent_id', '')), "username": str(a.get('username', ''))}
+                    for a in reviewer_agents
+                    if isinstance(a, dict)
+                ]
             
             # Issue Opener Integration (NEW)
             issue_opener = data.get('issue_opener', {}) or {}
@@ -619,6 +633,58 @@ class PollingService:
             logger.error(f"Error checking claim status: {e}")
             return False  # Assume not claimed on error
     
+    def _select_reviewers(self, pr_author: str) -> List[str]:
+        """Select reviewer agent(s) for a PR based on configured strategy.
+        
+        Strategies:
+        - dedicated: Always use reviewer_agent_id (single dedicated reviewer)
+        - round-robin: Pick one agent from reviewer_agents list (excluding PR author)
+        - all: Return all agents from reviewer_agents list (excluding PR author)
+        
+        Args:
+            pr_author: GitHub username of PR author
+            
+        Returns:
+            List of reviewer agent IDs to trigger
+        """
+        strategy = self.config.pr_review_strategy
+        
+        if strategy == "dedicated":
+            # Use dedicated reviewer agent
+            return [self.config.reviewer_agent_id]
+        
+        elif strategy in ["round-robin", "all"]:
+            # Filter out PR author from available reviewers
+            available = [
+                agent['agent_id']
+                for agent in self.config.reviewer_agents
+                if agent.get('username', '') != pr_author
+            ]
+            
+            if not available:
+                logger.warning(f"⚠️ No available reviewers (all agents are PR author or list empty)")
+                return []
+            
+            if strategy == "all":
+                # All available agents review
+                logger.info(f"🔍 Selected {len(available)} reviewers (all strategy, excluding author {pr_author})")
+                return available
+            
+            else:  # round-robin
+                # Pick next reviewer in rotation
+                if not hasattr(self, '_reviewer_index'):
+                    self._reviewer_index = 0
+                
+                reviewer_id = available[self._reviewer_index % len(available)]
+                self._reviewer_index = (self._reviewer_index + 1) % len(available)
+                
+                logger.info(f"🔍 Selected reviewer {reviewer_id} (round-robin, excluding author {pr_author})")
+                return [reviewer_id]
+        
+        else:
+            logger.error(f"❌ Unknown review strategy: {strategy}")
+            return [self.config.reviewer_agent_id]  # Fallback to dedicated
+    
     async def check_pull_requests(self):
         """Check for new PRs needing automatic review.
         
@@ -765,6 +831,11 @@ class PollingService:
     async def trigger_pr_review(self, repo: str, pr_number: int, pr_data: Dict):
         """Trigger PR Reviewer Agent for a pull request.
         
+        Uses intelligent reviewer selection:
+        - dedicated: Always use configured reviewer_agent_id
+        - round-robin: Rotate between available code agents (skip PR author)
+        - all: All code agents review (except PR author)
+        
         Args:
             repo: Repository (owner/repo)
             pr_number: PR number
@@ -772,31 +843,39 @@ class PollingService:
         """
         try:
             pr_key = f"{repo}#{pr_number}"
+            pr_author = pr_data.get('user', {}).get('login', '')
             
-            # Get reviewer agent
+            # Get reviewer agent(s) based on strategy
             if not self.agent_registry:
                 logger.warning(f"⚠️ Agent registry not available, cannot trigger review for {pr_key}")
                 return
             
-            reviewer_agent = self.agent_registry.get_agent(self.config.reviewer_agent_id)
-            if not reviewer_agent:
-                logger.error(f"❌ Reviewer agent '{self.config.reviewer_agent_id}' not found in registry")
+            reviewers = self._select_reviewers(pr_author)
+            if not reviewers:
+                logger.warning(f"⚠️ No suitable reviewers found for {pr_key} (author: {pr_author})")
                 return
             
-            logger.info(f"🤖 Starting PR review with agent {self.config.reviewer_agent_id}")
-            
-            # Call reviewer agent (assumes it has a review_pr method)
-            # The pr_reviewer.py module should be wrapped as an agent
-            result = await reviewer_agent.review_pr(
-                repo=repo,
-                pr_number=pr_number,
-                pr_data=pr_data
-            )
+            # Trigger review(s)
+            for reviewer_id in reviewers:
+                reviewer_agent = self.agent_registry.get_agent(reviewer_id)
+                if not reviewer_agent:
+                    logger.warning(f"⚠️ Reviewer agent '{reviewer_id}' not found in registry")
+                    continue
+                
+                logger.info(f"🤖 Starting PR review with agent {reviewer_id} (strategy: {self.config.pr_review_strategy})")
+                
+                # Call reviewer agent (assumes it has a review_pr method)
+                # The pr_reviewer.py module should be wrapped as an agent
+                result = await reviewer_agent.review_pr(
+                    repo=repo,
+                    pr_number=pr_number,
+                    pr_data=pr_data
+                )
+                
+                logger.info(f"✅ PR review completed by {reviewer_id} for {pr_key}: {result.get('decision', 'UNKNOWN')}")
             
             # Mark as reviewed
             self.reviewed_prs.add(pr_key)
-            
-            logger.info(f"✅ PR review completed for {pr_key}: {result.get('decision', 'UNKNOWN')}")
             
         except Exception as e:
             logger.error(f"❌ Failed to trigger PR review for {repo}#{pr_number}: {e}", exc_info=True)

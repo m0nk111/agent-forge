@@ -47,12 +47,23 @@ pr_monitoring:
   # Skip auto-review for PRs from these trusted users
   skip_review_users:
     - "m0nk111"  # Admin account (trusted)
-  # Only auto-review PRs with these labels
-  review_labels:
-    - "auto-review"
-    - "bot-created"
-  # Reviewer agent to trigger
+  # Only auto-review PRs with these labels (empty = all PRs)
+  review_labels: []
+  # Reviewer selection strategy:
+  # - "dedicated": Use dedicated reviewer_agent_id (single reviewer)
+  # - "round-robin": Rotate between available code agents (avoid self-review)
+  # - "all": All code agents review (except author)
+  strategy: "round-robin"
+  # Reviewer agent ID (used when strategy="dedicated")
   reviewer_agent_id: "reviewer-agent"
+  # Available reviewer agents (used for round-robin/all strategies)
+  # Each code agent can review, but won't review their own PRs
+  reviewer_agents:
+    - agent_id: "code-agent-1"
+      username: "m0nk111-post"
+    - agent_id: "code-agent-2"  
+      username: "m0nk111-qwen-agent"
+    # Add more code agents here as they become available
 
 # Issue Opener Integration (NEW)
 # Automatically process new issues with issue-opener agent
