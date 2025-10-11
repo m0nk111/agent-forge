@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **PR Review Agent** 🔍
+  - New module `engine/operations/pr_review_agent.py` for automated code reviews
+  - Analyzes changed files in pull requests
+  - Python-specific quality checks (docstrings, error handling, print statements)
+  - Runs tests automatically if test files changed
+  - Posts formatted review comments via GitHub API
+  - Distinguishes critical issues from minor suggestions
+  - CLI tool for manual testing: `python -m engine.operations.pr_review_agent owner/repo PR_NUMBER`
+  - **Impact**: Automated quality assurance for bot-generated PRs
+
 - **Repository Management System** 🤖
   - New module `engine/operations/repo_manager.py` for automated bot account management
   - CLI tool `scripts/manage_repos.py` with commands: setup, invite, accept, verify, list
@@ -29,7 +39,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Rationale**: Better separation of concerns, easier token rotation, clearer organization
   - **Impact**: More maintainable secrets management, clearer credential ownership
 
+### Changed
+- **Improved LLM Test Generation Prompts** 📝
+  - Added realistic test expectations requirement
+  - Emphasizes testing actual behavior vs assumed behavior
+  - Examples of common mismatches (split(), reverse(), count operations)
+  - **Learned from**: Issue #84 where tests expected incorrect values
+  - **Impact**: Should reduce test failures due to unrealistic expectations
+
 ### Fixed
+- **Polling Service Configuration** ⚙️
+  - Fixed state_file path: `polling_state.json` → `data/polling_state.json`
+  - Updated Issue Opener integration to use `CodeAgent.issue_handler.assign_to_issue()`
+  - Added validation for IssueHandler capability before calling
+  - Improved result logging with file count and PR URL
+  - **Impact**: Polling service correctly calls issue handler
+
 - **LLM Prompt Engineering for Import Statements** 🚀
   - Enhanced `_generate_tests()` prompt to MANDATE import statements at top of test files
   - Enhanced `_generate_implementation()` prompt to emphasize proper import structure
