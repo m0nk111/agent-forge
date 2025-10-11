@@ -8,6 +8,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **PR Monitoring and Issue Opener Automation** (Integration Phase) 🤖
+  - Added `list_pull_requests()` method to GitHubAPIHelper for fetching open PRs
+  - Implemented `check_pull_requests()` in polling service for automatic PR review
+  - Implemented `check_new_issues_for_opener()` for automatic issue resolution
+  - Added `trigger_pr_review()` method to dispatch reviews to reviewer agent
+  - Added `trigger_issue_opener()` method to dispatch issues to Issue Opener Agent
+  - Integrated both checks into `poll_once()` main polling loop
+  - Added `reviewed_prs` tracking set to avoid duplicate reviews
+  - Whitelist/blacklist filtering for users (skip admin accounts, auto-review bots)
+  - Label-based filtering for PRs and issues
+  - Full end-to-end automation: Issue → Code → PR → Review → (Manual Merge)
+  - Configuration via `polling.yaml` sections: `pr_monitoring` and `issue_opener`
+  - Respects `pr_monitoring_enabled`, `issue_opener_enabled` flags
+  - Files: `engine/runners/polling_service.py` (+200 lines)
+  - Files: `engine/operations/github_api_helper.py` (+40 lines)
+  - Commit: d73aaa1
+- **Reviewer Agent GPT-5 Pro Upgrade** (Integration Phase) 🧠
+  - Upgraded reviewer-agent from GPT-4 to GPT-5 Pro
+  - Temperature: 0.5 → 0.3 (more deterministic reviews)
+  - Max tokens: 4096 → 8192 (handle larger PRs)
+  - Comment: "Best reasoning model for code review"
+  - Config: config/agents/reviewer-agent.yaml
+  - Commit: a504066
+- **GitHub API PR Methods** (Integration Phase) 🔧
+  - Extended GitHubAPIHelper with 5 new PR methods:
+    - `get_pull_request()` - Fetch PR details
+    - `get_pr_files()` - Get list of changed files
+    - `get_pr_diff()` - Get unified diff string
+    - `add_pr_comment()` - Post general comment on PR
+    - `submit_pr_review()` - Submit APPROVE/REQUEST_CHANGES/COMMENT review
+  - All methods include rate limiting, error handling, operation logging
+  - Files: engine/operations/github_api_helper.py (lines 538-750)
+  - Commit: a504066
+- **Polling Service Config Extensions** (Integration Phase) ⚙️
+  - Extended polling.yaml with `pr_monitoring` section:
+    - `enabled`, `interval_seconds`, `auto_review_users`, `skip_review_users`
+    - `review_labels`, `reviewer_agent_id`
+  - Extended polling.yaml with `issue_opener` section:
+    - `enabled`, `trigger_labels`, `skip_labels`, `agent_id`
+  - Extended PollingConfig dataclass with 11 new fields
+  - Updated YAML loader to parse new sections
+  - Files: config/services/polling.yaml (lines 32-68)
+  - Files: engine/runners/polling_service.py (dataclass + loader)
+  - Commit: a504066
 - **Issue Opener Agent** (Issue #issue-opener) 🤖
   - Autonomous GitHub issue resolution powered by GPT-5 Chat Latest
   - Complete workflow: Fetch → Analyze → Plan → Code → Test → PR
