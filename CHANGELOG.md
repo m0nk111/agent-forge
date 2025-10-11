@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **LLM Prompt Engineering for Import Statements** 🚀
+  - Enhanced `_generate_tests()` prompt to MANDATE import statements at top of test files
+  - Enhanced `_generate_implementation()` prompt to emphasize proper import structure
+  - Added explicit examples of BAD code (missing imports) vs GOOD code (with imports)
+  - Added numbered requirement list with imports as #1 priority
+  - **Root Cause**: LLM was generating test code like `result = my_function()` without `from module import my_function`
+  - **Example Error**: `NameError: name 'check_service_health' is not defined`
+  - **Solution**: Prompt now includes visual examples and mandatory import checklist
+  - **Impact**: Should eliminate NameError failures in generated test files, enabling autonomous code generation
+
 - **Code Generator Test Failure Logging** 🔍
   - Added detailed logging for test failures in `engine/operations/code_generator.py`
   - Logs full pytest stdout/stderr when tests fail

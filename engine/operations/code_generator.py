@@ -275,20 +275,37 @@ Requirements:
 - Dependencies: {', '.join(spec.dependencies) if spec.dependencies else 'None'}
 
 Guidelines:
-1. Include comprehensive module docstring
-2. Use type hints for all functions
-3. Add detailed docstrings with Args/Returns
-4. Implement error handling
-5. Follow PEP 8 style guide
-6. Keep functions focused and testable
+1. **MANDATORY**: Start with ALL necessary import statements
+   - Import standard library modules used: `import os, sys, json, logging, etc.`
+   - Import third-party dependencies: `import requests, numpy, etc.`
+   - Import from other project modules: `from engine.core import module`
+   
+2. Include comprehensive module docstring
+3. Use type hints for all functions
+4. Add detailed docstrings with Args/Returns
+5. Implement error handling
+6. Follow PEP 8 style guide
+7. Keep functions focused and testable
 
 {error_feedback}
 
+CRITICAL IMPORT REQUIREMENT:
+✅ CORRECT structure:
+   ```python
+   """Module docstring."""
+   import os
+   import sys
+   from typing import Optional, List
+   
+   def my_function():
+       ...
+   ```
+
 CRITICAL: Output ONLY the implementation code for {spec.module_path}.
-- DO include: imports, function definitions, classes, implementation logic
+- DO include: ALL import statements at the very top, module docstring, function definitions, classes, implementation logic
 - DO NOT include: test code, pytest fixtures, test assertions
 - DO NOT wrap in markdown code blocks or add explanations
-- Start directly with imports or module docstring
+- Start directly with module docstring or imports
 """
         
         try:
@@ -328,21 +345,45 @@ Module Implementation to Test:
 ```
 
 Requirements for {spec.test_path}:
-1. Test all functions in the module
-2. Include positive and negative test cases
-3. Test edge cases and error handling
-4. Use pytest fixtures where appropriate
-5. Aim for >80% code coverage
-6. Clear test names (test_function_scenario)
+1. **MANDATORY**: Start with ALL necessary import statements
+   - Import pytest: `import pytest`
+   - Import functions being tested: `from {spec.module_name} import function1, function2, ...`
+   - Import any mocking libraries: `from unittest.mock import Mock, patch, MagicMock`
+   - Import standard library modules used in tests: `import os, sys, socket, etc.`
+   
+2. Test all functions in the module
+3. Include positive and negative test cases
+4. Test edge cases and error handling
+5. Use pytest fixtures where appropriate
+6. Aim for >80% code coverage
+7. Clear test names (test_function_scenario)
 
 {error_feedback}
 
+CRITICAL IMPORT REQUIREMENT:
+❌ COMMON ERROR: Tests that call functions without importing them
+   Example BAD code:
+   ```python
+   def test_my_function():
+       result = my_function()  # ❌ NameError: name 'my_function' is not defined
+   ```
+
+✅ CORRECT: Always import at the top
+   ```python
+   import pytest
+   from {spec.module_name} import my_function
+   
+   def test_my_function():
+       result = my_function()  # ✅ Works!
+   ```
+
 CRITICAL: Output ONLY the test file code for {spec.test_path}.
-- DO include: pytest imports, test functions, fixtures, assertions, mock usage
+- DO include: ALL import statements at the very top (pytest, functions from module, mocks, stdlib)
+- DO include: test functions, fixtures, assertions, mock usage
 - DO NOT include: the actual implementation code being tested
 - DO NOT include: function definitions from {spec.module_path}
 - DO NOT wrap in markdown code blocks or add explanations
-- Start directly with: import pytest or from {spec.module_name} import ...
+- Start directly with: import pytest (or other imports)
 
 This file will be saved as {spec.test_path}, NOT as implementation.
 """
