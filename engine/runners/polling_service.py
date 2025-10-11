@@ -188,7 +188,12 @@ class PollingService:
         self.monitor = None
         self.api_calls = 0  # Track API calls
         self.creative_logs_enabled = os.getenv("POLLING_CREATIVE_LOGS", "0") in {"1", "true", "TRUE"}
-        self.reviewed_prs: Dict[str, str] = {}  # Track reviewed PRs with commit SHA {pr_key: head_sha}
+        
+        # Track reviewed PRs with timestamp and commit SHA to prevent memory leak
+        # {pr_key: {'sha': head_sha, 'reviewed_at': timestamp}}
+        self.reviewed_prs: Dict[str, Dict] = {}
+        self.reviewed_prs_max_size = 1000  # Maximum entries before cleanup
+        self.reviewed_prs_max_age_days = 7  # Remove entries older than 7 days
         
         # Initialize GitHub API helper
         self.github_api = GitHubAPIHelper(token=self.config.github_token)
@@ -806,12 +811,13 @@ class PollingService:
                     # For draft PRs with auto-converted labels, check if HEAD commit changed
                     if is_draft and any(label in ['critical-issues', 'has-conflicts'] for label in pr_labels):
                         # Check if we've reviewed this specific commit
-                        reviewed_sha = self.reviewed_prs.get(pr_key)
+                        reviewed_entry = self.reviewed_prs.get(pr_key, {})
+                        reviewed_sha = reviewed_entry.get('sha') if isinstance(reviewed_entry, dict) else reviewed_entry
                         if reviewed_sha == head_sha:
                             logger.debug(f"✅ Already reviewed PR #{pr_number} at commit {head_sha[:7]}")
                             continue
                         elif reviewed_sha:
-                            logger.info(f"🔄 Re-reviewing PR #{pr_number} - new commits since last review (was {reviewed_sha[:7]}, now {head_sha[:7]})")
+                            logger.info(f"🔄 Re-reviewing PR #{pr_number} - new commits since last review")
                     else:
                         # For normal PRs, review only once
                         if pr_key in self.reviewed_prs:
@@ -973,9 +979,13 @@ class PollingService:
             
             logger.info(f"✅ PR review completed for {pr_key}: {decision} ({issue_count} issues found)")
             
-            # Mark as reviewed with commit SHA
+            # Mark as reviewed with commit SHA and timestamp (for memory leak prevention)
+            import time
             head_sha = pr_data.get('head', {}).get('sha', '')
-            self.reviewed_prs[pr_key] = head_sha
+            self.reviewed_prs[pr_key] = {
+                'sha': head_sha,
+                'reviewed_at': time.time()
+            }
             logger.debug(f"📝 Marked PR {pr_key} as reviewed at commit {head_sha[:7] if head_sha else 'unknown'}")
             
         except Exception as e:
@@ -1257,11 +1267,12 @@ class PollingService:
                     current_task=None
                 )
             
-            # Periodic cleanup of stale review locks
+            # Periodic cleanup of stale review locks and old reviewed PRs
             if hasattr(self, '_cleanup_counter'):
                 self._cleanup_counter += 1
                 if self._cleanup_counter >= 10:  # Every 10 cycles
                     self._cleanup_stale_locks()
+                    self._cleanup_old_reviewed_prs()
                     self._cleanup_counter = 0
             else:
                 self._cleanup_counter = 0
@@ -1277,6 +1288,58 @@ class PollingService:
             logger.debug("🧹 Cleaned up stale review locks")
         except Exception as e:
             logger.error(f"❌ Error cleaning up stale locks: {e}")
+    
+    def _cleanup_old_reviewed_prs(self):
+        """Clean up old reviewed PR entries to prevent memory leak.
+        
+        Removes entries:
+        1. Older than max_age_days (default: 7 days)
+        2. Excess entries beyond max_size (keeps most recent)
+        """
+        import time
+        
+        try:
+            initial_count = len(self.reviewed_prs)
+            if initial_count == 0:
+                return
+            
+            current_time = time.time()
+            max_age_seconds = self.reviewed_prs_max_age_days * 24 * 3600
+            removed_count = 0
+            
+            # Remove old entries
+            old_keys = []
+            for pr_key, entry in self.reviewed_prs.items():
+                if isinstance(entry, dict):
+                    reviewed_at = entry.get('reviewed_at', 0)
+                    age_seconds = current_time - reviewed_at
+                    if age_seconds > max_age_seconds:
+                        old_keys.append(pr_key)
+            
+            for key in old_keys:
+                del self.reviewed_prs[key]
+                removed_count += 1
+            
+            # Enforce max size (keep most recent)
+            if len(self.reviewed_prs) > self.reviewed_prs_max_size:
+                # Sort by timestamp (most recent first)
+                sorted_entries = sorted(
+                    self.reviewed_prs.items(),
+                    key=lambda x: x[1].get('reviewed_at', 0) if isinstance(x[1], dict) else 0,
+                    reverse=True
+                )
+                
+                # Keep only max_size most recent entries
+                self.reviewed_prs = dict(sorted_entries[:self.reviewed_prs_max_size])
+                removed_count += initial_count - len(self.reviewed_prs)
+            
+            if removed_count > 0:
+                logger.info(f"🧹 Cleaned up {removed_count} old reviewed PR entries (was {initial_count}, now {len(self.reviewed_prs)})")
+            else:
+                logger.debug(f"✅ No old reviewed PR entries to clean up ({initial_count} entries, all recent)")
+        
+        except Exception as e:
+            logger.error(f"❌ Error cleaning up reviewed PRs: {e}")
     
     async def run(self):
         """Run continuous polling loop."""

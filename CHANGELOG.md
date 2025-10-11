@@ -8,7 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **� Race Condition Prevention for PR Reviews** (October 11, 2025)
+- **💾 Memory Leak Prevention for reviewed_prs** (October 11, 2025)
+  - **CRITICAL FIX**: Prevents memory leak in long-running polling service instances
+  - **Implementation**:
+    - Changed reviewed_prs from Dict[str, str] to Dict[str, Dict] with timestamp tracking
+    - Each entry now stores: {'sha': head_sha, 'reviewed_at': timestamp}
+    - Periodic cleanup every 10 polling cycles
+    - Age-based cleanup: Removes entries older than 7 days
+    - Size-based cleanup: Enforces max size limit of 1000 entries (keeps most recent)
+  - **Cleanup Strategy**:
+    - Age limit: 7 days (configurable via reviewed_prs_max_age_days)
+    - Size limit: 1000 PRs (configurable via reviewed_prs_max_size)
+    - Cleanup frequency: Every 10 polling cycles (~50 minutes at 5min intervals)
+    - Backward compatible: Handles old string-based entries gracefully
+  - **Testing**: Full test suite (7 tests) covering all cleanup scenarios
+  - **Impact**: Prevents out-of-memory errors on long-running instances
+  - **Rationale**: Without cleanup, reviewed_prs dict grows indefinitely. On busy repos with 100 PRs/day, dict would reach ~36,500 entries/year, consuming significant memory and slowing lookups
+
+- **🔒 Race Condition Prevention for PR Reviews** (October 11, 2025)
 - **🛡️ Self-Review Prevention for Bots** (October 11, 2025)
   - **CRITICAL SECURITY FIX**: Prevents bots from reviewing and approving their own PRs
   - **Implementation**:
