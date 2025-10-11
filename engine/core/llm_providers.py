@@ -71,11 +71,164 @@ class LLMProvider(ABC):
 
 
 class OpenAIProvider(LLMProvider):
-    """OpenAI GPT provider (GPT-4, GPT-4 Turbo, GPT-3.5)"""
+    """OpenAI GPT provider (GPT-4, GPT-4 Turbo, GPT-3.5, GPT-5)"""
+    
+    # Models that use the new /v1/responses endpoint
+    RESPONSES_API_MODELS = [
+        'gpt-5-pro',
+        'gpt-5-pro-2025-10-06',
+        'gpt-5-codex'
+    ]
     
     def __init__(self, api_key: str, base_url: Optional[str] = None, org_id: Optional[str] = None):
         super().__init__(api_key, base_url or "https://api.openai.com/v1")
         self.org_id = org_id
+    
+    def _uses_responses_api(self, model: str) -> bool:
+        """Check if model uses the new /v1/responses endpoint"""
+        return any(model.startswith(m) or model == m for m in self.RESPONSES_API_MODELS)
+    
+    def _responses_completion(
+        self,
+        messages: List[LLMMessage],
+        model: str,
+        **kwargs
+    ) -> LLMResponse:
+        """
+        Generate completion using OpenAI /v1/responses endpoint
+        Used for GPT-5 Pro and other advanced models
+        
+        API Differences:
+        - Uses 'input' parameter instead of 'messages'
+        - No temperature/max_tokens support
+        - Different response structure
+        """
+        try:
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            if self.org_id:
+                headers["OpenAI-Organization"] = self.org_id
+            
+            # Combine messages into single input string
+            # Format: "System: {system}\n\nUser: {user}"
+            input_parts = []
+            for msg in messages:
+                if msg.role == "system":
+                    input_parts.append(f"System: {msg.content}")
+                elif msg.role == "user":
+                    input_parts.append(f"User: {msg.content}")
+                elif msg.role == "assistant":
+                    input_parts.append(f"Assistant: {msg.content}")
+            
+            input_text = "\n\n".join(input_parts)
+            
+            payload = {
+                "model": model,
+                "input": input_text
+            }
+            
+            logger.debug(f"🌐 Querying OpenAI /v1/responses: {model}...")
+            
+            response = requests.post(
+                f"{self.base_url}/responses",
+                headers=headers,
+                json=payload,
+                timeout=180  # Longer timeout for complex responses
+            )
+            response.raise_for_status()
+            
+            # Parse response
+            response_data = response.json()
+            
+            # GPT-5 Pro returns a list of items with different types
+            # Example: [{'type': 'reasoning', ...}, {'type': 'message', 'content': [...]}]
+            content = ""
+            
+            if isinstance(response_data, list):
+                # New format: list of items
+                for item in response_data:
+                    if item.get('type') == 'message':
+                        # Extract text from content array
+                        content_items = item.get('content', [])
+                        for content_item in content_items:
+                            if content_item.get('type') == 'output_text':
+                                content += content_item.get('text', '')
+            elif 'content' in response_data:
+                content = response_data['content']
+            elif 'response' in response_data:
+                content = response_data['response']
+            elif 'output' in response_data:
+                content = response_data['output']
+            elif 'choices' in response_data and len(response_data['choices']) > 0:
+                choice = response_data['choices'][0]
+                if 'message' in choice:
+                    content = choice['message'].get('content', '')
+                elif 'text' in choice:
+                    content = choice['text']
+                else:
+                    content = str(choice)
+            
+            if not content:
+                # Fallback: convert entire response to string
+                content = json.dumps(response_data, indent=2)
+            
+            # Parse usage - handle both old and new formats
+            usage = {}
+            if isinstance(response_data, list):
+                # New format doesn't include usage in response
+                # Estimate based on content
+                usage = {
+                    'prompt_tokens': len(input_text) // 4,
+                    'completion_tokens': len(content) // 4,
+                    'total_tokens': (len(input_text) + len(content)) // 4
+                }
+            elif 'usage' in response_data:
+                raw_usage = response_data['usage']
+                # Handle new token format (input_tokens, output_tokens)
+                if 'input_tokens' in raw_usage:
+                    usage = {
+                        'prompt_tokens': raw_usage.get('input_tokens', 0),
+                        'completion_tokens': raw_usage.get('output_tokens', 0),
+                        'total_tokens': raw_usage.get('total_tokens', 0)
+                    }
+                else:
+                    usage = raw_usage
+            else:
+                usage = {
+                    'prompt_tokens': len(input_text) // 4,
+                    'completion_tokens': len(content) // 4,
+                    'total_tokens': (len(input_text) + len(content)) // 4
+                }
+            
+            # Extract model name
+            model_name = model
+            finish_reason = 'stop'
+            
+            if isinstance(response_data, list):
+                # New format: extract from message item
+                for item in response_data:
+                    if item.get('type') == 'message':
+                        finish_reason = item.get('status', 'completed')
+                        break
+            else:
+                model_name = response_data.get('model', model)
+                finish_reason = response_data.get('finish_reason', 'stop')
+            
+            return LLMResponse(
+                content=content,
+                model=model_name,
+                provider="openai-responses",
+                finish_reason=finish_reason,
+                usage=usage,
+                raw_response={'response': response_data} if isinstance(response_data, list) else response_data
+            )
+        
+        except Exception as e:
+            logger.error(f"OpenAI /v1/responses API error: {e}")
+            raise
     
     def chat_completion(
         self,
@@ -86,6 +239,13 @@ class OpenAIProvider(LLMProvider):
         **kwargs
     ) -> LLMResponse:
         """Generate OpenAI chat completion"""
+        
+        # Check if model uses the new /v1/responses endpoint
+        if self._uses_responses_api(model):
+            logger.debug(f"🔄 Using /v1/responses endpoint for {model}")
+            return self._responses_completion(messages, model, **kwargs)
+        
+        # Standard /v1/chat/completions endpoint
         try:
             headers = {
                 "Authorization": f"Bearer {self.api_key}",
@@ -148,10 +308,22 @@ class OpenAIProvider(LLMProvider):
     def get_available_models(self) -> List[str]:
         """Get available OpenAI models"""
         return [
+            # GPT-5 Models (2025)
+            "gpt-5-chat-latest",      # Current default - fast and reliable
+            "gpt-5-pro",              # Advanced reasoning (uses /v1/responses)
+            "gpt-5-pro-2025-10-06",   # Dated Pro version
+            "gpt-5-codex",            # Coding specialist (uses /v1/responses)
+            "gpt-5",                  # Base GPT-5
+            "gpt-5-2025-08-07",       # Dated base version
+            "gpt-5-mini",             # Lightweight GPT-5
+            "gpt-5-nano",             # Minimal GPT-5
+            # GPT-4 Models
             "gpt-4-turbo-preview",
             "gpt-4-turbo",
             "gpt-4",
+            "gpt-4o",                 # GPT-4 Optimized
             "gpt-4-32k",
+            # GPT-3.5 Models
             "gpt-3.5-turbo",
             "gpt-3.5-turbo-16k"
         ]
