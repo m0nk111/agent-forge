@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Issue Opener Agent** (Issue #issue-opener) 🤖
+  - Autonomous GitHub issue resolution powered by GPT-5 Chat Latest
+  - Complete workflow: Fetch → Analyze → Plan → Code → Test → PR
+  - Files: engine/operations/issue_opener_agent.py (680+ lines)
+  - Configuration: config/agents/issue-opener-agent.yaml
+  - Documentation: docs/ISSUE_OPENER_AGENT.md (400+ lines)
+  - Launcher: scripts/launch_issue_opener.py
+  - **Status**: ⚠️ Partially implemented, needs GitHubAPIHelper extension
+  - **Note**: create_pull_request() method not yet in GitHubAPIHelper
 - **GPT-5 Pro Support**: Implemented /v1/responses endpoint support (Issue #gpt5-pro)
   - New `_responses_completion()` method in OpenAIProvider
   - Automatic endpoint selection based on model name
@@ -24,6 +33,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `scripts/test_gpt5_pro_working.py` - Comprehensive GPT-5 Pro test suite
   - **Discovery**: GPT-5 Pro IS available (created 2025-10-03)!
   - **Note**: Requires new /v1/responses endpoint (not /v1/chat/completions)
+
+### Fixed
+- **Polling Service: Agent Registry Initialization** (Issue #92) 🔧 **CRITICAL BUG**
+  - **Problem**: Standalone polling service didn't initialize agent_registry
+    - Claims made but workflows never started
+    - Agent registry check failed silently → claim released
+    - Issue appeared available again after timeout
+    - Result: 46 duplicate comments in 7 hours on issue #92!
+  - **Root Cause**: main() created PollingService without agent_registry parameter
+  - **Solution**: Initialize AgentRegistry before PollingService creation
+    - Load all enabled agents (14 total)
+    - Start always-on agents (5 started)
+    - Pass registry to PollingService constructor
+  - **Impact**: ✅ Workflows execute properly, no more spam claims
+- **Polling Service: Claim Timeout** (Issue #92-config)
+  - Increased claim_timeout from 10min → 1440min (24 hours)
+  - Prevents spam when workflow legitimately fails
+  - Config: config/services/polling.yaml
 
 ### Changed - BREAKING
 - **Default Coordinator: GPT-5 Chat Latest** ⭐ **MAJOR UPGRADE**
