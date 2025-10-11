@@ -8,6 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+- **Media Directory with Gource Visualization** (2025-10-11)
+  - Created `/media/` directory for repository visualization videos
+  - Added `media/agent-forge-gource-latest.mp4` (35 MB, 1080p60, 30 seconds)
+  - Video shows complete development journey with flying files and organic growth
+  - Auto-updates: 2x daily at 08:00 and 20:00 via cron
+  - Technology: Gource visualization with Xvfb rendering
+  - Quality: CRF 16, 60fps, H.264 encoding
+  - Script: `/home/flip/scripts/update-gource-videos.sh`
+  - **Status**: ✅ Video tracked in Git and auto-updating
+
+- **Git Media Exception Rule** (2025-10-11)
+  - Updated `.gitignore` to allow MP4 files in media directory
+  - Rule: `*.mp4` blocks all videos, `!media/*.mp4` allows media directory
+  - Also blocks: `*.avi`, `*.mov`, `*.mkv` (with media/ exception)
+  - Enables Git tracking for important project videos
+  - **Status**: ✅ Exception rule active
+
 - **Comprehensive E2E Testing Report** (docs/TEST_REPORT_2025-10-11.md)
   - Complete autonomous testing session documentation
   - 8 bugs discovered through systematic layer-by-layer testing
@@ -17,6 +35,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Status**: ✅ Report completed and committed
 
 ### Fixed
+- **Bug #9: No developer agents available in registry** (FIXED)
+  - **Problem**: Pipeline workflow fails silently after 39 seconds with `completed: False` and no error message
+  - **Root cause**: Startup script (`scripts/run-test-mode.sh`) only started polling service, never initialized agent registry
+  - **Impact**: All pipeline operations blocked - 0/5 developer agents available in registry
+  - **Discovery**: Direct agent registry test revealed empty registry after 40+ minutes of "processing"
+  - **Investigation**: Layer-by-layer debugging:
+    1. Checked polling_state.json → Found `completed: False` after 39s with no error
+    2. Analyzed GitHub for PR → No PR created despite waiting 40+ minutes
+    3. Tested agent registry directly → **0/5 agents available** (root cause discovered)
+    4. Examined startup script → Only starts polling service, no agent initialization
+  - **Fix attempts**:
+    * Attempt 1: Inline Python script with asyncio → Failed (wrong API: `list_agents` doesn't exist)
+    * Attempt 2: Changed to `get_agents()` → Failed (returns list not dict)
+    * Attempt 3: Manual agent iteration → Failed (no `start_agent()` method)
+    * Attempt 4: Discovered async requirement → Too complex for bash script
+    * **Final solution**: Use existing `service_manager` with `--no-polling --no-web-ui` flags
+  - **Implementation**:
+    ```bash
+    # Start service manager first (initializes agents)
+    python3 -m engine.core.service_manager --no-polling --no-web-ui &
+    sleep 15  # Wait for agent initialization
+    
+    # Then start polling service
+    python3 engine/runners/polling_service.py &
+    ```
+  - **Results**: 7 agents now properly registered and available:
+    * m0nk111-qwen-agent (qwen2.5-coder:7b) ← Primary agent for test issues
+    * m0nk111-coder1 (qwen2.5-coder:7b)
+    * m0nk111-coder2 (qwen2.5-coder:7b)
+    * developer-agent (gpt-4)
+    * gpt4-coding-agent (gpt-4)
+    * issue-opener-agent (qwen2.5-coder:7b)
+    * local-agent-qwen (qwen2.5-coder:7b)
+  - **Benefits**:
+    * Agent registry properly initialized before polling starts
+    * All developer agents available for issue processing
+    * Uses proven service_manager system (no reinvention)
+    * Complete E2E pipeline now functional
+  - **Lessons learned**:
+    * Always use existing proven components rather than reimplementing
+    * AgentRegistry requires async context, not suitable for bash scripts
+    * Silent failures need better error logging (returns False without exception)
+    * Test dependencies (agent registry) before integration (polling service)
+  - **File**: `scripts/run-test-mode.sh` (complete rewrite)
+  - **Status**: FIXED - Service manager now properly initializes agents before polling
+
 - **Bug #8: Module specification inference fails for documentation tasks** (FIXED)
   - **Problem**: Pipeline orchestrator crashes when trying to infer Python module from documentation-only issues
   - **Root cause**: `code_generator.infer_module_spec()` only recognized `.py` files, not `.md`, `.txt`, `.rst`

@@ -60,3 +60,10 @@ keys.json
 .env
 polling_state.json
 data/
+
+# Media files (except media directory)
+*.mp4
+!media/*.mp4
+*.avi
+*.mov
+*.mkv
