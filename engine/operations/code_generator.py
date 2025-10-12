@@ -98,7 +98,12 @@ class CodeGenerator:
         
         # Pattern 1: Explicit path mention - support Python files and documentation files
         # Supported extensions: .py (Python), .md (Markdown), .txt (text), .rst (reStructuredText)
-        path_pattern = r'(?:create|add|implement|build)\s+(?:file\s+)?[`]?([a-z_/]+\.(?:py|md|txt|rst))[`]?'
+        # Matches patterns like:
+        # - "create filename.md"
+        # - "create: filename.md"
+        # - "create: `filename.md`"
+        # - "- create: `filename.md`"
+        path_pattern = r'(?:create|add|implement|build)(?:\s+file)?(?:\s*:)?\s*[`]?([a-z_/.-]+\.(?:py|md|txt|rst))[`]?'
         path_match = re.search(path_pattern, text)
         
         if path_match:
