@@ -26,7 +26,7 @@ environments:
     repositories:
       - "m0nk111/agent-forge-test"
     max_concurrent_issues: 2
-    claim_timeout_minutes: 10  # Very short for rapid E2E testing iteration
+    claim_timeout_minutes: 1  # Ultra-short for ultra-rapid E2E testing
     auto_merge: true  # Safe to auto-merge in test
     notifications:
       enabled: true
