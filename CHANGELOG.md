@@ -9,6 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Documentation Workflow Fallback via IssueHandler** (2025-10-12, commit 69fdabd)
+  - Added automatic workflow switching for documentation files (.md, .txt, .rst)
+  - Pipeline now detects doc files and uses IssueHandler instead of CodeGenerator
+  - Added `re` import to pipeline_orchestrator for regex pattern matching
+  - Enhanced `_parse_requirements` to return special marker for documentation files
+  - Implemented `_handle_documentation_issue` method for doc-specific workflows
+  - Workflow selection: Python files → Code generation pipeline, Doc files → IssueHandler
+  - Files: `engine/core/pipeline_orchestrator.py`
+  - Related: Fixes Issue #2 and #3 failures where doc files were rejected
+
+- **Cross-Repository Workflow Support Tracking** (2025-10-12, Issue #98)
+  - Documented architectural limitation: agent can only work in its own repository
+  - Created comprehensive issue with proposed workspace management solution
+  - Implementation plan: clone target repos to `/tmp/agent-forge-workspaces/`
+  - Workaround: Create test issues in main repository for E2E validation
+  - See: https://github.com/m0nk111/agent-forge/issues/98
+
+- **E2E Testing Guide Documentation** (2025-10-12, Issue #99)
+  - Created issue for comprehensive E2E workflow testing documentation
+  - Will document all testing phases: detection → claim → workflow → PR → merge
+  - Includes troubleshooting guide and validation checklist
+  - Target file: `docs/E2E_TESTING_GUIDE.md`
+  - See: https://github.com/m0nk111/agent-forge/issues/99
+
 - **E2E Workflow Integration Test Report** (2025-10-12)
   - Comprehensive end-to-end testing of complete workflow integration
   - Validated issue detection, claim management, and frontend real-time updates
@@ -18,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Screenshots captured and documented in `media/` directory
   - Confirmed 60-minute claim timeout working correctly
   - Validated agent sorting (7 active, 9 inactive) displaying properly
-  - Overall assessment: **PRODUCTION READY** ✅
+  - **Note**: Full PR workflow validation revealed cross-repository limitation (see Issue #98)
 
 - **Frontend Agent Sorting & Grouping** (2025-10-12)
   - Agents now sorted by usage (most tasks completed shown first)
@@ -30,6 +54,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Deployed to production and verified via Playwright MCP
 
 ### Fixed
+
+- **Workflow Execution for Claimed Issues** (2025-10-12, commit 8adeacf)
+  - **Critical Fix**: Issues claimed by issue_opener were being skipped by workflow
+  - Problem: `start_issue_workflow` checked if issue was claimed and skipped it
+  - Root cause: Logic assumed ANY claim meant "another agent working", even if claim was from our own system
+  - Impact: Issue #3 remained claimed for 1 hour without workflow execution
+  - Solution: Removed blocking claim check - if issue is actionable (via filter), proceed with workflow
+  - Now checks if claim exists: if no → add claim, if yes → proceed (assume it's ours)
+  - Flow: issue_opener claims → polling detects → workflow executes → PR created
+  - Files: `engine/runners/polling_service.py`
+  - Result: Workflow now starts immediately after claim is added ✅
+
+- **File Path Pattern Matching for Issue Parsing** (2025-10-12, commit 2f2ebfb)
+  - Enhanced regex pattern to match more file path formats in issue bodies
+  - Problem: Issue body with `Create: \`CONTRIBUTING.md\`` was not recognized
+  - Root cause: Pattern required whitespace after keyword, didn't support colon
+  - Added support for: colon notation (`create: file.md`), hyphens in filenames, dots in paths
+  - New pattern: `(?:create|add|implement|build)(?:\s+file)?(?:\s*:)?\s*[\`]?([a-z_/.-]+\.(?:py|md|txt|rst))[\`]?`
+  - Matches formats: "create filename.md", "create: filename.md", "- create: \`filename.md\`"
+  - Files: `engine/operations/code_generator.py`
+  - Result: Issue #3 file path now correctly parsed ✅
+
+- **Production/Dev Configuration Drift** (2025-10-12)
+  - **Critical Discovery**: Production server at /opt/agent-forge was 6 commits behind
+  - Problem: `issue_opener_enabled` showed False in runtime but True in YAML config
+  - Root cause: Production running commit 5f7af46 vs latest 41728cd
+  - Impact: Claims were added but workflows never started (config disabled issue opener)
+  - Investigation: Compared runtime logs vs YAML files, found mismatch
+  - Solution: `git fetch origin && git reset --hard origin/main` in production
+  - Updated from 5f7af46 → 41728cd (87 objects, 27.71 KiB)
+  - Service restart immediately started workflow execution
+  - Files: Production deployment `/opt/agent-forge`
+  - Lesson learned: Manual sync required for production, no auto-deployment configured
 
 - **E2E Test System - Issue Opener Integration** (2025-10-12)
   - Fixed issue opener not monitoring for new issues with `agent-ready` label
