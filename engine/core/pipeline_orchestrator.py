@@ -376,42 +376,43 @@ class PipelineOrchestrator:
         try:
             from engine.operations.code_generator import CodeGenerator
             
-            # Use CodeGenerator's intelligent parsing
-            generator = CodeGenerator(self.agent)
-            
             title = issue_data.get('title', '')
             body = issue_data.get('body', '')
             labels = issue_data.get('labels', [])
+            
+            # CRITICAL: Check for documentation files FIRST before CodeGenerator inference
+            # This prevents CodeGenerator from inferring wrong Python modules for doc files
+            text = f"{title} {body}".lower()
+            doc_pattern = r'(?:create|add|implement|build)(?:\s+file)?(?:\s*:)?\s*[`]?([a-z_/.-]+\.(?:md|txt|rst))[`]?'
+            doc_match = re.search(doc_pattern, text)
+            
+            if doc_match:
+                doc_file = doc_match.group(1)
+                logger.info(f"📄 Detected documentation file: {doc_file}")
+                logger.info(f"   Using IssueHandler workflow instead of code generation pipeline")
+                
+                # Return special marker for documentation file
+                return {
+                    'success': True,
+                    'is_documentation': True,
+                    'file_path': doc_file,
+                    'title': title,
+                    'body': body,
+                    'labels': labels
+                }
+            
+            # Use CodeGenerator's intelligent parsing for code modules
+            generator = CodeGenerator(self.agent)
             
             # Infer module specification
             module_spec = generator.infer_module_spec(title, body, labels)
             
             if not module_spec:
-                # Check if this is a documentation file that should use IssueHandler
-                text = f"{title} {body}".lower()
-                doc_pattern = r'(?:create|add|implement|build)(?:\s+file)?(?:\s*:)?\s*[`]?([a-z_/.-]+\.(?:md|txt|rst))[`]?'
-                doc_match = re.search(doc_pattern, text)
-                
-                if doc_match:
-                    doc_file = doc_match.group(1)
-                    logger.info(f"📄 Detected documentation file: {doc_file}")
-                    logger.info(f"   Using IssueHandler workflow instead of code generation pipeline")
-                    
-                    # Return special marker for documentation file
-                    return {
-                        'success': True,
-                        'is_documentation': True,
-                        'file_path': doc_file,
-                        'title': title,
-                        'body': body,
-                        'labels': labels
-                    }
-                else:
-                    logger.error("❌ Could not infer module specification from issue")
-                    return {
-                        'success': False,
-                        'error': 'Could not infer module specification from issue'
-                    }
+                logger.error("❌ Could not infer module specification from issue")
+                return {
+                    'success': False,
+                    'error': 'Could not infer module specification from issue'
+                }
             
             logger.info(f"✅ Inferred module: {module_spec.module_path}")
             
