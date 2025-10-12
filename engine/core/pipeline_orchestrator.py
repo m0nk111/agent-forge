@@ -383,8 +383,10 @@ class PipelineOrchestrator:
             # CRITICAL: Check for documentation files FIRST before CodeGenerator inference
             # This prevents CodeGenerator from inferring wrong Python modules for doc files
             text = f"{title} {body}".lower()
-            doc_pattern = r'(?:create|add|implement|build)(?:\s+file)?(?:\s*:)?\s*[`]?([a-z_/.-]+\.(?:md|txt|rst))[`]?'
+            # Pattern supports: lowercase, uppercase, digits, underscores, hyphens, dots, slashes
+            doc_pattern = r'(?:create|add|implement|build)(?:\s+file)?(?:\s*:)?\s*[`]?([a-z0-9_/.-]+\.(?:md|txt|rst))[`]?'
             doc_match = re.search(doc_pattern, text)
+
             
             if doc_match:
                 doc_file = doc_match.group(1)
