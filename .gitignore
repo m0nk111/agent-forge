@@ -11,6 +11,7 @@ ENV/
 
 # Security - Tokens and secrets
 secrets/
+!secrets/README.md
 *.token
 *.key
 *github.env*
