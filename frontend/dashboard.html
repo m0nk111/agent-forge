@@ -1590,7 +1590,9 @@
 
         async function loadAndRenderRepositories() {
             try {
-                const response = await fetch('/api/config/polling');
+                // Use monitoring API on port 7997 (same host as dashboard)
+                const hostname = window.location.hostname || 'localhost';
+                const response = await fetch(`http://${hostname}:7997/api/config/polling`);
                 const config = await response.json();
                 
                 const list = document.getElementById('repositories-list');

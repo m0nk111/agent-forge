@@ -235,6 +235,40 @@ def setup_monitoring_routes(app: FastAPI):
             "total": len(services)
         }
     
+    @app.get("/api/config/polling")
+    async def get_polling_config():
+        """
+        Get polling service configuration including monitored repositories.
+        
+        Returns:
+            Dict with polling configuration (repositories, labels, intervals, etc.)
+        """
+        import yaml
+        from pathlib import Path
+        
+        config_path = Path(__file__).parent.parent.parent / "config/services/polling.yaml"
+        
+        try:
+            with open(config_path, 'r') as f:
+                config = yaml.safe_load(f)
+            
+            return {
+                "repositories": config.get("repositories", []),
+                "watch_labels": config.get("watch_labels", []),
+                "interval_seconds": config.get("interval_seconds", 300),
+                "claim_timeout_minutes": config.get("claim_timeout_minutes", 60),
+                "max_concurrent_issues": config.get("max_concurrent_issues", 3)
+            }
+        except Exception as e:
+            return {
+                "error": f"Failed to load polling config: {str(e)}",
+                "repositories": [],
+                "watch_labels": [],
+                "interval_seconds": 300,
+                "claim_timeout_minutes": 60,
+                "max_concurrent_issues": 3
+            }
+    
     print("✅ Monitoring routes registered:")
     print("   - WebSocket: ws://localhost:7997/ws/monitor")
     print("   - WebSocket: ws://localhost:7997/ws/logs/{agent_id}")
@@ -243,6 +277,8 @@ def setup_monitoring_routes(app: FastAPI):
     print("   - REST: GET /api/agents/{agent_id}/logs")
     print("   - REST: GET /api/activity")
     print("   - REST: GET /api/services")
+    print("   - REST: GET /api/config/polling")
+
 
 
 def create_monitoring_app() -> FastAPI:
