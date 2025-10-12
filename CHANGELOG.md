@@ -9,6 +9,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Historical Logs for Agents, Services, and Repositories** (2025-10-12, commits 63e8d3b, fc6c8ae)
+  - Added API endpoint `/api/services/{service_name}/logs` for service activity logs
+  - Added API endpoint `/api/repositories/{owner}/{repo}/logs` for repository activity
+  - Service logs fetch from activity timeline (no journalctl permissions needed)
+  - Repository logs filter activity timeline by repository mentions
+  - Frontend: Made service cards clickable to view logs
+  - Frontend: Made repository items clickable to view activity
+  - Frontend: Added `loadAgentLogs()`, `loadServiceLogs()`, `loadRepositoryLogs()` functions
+  - Frontend: Added hover effects with `transform: translateX(2px)` for clickable items
+  - Frontend: Loading states with spinner for all log types
+  - Frontend: Error handling with user-friendly messages
+  - Agents now show 200 most recent historical logs on click
+  - Real-time WebSocket logs still work alongside historical logs
+  - Files: `engine/operations/websocket_handler.py`, `frontend/dashboard.html`
+  - Impact: Users can now view historical logs for any agent, service, or repository
+
+- **Dashboard Layout Optimization** (2025-10-12, commit edfac8d)
+  - Removed large gap between panels and footer
+  - Added `overflow: hidden` to container and content-wrapper
+  - Added `flex-shrink: 0` to services and repositories sections
+  - Services grid: max-height 120px with scrolling
+  - Repositories list: max-height 150px with scrolling
+  - Agents section takes remaining vertical space with proper scrolling
+  - Panels now use full browser window height efficiently
+  - Files: `frontend/dashboard.html`
+  - Impact: Better space utilization, no wasted vertical space
+
 ### Fixed
 
 - **Dashboard Repository Monitoring API** (2025-10-12, commit 9b5d3b5)
