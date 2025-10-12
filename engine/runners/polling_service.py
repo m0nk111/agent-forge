@@ -1064,15 +1064,19 @@ class PollingService:
         
         logger.info(f"Starting workflow for {issue_key}: {issue['title']}")
         
-        # Check if already claimed by another agent
-        if self.is_issue_claimed(repo, issue_number):
-            logger.info(f"Issue {issue_key} already claimed, skipping")
-            return False
+        # NOTE: We don't check if issue is claimed here because filter_actionable_issues
+        # already ensures the issue is actionable. If it has a claim, it means the claim
+        # is from our system (issue_opener) and we should proceed with the workflow.
+        # Only check if we need to ADD a claim (if none exists yet)
         
-        # Claim the issue
-        if not await self.claim_issue(repo, issue_number):
-            logger.error(f"Failed to claim issue {issue_key}")
-            return False
+        if not self.is_issue_claimed(repo, issue_number):
+            # No claim yet, add one
+            logger.info(f"🔖 Adding claim for {issue_key}")
+            if not await self.claim_issue(repo, issue_number):
+                logger.error(f"Failed to claim issue {issue_key}")
+                return False
+        else:
+            logger.info(f"✅ Issue {issue_key} already claimed (by our system), proceeding with workflow")
         
         # Update state
         self.state[issue_key] = IssueState(
