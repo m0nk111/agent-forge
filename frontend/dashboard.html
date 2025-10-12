@@ -158,11 +158,13 @@
             align-items: center;
             gap: 8px;
             transition: all 0.2s;
+            cursor: pointer;
         }
 
         .service-card:hover {
             background: rgba(51, 65, 85, 0.6);
             border-color: rgba(168, 85, 247, 0.5);
+            transform: translateX(2px);
         }
 
         /* Repositories Section */
@@ -195,16 +197,23 @@
             gap: 8px;
             transition: all 0.2s;
             font-size: 12px;
+            cursor: pointer;
         }
 
         .repository-item:hover {
             background: rgba(51, 65, 85, 0.6);
             border-color: rgba(34, 197, 94, 0.5);
+            transform: translateX(2px);
         }
 
         .repository-item.inactive {
             opacity: 0.5;
             border-color: rgba(100, 116, 139, 0.3);
+        }
+
+        .repository-item.inactive:hover {
+            opacity: 0.7;
+            border-color: rgba(100, 116, 139, 0.5);
         }
 
         .repository-name {
@@ -1584,7 +1593,10 @@
                 const statusClass = healthy ? 'healthy' : 'unhealthy';
                 
                 return `
-                    <div class="service-card" title="${displayName}: ${healthy ? 'Running' : 'Stopped'}">
+                    <div class="service-card ${statusClass === 'healthy' ? '' : 'inactive'}" 
+                         style="cursor: pointer;" 
+                         onclick="loadServiceLogs('${name}')"
+                         title="${displayName}: ${healthy ? 'Running' : 'Stopped'} - Click to view logs">
                         <div class="service-status-dot ${statusClass}"></div>
                         <div class="service-info">
                             <div class="service-name">${displayName}</div>
@@ -1629,7 +1641,10 @@
                     const [owner, name] = repo.split('/');
                     const isTest = name.includes('test');
                     return `
-                        <div class="repository-item" title="Active monitoring: ${repo}">
+                        <div class="repository-item" 
+                             style="cursor: pointer;" 
+                             onclick="loadRepositoryLogs('${repo}')"
+                             title="Active monitoring: ${repo} - Click to view activity">
                             <div class="repository-name">
                                 <span>${isTest ? '🧪' : '📦'}</span>
                                 <span>${owner}/<strong>${name}</strong></span>
@@ -1647,7 +1662,10 @@
                     .map(repo => {
                         const [owner, name] = repo.split('/');
                         return `
-                            <div class="repository-item inactive" title="Not monitored: ${repo}">
+                            <div class="repository-item inactive" 
+                                 style="cursor: pointer;" 
+                                 onclick="loadRepositoryLogs('${repo}')"
+                                 title="Not monitored: ${repo} - Click to view activity">
                                 <div class="repository-name">
                                     <span>📦</span>
                                     <span>${owner}/<strong>${name}</strong></span>
@@ -1827,11 +1845,134 @@
             const agent = agents.get(agentId);
             
             if (agent) {
-                document.getElementById('selected-agent-name').textContent = `${agent.name || agentId} - Live Logs`;
+                document.getElementById('selected-agent-name').textContent = `${agent.name || agentId} - Logs`;
             }
             
             renderAgents(); // Re-render to update selected state
-            renderLogs();
+            loadAgentLogs(agentId); // Load historical logs
+        }
+
+        async function loadAgentLogs(agentId) {
+            const container = document.getElementById('logs-container');
+            
+            // Show loading state
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="spinner"></div>
+                    <p>Loading logs...</p>
+                </div>
+            `;
+            
+            try {
+                const hostname = window.location.hostname || 'localhost';
+                const response = await fetch(`http://${hostname}:7997/api/agents/${agentId}/logs?limit=200`);
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to load logs: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                const logs = data.logs || [];
+                
+                // Store in agentLogs for real-time updates
+                agentLogs.set(agentId, logs);
+                
+                renderLogs();
+            } catch (error) {
+                console.error('Failed to load agent logs:', error);
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">❌</div>
+                        <p>Failed to load logs: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function loadServiceLogs(serviceName) {
+            selectedAgentId = `service:${serviceName}`;
+            document.getElementById('selected-agent-name').textContent = `${serviceName} - Service Logs`;
+            
+            const container = document.getElementById('logs-container');
+            
+            // Show loading state
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="spinner"></div>
+                    <p>Loading service logs...</p>
+                </div>
+            `;
+            
+            try {
+                const hostname = window.location.hostname || 'localhost';
+                const response = await fetch(`http://${hostname}:7997/api/services/${serviceName}/logs?limit=200`);
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to load logs: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                const logs = data.logs || [];
+                
+                // Store and render
+                agentLogs.set(selectedAgentId, logs);
+                renderLogs();
+            } catch (error) {
+                console.error('Failed to load service logs:', error);
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">❌</div>
+                        <p>Failed to load logs: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function loadRepositoryLogs(repoFullName) {
+            const [owner, repo] = repoFullName.split('/');
+            selectedAgentId = `repo:${repoFullName}`;
+            document.getElementById('selected-agent-name').textContent = `${repoFullName} - Activity Logs`;
+            
+            const container = document.getElementById('logs-container');
+            
+            // Show loading state
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="spinner"></div>
+                    <p>Loading repository activity...</p>
+                </div>
+            `;
+            
+            try {
+                const hostname = window.location.hostname || 'localhost';
+                const response = await fetch(`http://${hostname}:7997/api/repositories/${owner}/${repo}/logs?limit=100`);
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to load logs: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                const events = data.logs || [];
+                
+                // Convert activity events to log format
+                const logs = events.map(event => ({
+                    timestamp: event.timestamp,
+                    level: event.level || 'INFO',
+                    message: event.description || event.message || 'Activity event'
+                }));
+                
+                // Store and render
+                agentLogs.set(selectedAgentId, logs);
+                renderLogs();
+            } catch (error) {
+                console.error('Failed to load repository logs:', error);
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">❌</div>
+                        <p>Failed to load activity: ${error.message}</p>
+                    </div>
+                `;
+            }
         }
 
         function renderLogs() {

@@ -269,6 +269,128 @@ def setup_monitoring_routes(app: FastAPI):
                 "max_concurrent_issues": 3
             }
     
+    @app.get("/api/services/{service_name}/logs")
+    async def get_service_logs(
+        service_name: str,
+        limit: int = 100,
+        since: Optional[str] = None
+    ):
+        """
+        Get logs for a specific service from journalctl.
+        
+        Args:
+            service_name: Service name (monitoring, web_ui, agent_runtime, polling)
+            limit: Maximum number of log lines (default 100)
+            since: Time filter (e.g., "5 minutes ago", "1 hour ago")
+        
+        Returns:
+            List of log entries from systemd journal
+        """
+        import subprocess
+        import json
+        from datetime import datetime
+        
+        # Map service names to systemd units
+        service_map = {
+            "monitoring": "agent-forge.service",
+            "web_ui": "agent-forge.service",
+            "agent_runtime": "agent-forge.service",
+            "polling": "agent-forge.service"
+        }
+        
+        unit = service_map.get(service_name, "agent-forge.service")
+        
+        try:
+            # Build journalctl command
+            cmd = ["journalctl", "-u", unit, "--no-pager", "-n", str(limit), "-o", "json"]
+            if since:
+                cmd.extend(["--since", since])
+            
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+            
+            if result.returncode != 0:
+                return {
+                    "service": service_name,
+                    "logs": [],
+                    "error": f"Failed to read logs: {result.stderr}"
+                }
+            
+            # Parse JSON lines
+            logs = []
+            for line in result.stdout.strip().split('\n'):
+                if not line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                    logs.append({
+                        "timestamp": float(entry.get("__REALTIME_TIMESTAMP", 0)) / 1000000,  # microseconds to seconds
+                        "level": "INFO",
+                        "message": entry.get("MESSAGE", ""),
+                        "service": service_name
+                    })
+                except json.JSONDecodeError:
+                    continue
+            
+            # Reverse to show newest first
+            logs.reverse()
+            
+            return {
+                "service": service_name,
+                "logs": logs,
+                "total": len(logs)
+            }
+        
+        except subprocess.TimeoutExpired:
+            return {
+                "service": service_name,
+                "logs": [],
+                "error": "Timeout reading logs"
+            }
+        except Exception as e:
+            return {
+                "service": service_name,
+                "logs": [],
+                "error": str(e)
+            }
+    
+    @app.get("/api/repositories/{owner}/{repo}/logs")
+    async def get_repository_logs(
+        owner: str,
+        repo: str,
+        limit: int = 50
+    ):
+        """
+        Get activity logs for a specific repository (issues, PRs, workflows).
+        
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            limit: Maximum number of events (default 50)
+        
+        Returns:
+            List of repository activity events
+        """
+        # Get activity timeline filtered by repository
+        events = monitor.get_activity_timeline(limit=limit * 2)  # Get more to filter
+        
+        # Filter events related to this repository
+        repo_full_name = f"{owner}/{repo}"
+        repo_events = []
+        
+        for event in events:
+            event_dict = event.to_dict()
+            # Check if event mentions this repository
+            if repo_full_name in event_dict.get("description", ""):
+                repo_events.append(event_dict)
+                if len(repo_events) >= limit:
+                    break
+        
+        return {
+            "repository": repo_full_name,
+            "logs": repo_events,
+            "total": len(repo_events)
+        }
+    
     print("✅ Monitoring routes registered:")
     print("   - WebSocket: ws://localhost:7997/ws/monitor")
     print("   - WebSocket: ws://localhost:7997/ws/logs/{agent_id}")
@@ -277,7 +399,9 @@ def setup_monitoring_routes(app: FastAPI):
     print("   - REST: GET /api/agents/{agent_id}/logs")
     print("   - REST: GET /api/activity")
     print("   - REST: GET /api/services")
+    print("   - REST: GET /api/services/{service_name}/logs")
     print("   - REST: GET /api/config/polling")
+    print("   - REST: GET /api/repositories/{owner}/{repo}/logs")
 
 
 
