@@ -9,6 +9,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Fixed
+
+- **Documentation Workflow Pattern Detection** (2025-10-12, commits 91ccd45, 112d795)
+  - CRITICAL FIX: Moved documentation file detection BEFORE CodeGenerator inference
+  - Root cause: CodeGenerator always returns module_spec, causing fallback to never trigger
+  - Previous logic checked for docs AFTER inference (only if module_spec was None)
+  - New logic: Check for `.md`/`.txt`/`.rst` files FIRST, skip CodeGenerator entirely
+  - Added digit support to pattern: `[a-z0-9_/.-]+` instead of `[a-z_/.-]+`
+  - Fixes: `E2E_TESTING_GUIDE.md` → `e2e_testing_guide.md` after .lower() now matches
+  - Impact: Prevents wasted LLM generation time on wrong pipeline
+  - Files: `engine/core/pipeline_orchestrator.py`
+  - Related: Issue #4, #3 workflows now use correct IssueHandler path
+
+- **Test Environment Claim Timeout Optimization** (2025-10-12, commit c3f4545)
+  - Reduced claim_timeout_minutes from 60 to 10 in test environment config
+  - Enables faster iteration during E2E testing without waiting for expired claims
+  - Root cause: Environment config overrides polling.yaml values via EnvironmentConfig
+  - Discovery: `active: test` in environments.yaml applies test-specific settings
+  - Production environment remains at 1440 minutes (24 hours) for safety
+  - Files: `config/system/environments.yaml`
+  - Related: Resolved Issue #4 workflow execution blocker
+
+- **Repository Monitoring Dashboard** (2025-10-12, commit ea6c896)
+  - Added "Monitored Repositories" section to frontend dashboard
+  - New API endpoint: `/api/config/polling` returns repository configuration
+  - Visual distinction: Active repos (green ✓ ACTIVE) vs inactive (gray ○ INACTIVE)
+  - Display format: "X active, Y inactive" with 🧪 test / 📦 production icons
+  - Auto-loads configuration on dashboard initialization
+  - Files: `api/config_routes.py`, `frontend/dashboard.html`
+  - Related: User visibility into which repositories have active monitoring
+
+### Added
+
 - **Documentation Workflow Fallback via IssueHandler** (2025-10-12, commit 69fdabd)
   - Added automatic workflow switching for documentation files (.md, .txt, .rst)
   - Pipeline now detects doc files and uses IssueHandler instead of CodeGenerator
