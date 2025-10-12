@@ -1,0 +1,38 @@
+E2E Test Screenshots - October 12, 2025
+========================================
+
+The following screenshots were captured during E2E workflow integration testing:
+
+1. e2e-test-dashboard-agents.png
+   - Agent-Forge Dashboard showing sorted agents
+   - 7 Active Agents (⚡) at top
+   - 9 Inactive Agents (💤) below
+   - WebSocket: Connected ✓
+   - All 4 infrastructure services running
+   - URL: http://192.168.1.30:8897/dashboard.html
+
+2. e2e-test-github-issue3-claim.png
+   - GitHub Issue #3 with agent claim comment
+   - Title: 🧪 TEST #3: Create CONTRIBUTING.md
+   - Claim by: m0nk111-qwen-agent (on behalf of m0nk111-post)
+   - Timestamp: 2025-10-12T10:41:14.234350Z
+   - Response time: 2 minutes 14 seconds
+   - URL: https://github.com/m0nk111/agent-forge-test/issues/3
+
+Screenshot Source:
+------------------
+These screenshots were captured using Playwright MCP browser automation.
+They are currently stored in the Playwright temporary output directory:
+
+Windows: C:\Users\onyou\AppData\Local\Temp\playwright-mcp-output\1760265229972\media\
+Linux:   /tmp/playwright-mcp-output/{session-id}/media/
+
+To preserve these screenshots permanently:
+1. Copy files from Playwright temp directory to this media/ directory
+2. Or recapture using the Playwright MCP browser tool
+3. Update media/README.md after adding files
+
+Related Documentation:
+----------------------
+- docs/E2E_TEST_REPORT_2025-10-12.md - Complete test report with analysis
+- CHANGELOG.md - Test results summary

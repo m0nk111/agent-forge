@@ -1,0 +1,9 @@
+[InternetShortcut]
+URL=http://192.168.1.30:8897/dashboard.html
+IconIndex=0
+
+# E2E Test Screenshot - Dashboard
+# Date: 2025-10-12
+# Description: Dashboard showing sorted agents (7 active, 9 inactive)
+# Screenshot available in Playwright MCP temp directory:
+# Windows: C:\Users\onyou\AppData\Local\Temp\playwright-mcp-output\1760265229972\media\e2e-test-dashboard-agents.png

@@ -42,6 +42,20 @@ Playwright MCP stores screenshots in temporary directories:
 
 Screenshots are preserved during the browser session and can be copied to this directory for permanent storage.
 
+### Copy Script
+
+Use the provided script to automatically search and copy screenshots:
+
+```bash
+./scripts/copy-e2e-screenshots.sh
+```
+
+This script will:
+- Search Linux temp directories for screenshots
+- Copy found screenshots to media/ directory
+- Provide manual copy instructions if not found
+- Show SCP command for copying from Windows machine
+
 ---
 
 ## Usage Guidelines
