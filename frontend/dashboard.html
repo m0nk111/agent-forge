@@ -270,6 +270,24 @@
             color: #60a5fa;
         }
 
+        /* Agent Section Headers */
+        .agents-section-header {
+            padding: 8px 12px;
+            background: rgba(30, 41, 59, 0.6);
+            border-radius: 6px;
+            border: 1px solid rgba(96, 165, 250, 0.2);
+            font-weight: 600;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .agents-section-header.inactive {
+            border-color: rgba(100, 116, 139, 0.2);
+            opacity: 0.8;
+        }
+
         .agent-card {
             background: rgba(51, 65, 85, 0.4);
             border: 2px solid rgba(96, 165, 250, 0.2);
@@ -1504,87 +1522,137 @@
                 return;
             }
             
+            // Separate active and inactive agents
+            const activeAgents = agentArray.filter(agent => 
+                agent.status && agent.status.toLowerCase() !== 'offline'
+            );
+            const inactiveAgents = agentArray.filter(agent => 
+                !agent.status || agent.status.toLowerCase() === 'offline'
+            );
+            
+            // Sort active agents by tasks completed (most used first)
+            activeAgents.sort((a, b) => {
+                const tasksA = a.tasks_completed || 0;
+                const tasksB = b.tasks_completed || 0;
+                return tasksB - tasksA; // Descending order
+            });
+            
+            // Sort inactive agents by tasks completed as well
+            inactiveAgents.sort((a, b) => {
+                const tasksA = a.tasks_completed || 0;
+                const tasksB = b.tasks_completed || 0;
+                return tasksB - tasksA;
+            });
+            
+            // Combine: active first, then inactive
+            const sortedAgents = [...activeAgents, ...inactiveAgents];
+            
             document.getElementById('agent-count').textContent = `${agentArray.length} agent${agentArray.length > 1 ? 's' : ''}`;
             
-            grid.innerHTML = agentArray.map(agent => {
-                // Map API status to CSS classes
-                // API returns: idle, working, error, offline
-                let statusClass = 'status-offline';
-                switch(agent.status.toLowerCase()) {
-                    case 'idle':
-                        statusClass = 'status-idle';
-                        break;
-                    case 'working':
-                        statusClass = 'status-working';
-                        break;
-                    case 'online':
-                        statusClass = 'status-online';
-                        break;
-                    case 'error':
-                        statusClass = 'status-error';
-                        break;
-                    case 'offline':
-                    default:
-                        statusClass = 'status-offline';
-                        break;
-                }
-                
-                const isSelected = agent.agent_id === selectedAgentId;
-                
-                return `
-                    <div class="agent-card ${isSelected ? 'selected' : ''}" onclick="selectAgent('${agent.agent_id}')">
-                        <div class="agent-header">
-                            <div class="agent-name">
-                                <div class="agent-status-dot ${statusClass}"></div>
-                                ${agent.name || agent.agent_id}
-                            </div>
-                            <div style="display: flex; gap: 6px; align-items: center;">
-                                <span class="agent-model">${agent.model || 'Unknown'}</span>
-                                <button class="agent-config-btn" onclick="event.stopPropagation(); openConfigModal('${agent.agent_id}')" title="Configure Agent">
-                                    ⚙️
-                                </button>
-                            </div>
-                        </div>
-                        
-                        ${agent.current_task ? `
-                            <div class="agent-task">
-                                <span class="task-icon">📋</span>
-                                <div class="task-description">
-                                    <span class="task-issue">${agent.current_issue || ''}</span>
-                                    ${agent.current_task}
-                                </div>
-                            </div>
-                            
-                            ${agent.progress !== undefined ? `
-                                <div class="agent-progress">
-                                    <div class="progress-bar">
-                                        <div class="progress-fill" style="width: ${agent.progress}%"></div>
-                                    </div>
-                                    <div class="progress-text">
-                                        <span>${agent.progress}%</span>
-                                        <span>${agent.time_elapsed || ''}</span>
-                                    </div>
-                                </div>
-                            ` : ''}
-                        ` : '<div class="agent-task"><span style="color: #64748b;">Idle</span></div>'}
-                        
-                        <div class="agent-metrics">
-                            <div class="metric">
-                                <div class="metric-value">${agent.tasks_completed || 0}</div>
-                                <div>Tasks</div>
-                            </div>
-                            <div class="metric">
-                                <div class="metric-value">${agent.success_rate || 0}%</div>
-                                <div>Success</div>
-                            </div>
-                            <div class="metric">
-                                <div class="metric-value">${formatUptime(agent.uptime)}</div>
-                                <div>Uptime</div>
-                            </div>
-                        </div>
+            // Build HTML with section headers
+            let html = '';
+            
+            // Active agents section
+            if (activeAgents.length > 0) {
+                html += `
+                    <div class="agents-section-header" style="grid-column: 1/-1;">
+                        <span style="color: #22c55e;">⚡ Active Agents (${activeAgents.length})</span>
                     </div>
                 `;
-            }).join('');
+                html += activeAgents.map(agent => renderAgentCard(agent)).join('');
+            }
+            
+            // Inactive agents section
+            if (inactiveAgents.length > 0) {
+                html += `
+                    <div class="agents-section-header inactive" style="grid-column: 1/-1; margin-top: 12px;">
+                        <span style="color: #64748b;">💤 Inactive Agents (${inactiveAgents.length})</span>
+                    </div>
+                `;
+                html += inactiveAgents.map(agent => renderAgentCard(agent)).join('');
+            }
+            
+            grid.innerHTML = html;
+        }
+        
+        function renderAgentCard(agent) {
+            // Map API status to CSS classes
+            // API returns: idle, working, error, offline
+            let statusClass = 'status-offline';
+            switch(agent.status.toLowerCase()) {
+                case 'idle':
+                    statusClass = 'status-idle';
+                    break;
+                case 'working':
+                    statusClass = 'status-working';
+                    break;
+                case 'online':
+                    statusClass = 'status-online';
+                    break;
+                case 'error':
+                    statusClass = 'status-error';
+                    break;
+                case 'offline':
+                default:
+                    statusClass = 'status-offline';
+                    break;
+            }
+            
+            const isSelected = agent.agent_id === selectedAgentId;
+            
+            return `
+                <div class="agent-card ${isSelected ? 'selected' : ''}" onclick="selectAgent('${agent.agent_id}')">
+                    <div class="agent-header">
+                        <div class="agent-name">
+                            <div class="agent-status-dot ${statusClass}"></div>
+                            ${agent.name || agent.agent_id}
+                        </div>
+                        <div style="display: flex; gap: 6px; align-items: center;">
+                            <span class="agent-model">${agent.model || 'Unknown'}</span>
+                            <button class="agent-config-btn" onclick="event.stopPropagation(); openConfigModal('${agent.agent_id}')" title="Configure Agent">
+                                ⚙️
+                            </button>
+                        </div>
+                    </div>
+                    
+                    ${agent.current_task ? `
+                        <div class="agent-task">
+                            <span class="task-icon">📋</span>
+                            <div class="task-description">
+                                <span class="task-issue">${agent.current_issue || ''}</span>
+                                ${agent.current_task}
+                            </div>
+                        </div>
+                        
+                        ${agent.progress !== undefined ? `
+                            <div class="agent-progress">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: ${agent.progress}%"></div>
+                                </div>
+                                <div class="progress-text">
+                                    <span>${agent.progress}%</span>
+                                    <span>${agent.time_elapsed || ''}</span>
+                                </div>
+                            </div>
+                        ` : ''}
+                    ` : '<div class="agent-task"><span style="color: #64748b;">Idle</span></div>'}
+                    
+                    <div class="agent-metrics">
+                        <div class="metric">
+                            <div class="metric-value">${agent.tasks_completed || 0}</div>
+                            <div>Tasks</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-value">${agent.success_rate || 0}%</div>
+                            <div>Success</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-value">${formatUptime(agent.uptime)}</div>
+                            <div>Uptime</div>
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
         function selectAgent(agentId) {

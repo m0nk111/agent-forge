@@ -14,38 +14,15 @@ github:
   # GitHub token (uses BOT_GITHUB_TOKEN or GITHUB_TOKEN env var if not specified)
   # token: "ghp_..."  # Uncomment and set if not using environment variable
 
-# Repositories to monitor
-# Each repository can be disabled individually while keeping configuration
+# Repositories to monitor  
+# Simple list format (dict format support coming soon)
 repositories:
-  # TEST REPOSITORY - Only enabled during test phase
-  - repo: "m0nk111/agent-forge-test"
-    enabled: true
-    environment: "test"
-    auto_merge: true  # Safe in test repo
-  
-  # PRODUCTION REPOSITORIES - DISABLED during test phase
-  - repo: "m0nk111/agent-forge"
-    enabled: false  # 🚫 DISABLED - Test phase only
-    environment: "production"
-    auto_merge: false
-  
-  - repo: "m0nk111/stepperheightcontrol"
-    enabled: false  # 🚫 DISABLED - Test phase only
-    environment: "production"
-    auto_merge: false
-    # TODO: Add bot account as collaborator
-  
-  - repo: "m0nk111/Mycodo"
-    enabled: false  # 🚫 DISABLED - Test phase only
-    environment: "production"
-    auto_merge: false
-    # TODO: Add bot account as collaborator
-  
-  - repo: "m0nk111/caramba"
-    enabled: false  # 🚫 DISABLED - Test phase only
-    environment: "production"
-    auto_merge: false
-    # TODO: Add bot account as collaborator
+  - "m0nk111/agent-forge-test"  # TEST repo - active during test phase
+  # Production repos - will be enabled later:
+  # - "m0nk111/agent-forge"
+  # - "m0nk111/stepperheightcontrol"
+  # - "m0nk111/Mycodo"
+  # - "m0nk111/caramba"
 
 # Labels to watch for (issues must have at least one of these labels)
 watch_labels:
@@ -154,6 +131,7 @@ issue_opener:
     - "good first issue"
     - "enhancement"
     - "feature"
+    - "agent-ready"  # TEST: Auto-trigger for agent-ready issues
   # Skip issues with these labels
   skip_labels:
     - "question"

@@ -7,7 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Frontend Agent Sorting & Grouping** (2025-10-12)
+  - Agents now sorted by usage (most tasks completed shown first)
+  - Active and inactive agents displayed in separate sections
+  - Active agents section: ⚡ Active Agents (green indicator)
+  - Inactive agents section: 💤 Inactive Agents (gray indicator, shown below active)
+  - Improved UX: Most relevant/busy agents always visible at top
+  - Files: `frontend/dashboard.html`
+
 ### Fixed
+
+- **E2E Test System - Issue Opener Integration** (2025-10-12)
+  - Fixed issue opener not monitoring for new issues with `agent-ready` label
+  - Problem: `issue_opener_enabled` config was not being loaded from YAML
+  - Root cause: Production deployment (/opt/agent-forge) was outdated compared to dev
+  - Solution: Deployed latest code with proper sync-to-production script
+  - Fixed KeyError 'id' when querying GitHub issues (changed to use 'number' field)
+  - Added `agent-ready` to issue_opener trigger_labels
+  - TEST mode now fully operational with Issue #2 successfully picked up
+  - Complete workflow validated: issue detection → claim → pipeline start → code generation
+  - Files: `engine/runners/polling_service.py`, `config/services/polling.yaml`
 
 - **Auth Service PAM Permissions** (2025-10-11)
   - Fixed authentication service to run as root for PAM access to `/etc/shadow`

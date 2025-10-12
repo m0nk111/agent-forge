@@ -480,9 +480,13 @@ class PollingService:
                     
                     # Deduplicate: only add issues we haven't seen yet
                     for issue in label_issues:
-                        if issue['id'] not in seen_issue_ids:
+                        issue_number = issue.get('number')
+                        if not issue_number:
+                            logger.warning(f"⚠️ Issue missing number field, skipping: {issue.get('title', 'unknown')}")
+                            continue
+                        if issue_number not in seen_issue_ids:
                             issues.append(issue)
-                            seen_issue_ids.add(issue['id'])
+                            seen_issue_ids.add(issue_number)
                 
                 # Add repository field to each issue
                 for issue in issues:
@@ -747,8 +751,9 @@ class PollingService:
         
         Monitors new issues with trigger labels and dispatches to Issue Opener.
         """
+        logger.info(f"🐛 DEBUG: issue_opener_enabled = {self.config.issue_opener_enabled}")
         if not self.config.issue_opener_enabled:
-            logger.debug("🔍 Issue Opener monitoring disabled, skipping")
+            logger.info("🔍 Issue Opener monitoring disabled, skipping")
             return
         
         logger.info("🔍 Checking for issues to auto-open...")
