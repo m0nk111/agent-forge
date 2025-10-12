@@ -163,6 +163,74 @@
             border-color: rgba(168, 85, 247, 0.5);
         }
 
+        /* Repositories Section */
+        .repositories-section {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 8px;
+            padding: 10px 14px;
+            border: 1px solid rgba(34, 197, 94, 0.2);
+            margin-bottom: 12px;
+        }
+
+        .repositories-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .repository-item {
+            background: rgba(51, 65, 85, 0.4);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            border-radius: 6px;
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            transition: all 0.2s;
+            font-size: 12px;
+        }
+
+        .repository-item:hover {
+            background: rgba(51, 65, 85, 0.6);
+            border-color: rgba(34, 197, 94, 0.5);
+        }
+
+        .repository-item.inactive {
+            opacity: 0.5;
+            border-color: rgba(100, 116, 139, 0.3);
+        }
+
+        .repository-name {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex: 1;
+            font-family: 'Courier New', monospace;
+        }
+
+        .repository-status {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .repository-status.active {
+            background: rgba(34, 197, 94, 0.2);
+            color: #86efac;
+        }
+
+        .repository-status.inactive {
+            background: rgba(100, 116, 139, 0.2);
+            color: #94a3b8;
+        }
+
         .service-status-dot {
             width: 8px;
             height: 8px;
@@ -1075,6 +1143,19 @@
                     </div>
                 </div>
 
+                <!-- Monitored Repositories Section -->
+                <div class="repositories-section">
+                    <div class="section-header" style="margin-bottom: 8px;">
+                        <h2 class="section-title" style="color: #86efac;">📦 Monitored Repositories</h2>
+                        <div id="repos-count" style="color: #94a3b8; font-size: 11px;">
+                            Loading...
+                        </div>
+                    </div>
+                    <div class="repositories-list" id="repositories-list">
+                        <!-- Repository items will be inserted here -->
+                    </div>
+                </div>
+
                 <!-- Agents Section -->
                 <div class="agents-section" style="flex: 1; min-height: 0;">
                     <div class="section-header">
@@ -1284,6 +1365,9 @@
             
             // Check environment mode
             await checkEnvironmentMode();
+            
+            // Load repository monitoring status
+            await loadAndRenderRepositories();
             
             // Continue with normal initialization
             setViewMode(viewMode);
@@ -1502,6 +1586,80 @@
                     </div>
                 `;
             }).join('');
+        }
+
+        async function loadAndRenderRepositories() {
+            try {
+                const response = await fetch('/api/config/polling');
+                const config = await response.json();
+                
+                const list = document.getElementById('repositories-list');
+                const countEl = document.getElementById('repos-count');
+                
+                const activeRepos = config.repositories || [];
+                const allKnownRepos = [
+                    'm0nk111/agent-forge',
+                    'm0nk111/agent-forge-test', 
+                    'm0nk111/stepperheightcontrol',
+                    'm0nk111/Mycodo',
+                    'm0nk111/caramba'
+                ];
+                
+                if (activeRepos.length === 0) {
+                    list.innerHTML = '<div style="color: #64748b; font-size: 11px; padding: 8px;">No repositories monitored</div>';
+                    countEl.textContent = '0 active';
+                    return;
+                }
+                
+                const activeCount = activeRepos.length;
+                const inactiveCount = allKnownRepos.filter(r => !activeRepos.includes(r)).length;
+                countEl.textContent = `${activeCount} active, ${inactiveCount} inactive`;
+                
+                // Render active repositories first
+                const repoItems = activeRepos.map(repo => {
+                    const [owner, name] = repo.split('/');
+                    const isTest = name.includes('test');
+                    return `
+                        <div class="repository-item" title="Active monitoring: ${repo}">
+                            <div class="repository-name">
+                                <span>${isTest ? '🧪' : '📦'}</span>
+                                <span>${owner}/<strong>${name}</strong></span>
+                            </div>
+                            <div class="repository-status active">
+                                ✓ ACTIVE
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                // Render inactive repositories (commented in config)
+                const inactiveItems = allKnownRepos
+                    .filter(repo => !activeRepos.includes(repo))
+                    .map(repo => {
+                        const [owner, name] = repo.split('/');
+                        return `
+                            <div class="repository-item inactive" title="Not monitored: ${repo}">
+                                <div class="repository-name">
+                                    <span>📦</span>
+                                    <span>${owner}/<strong>${name}</strong></span>
+                                </div>
+                                <div class="repository-status inactive">
+                                    ○ INACTIVE
+                                </div>
+                            </div>
+                        `;
+                    });
+                
+                list.innerHTML = repoItems.concat(inactiveItems).join('');
+                
+                console.log(`📦 Loaded ${activeCount} active repositories:`, activeRepos);
+            } catch (error) {
+                console.error('Failed to load repositories:', error);
+                const list = document.getElementById('repositories-list');
+                const countEl = document.getElementById('repos-count');
+                list.innerHTML = '<div style="color: #ef4444; font-size: 11px; padding: 8px;">⚠️ Failed to load</div>';
+                countEl.textContent = 'Error';
+            }
         }
 
         function renderAgents() {

@@ -906,6 +906,38 @@ async def health_check():
     }
 
 
+@app.get("/api/config/polling")
+async def get_polling_config():
+    """
+    Get polling service configuration (no authentication required).
+    Returns monitored repositories and watch labels.
+    """
+    try:
+        import yaml
+        from pathlib import Path
+        
+        config_path = Path(__file__).parent.parent / "config" / "services" / "polling.yaml"
+        
+        if not config_path.exists():
+            raise HTTPException(status_code=404, detail="Polling config not found")
+        
+        with open(config_path, 'r') as f:
+            config = yaml.safe_load(f)
+        
+        return {
+            "repositories": config.get("repositories", []),
+            "watch_labels": config.get("watch_labels", []),
+            "interval_seconds": config.get("interval_seconds", 300),
+            "claim_timeout_minutes": config.get("claim_timeout_minutes", 60),
+            "max_concurrent_issues": config.get("max_concurrent_issues", 3),
+            "issue_opener_enabled": config.get("issue_opener", {}).get("enabled", False),
+            "pr_monitoring_enabled": config.get("pr_monitoring", {}).get("enabled", False)
+        }
+    except Exception as e:
+        logger.error(f"Failed to load polling config: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/hello")
 async def hello():
     """
