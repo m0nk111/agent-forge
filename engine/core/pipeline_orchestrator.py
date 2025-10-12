@@ -22,6 +22,7 @@ Date: 2025-10-10
 import asyncio
 import logging
 import os
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -203,6 +204,15 @@ class PipelineOrchestrator:
             if not requirements.get('success'):
                 raise RuntimeError(f"Requirements parsing failed: {requirements.get('error')}")
             
+            # Check if this is a documentation file workflow
+            if requirements.get('is_documentation'):
+                logger.info(f"   📄 Documentation file detected: {requirements.get('file_path')}")
+                logger.info(f"   🔀 Switching to IssueHandler workflow...")
+                
+                # Use IssueHandler for documentation files
+                result = await self._handle_documentation_issue(repo, issue_number, issue_data, token)
+                return result
+            
             logger.info(f"   ✅ Module path: {requirements.get('module_path')}")
             
             # Phase 3: Generate code
@@ -377,17 +387,38 @@ class PipelineOrchestrator:
             module_spec = generator.infer_module_spec(title, body, labels)
             
             if not module_spec:
-                logger.error("❌ Could not infer module specification from issue")
-                return {
-                    'success': False,
-                    'error': 'Could not infer module specification from issue'
-                }
+                # Check if this is a documentation file that should use IssueHandler
+                text = f"{title} {body}".lower()
+                doc_pattern = r'(?:create|add|implement|build)(?:\s+file)?(?:\s*:)?\s*[`]?([a-z_/.-]+\.(?:md|txt|rst))[`]?'
+                doc_match = re.search(doc_pattern, text)
+                
+                if doc_match:
+                    doc_file = doc_match.group(1)
+                    logger.info(f"📄 Detected documentation file: {doc_file}")
+                    logger.info(f"   Using IssueHandler workflow instead of code generation pipeline")
+                    
+                    # Return special marker for documentation file
+                    return {
+                        'success': True,
+                        'is_documentation': True,
+                        'file_path': doc_file,
+                        'title': title,
+                        'body': body,
+                        'labels': labels
+                    }
+                else:
+                    logger.error("❌ Could not infer module specification from issue")
+                    return {
+                        'success': False,
+                        'error': 'Could not infer module specification from issue'
+                    }
             
             logger.info(f"✅ Inferred module: {module_spec.module_path}")
             
             # Convert ModuleSpec to requirements dict
             return {
                 'success': True,
+                'is_documentation': False,
                 'module_path': module_spec.module_path,
                 'module_name': module_spec.module_name,
                 'test_path': module_spec.test_path,
@@ -797,6 +828,75 @@ class PipelineOrchestrator:
             return {
                 'success': False,
                 'error': str(e)
+            }
+    
+    async def _handle_documentation_issue(
+        self, 
+        repo: str, 
+        issue_number: int, 
+        issue_data: Dict, 
+        token: str
+    ) -> Dict[str, Any]:
+        """Handle documentation file creation using IssueHandler workflow.
+        
+        This method provides a simplified workflow for documentation files:
+        1. Use IssueHandler to parse requirements and create files
+        2. Create PR with changes
+        3. Close issue
+        
+        Args:
+            repo: Repository in format "owner/repo"
+            issue_number: Issue number
+            issue_data: Issue data dict from GitHub API
+            token: GitHub token for API calls
+            
+        Returns:
+            Dict with success, pr_url, summary, etc.
+        """
+        from engine.operations.issue_handler import IssueHandler
+        
+        logger.info(f"\n📄 Documentation workflow for {repo}#{issue_number}")
+        
+        try:
+            # Initialize IssueHandler with agent
+            if not self.agent:
+                raise RuntimeError("No agent available for IssueHandler")
+            
+            issue_handler = IssueHandler(self.agent)
+            
+            # Let IssueHandler process the issue autonomously
+            # It will parse requirements, create files, commit, and create PR
+            logger.info("🤖 Starting IssueHandler autonomous workflow...")
+            result = issue_handler.assign_to_issue(repo, issue_number)
+            
+            if result.get('success'):
+                logger.info(f"✅ IssueHandler completed successfully")
+                logger.info(f"   PR: {result.get('pr_url', 'N/A')}")
+                return {
+                    'success': True,
+                    'pr_url': result.get('pr_url'),
+                    'pr_number': result.get('pr_number'),
+                    'summary': f"Documentation created via IssueHandler: {result.get('pr_url')}",
+                    'workflow_type': 'documentation'
+                }
+            else:
+                logger.error(f"❌ IssueHandler failed: {result.get('error')}")
+                return {
+                    'success': False,
+                    'error': result.get('error', 'IssueHandler workflow failed'),
+                    'summary': f"Documentation workflow failed: {result.get('error')}",
+                    'workflow_type': 'documentation'
+                }
+                
+        except Exception as e:
+            logger.error(f"❌ Documentation workflow failed: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return {
+                'success': False,
+                'error': str(e),
+                'summary': f"Documentation workflow exception: {e}",
+                'workflow_type': 'documentation'
             }
     
     async def _close_issue_with_summary(
