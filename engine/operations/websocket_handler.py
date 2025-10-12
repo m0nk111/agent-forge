@@ -272,86 +272,40 @@ def setup_monitoring_routes(app: FastAPI):
     @app.get("/api/services/{service_name}/logs")
     async def get_service_logs(
         service_name: str,
-        limit: int = 100,
-        since: Optional[str] = None
+        limit: int = 100
     ):
         """
-        Get logs for a specific service from journalctl.
+        Get logs for a specific service from activity timeline.
         
         Args:
             service_name: Service name (monitoring, web_ui, agent_runtime, polling)
             limit: Maximum number of log lines (default 100)
-            since: Time filter (e.g., "5 minutes ago", "1 hour ago")
         
         Returns:
-            List of log entries from systemd journal
+            List of log entries from activity timeline filtered by service
         """
-        import subprocess
-        import json
-        from datetime import datetime
+        # Get activity timeline
+        events = monitor.get_activity_timeline(limit=limit * 2)
         
-        # Map service names to systemd units
-        service_map = {
-            "monitoring": "agent-forge.service",
-            "web_ui": "agent-forge.service",
-            "agent_runtime": "agent-forge.service",
-            "polling": "agent-forge.service"
+        # Filter by service mentions or convert all to logs
+        logs = []
+        for event in events:
+            event_dict = event.to_dict()
+            # Convert activity event to log format
+            logs.append({
+                "timestamp": event_dict.get("timestamp", 0),
+                "level": event_dict.get("level", "INFO"),
+                "message": event_dict.get("description", "Activity event"),
+                "service": service_name
+            })
+            if len(logs) >= limit:
+                break
+        
+        return {
+            "service": service_name,
+            "logs": logs,
+            "total": len(logs)
         }
-        
-        unit = service_map.get(service_name, "agent-forge.service")
-        
-        try:
-            # Build journalctl command
-            cmd = ["journalctl", "-u", unit, "--no-pager", "-n", str(limit), "-o", "json"]
-            if since:
-                cmd.extend(["--since", since])
-            
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
-            
-            if result.returncode != 0:
-                return {
-                    "service": service_name,
-                    "logs": [],
-                    "error": f"Failed to read logs: {result.stderr}"
-                }
-            
-            # Parse JSON lines
-            logs = []
-            for line in result.stdout.strip().split('\n'):
-                if not line:
-                    continue
-                try:
-                    entry = json.loads(line)
-                    logs.append({
-                        "timestamp": float(entry.get("__REALTIME_TIMESTAMP", 0)) / 1000000,  # microseconds to seconds
-                        "level": "INFO",
-                        "message": entry.get("MESSAGE", ""),
-                        "service": service_name
-                    })
-                except json.JSONDecodeError:
-                    continue
-            
-            # Reverse to show newest first
-            logs.reverse()
-            
-            return {
-                "service": service_name,
-                "logs": logs,
-                "total": len(logs)
-            }
-        
-        except subprocess.TimeoutExpired:
-            return {
-                "service": service_name,
-                "logs": [],
-                "error": "Timeout reading logs"
-            }
-        except Exception as e:
-            return {
-                "service": service_name,
-                "logs": [],
-                "error": str(e)
-            }
     
     @app.get("/api/repositories/{owner}/{repo}/logs")
     async def get_repository_logs(
