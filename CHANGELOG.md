@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **OpenRouter API Key Support** (2025-10-12, commit 400b17d)
+  - Added OpenRouter API key to secrets structure
+  - Key stored at `secrets/keys/openrouter.key` with 600 permissions
+  - OpenRouter provides multi-model gateway access (GPT, Claude, Llama, etc.)
+  - Updated `secrets/README.md` with documentation and usage examples
+  - Modified `.gitignore` to allow `secrets/README.md` while protecting keys
+  - Helper function: `load_api_key('openrouter')` returns API key
+  - Files: `.gitignore`, `secrets/README.md`, `secrets/keys/openrouter.key`
+
 - **Historical Logs for Agents, Services, and Repositories** (2025-10-12, commits 63e8d3b, fc6c8ae)
   - Added API endpoint `/api/services/{service_name}/logs` for service activity logs
   - Added API endpoint `/api/repositories/{owner}/{repo}/logs` for repository activity
