@@ -11,6 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Dashboard Repository Monitoring API** (2025-10-12, commit 9b5d3b5)
+  - Added `/api/config/polling` endpoint to monitoring service (port 7997)
+  - Returns repositories, watch_labels, intervals, claim_timeout, max_concurrent_issues
+  - Updated dashboard to fetch from absolute URL: `http://hostname:7997/api/config/polling`
+  - Root cause: API route was only in `config_routes.py` which wasn't served by monitoring
+  - Dashboard used relative URL `/api/config/polling` → went to port 8897 (static) → 404 error
+  - Fixes: "Failed to load repositories" error in dashboard monitoring section
+  - Files: `engine/operations/websocket_handler.py`, `frontend/dashboard.html`
+  - Completes: Repository visibility feature from commit ea6c896
+
 - **Documentation Workflow Pattern Detection** (2025-10-12, commits 91ccd45, 112d795)
   - CRITICAL FIX: Moved documentation file detection BEFORE CodeGenerator inference
   - Root cause: CodeGenerator always returns module_spec, causing fallback to never trigger
