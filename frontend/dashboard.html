@@ -16,13 +16,10 @@
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
             color: #e2e8f0;
             overflow: hidden;
-            width: 1088px;
-            height: 870px;
-            zoom: 0.85;
-            margin: 0 auto;
+            width: 100vw;
+            height: 100vh;
+            margin: 0;
             display: flex;
-            justify-content: center;
-            align-items: center;
             font-size: 115%; /* 15% larger base font */
         }
 
@@ -32,7 +29,9 @@
             display: flex;
             flex-direction: column;
             padding: 12px;
+            padding-bottom: 60px; /* Space for fixed footer */
             gap: 12px;
+            overflow: hidden;
         }
 
         /* Main Content Wrapper - Side-by-Side Layout */
@@ -41,6 +40,7 @@
             display: flex;
             gap: 12px;
             min-height: 0;
+            overflow: hidden;
         }
 
         /* Header */
@@ -145,6 +145,8 @@
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 8px;
             margin-top: 8px;
+            max-height: 120px;
+            overflow-y: auto;
         }
 
         .service-card {
@@ -178,6 +180,8 @@
             flex-direction: column;
             gap: 6px;
             margin-top: 8px;
+            max-height: 150px;
+            overflow-y: auto;
         }
 
         .repository-item {
@@ -274,10 +278,10 @@
             border-radius: 8px;
             padding: 14px;
             border: 1px solid rgba(96, 165, 250, 0.2);
-            flex: 0 0 400px; /* Fixed width for agent cards */
             display: flex;
             flex-direction: column;
             min-height: 0;
+            overflow: hidden;
         }
 
         .section-header {
@@ -285,6 +289,7 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 10px;
+            flex-shrink: 0;
         }
 
         .section-title {
@@ -296,6 +301,7 @@
         .agents-container {
             overflow-y: auto;
             flex: 1;
+            min-height: 0;
         }
 
         .agents-grid {
@@ -526,6 +532,7 @@
             display: flex;
             flex-direction: column;
             min-height: 0;
+            overflow: hidden;
         }
 
         .logs-container {
@@ -1129,9 +1136,9 @@
         <!-- Main Content Wrapper (Side-by-Side) -->
         <div class="content-wrapper">
             <!-- Left Column (Agents + Services) -->
-            <div style="flex: 0 0 400px; display: flex; flex-direction: column; gap: 12px; min-height: 0;">
+            <div style="flex: 0 0 400px; display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow: hidden;">
                 <!-- Services Section (Infrastructure) -->
-                <div class="services-section">
+                <div class="services-section" style="flex-shrink: 0;">
                     <div class="section-header" style="margin-bottom: 8px;">
                         <h2 class="section-title" style="color: #c4b5fd;">⚙️ Infrastructure Services</h2>
                         <div id="services-count" style="color: #94a3b8; font-size: 11px;">
@@ -1144,7 +1151,7 @@
                 </div>
 
                 <!-- Monitored Repositories Section -->
-                <div class="repositories-section">
+                <div class="repositories-section" style="flex-shrink: 0;">
                     <div class="section-header" style="margin-bottom: 8px;">
                         <h2 class="section-title" style="color: #86efac;">📦 Monitored Repositories</h2>
                         <div id="repos-count" style="color: #94a3b8; font-size: 11px;">
@@ -1157,7 +1164,7 @@
                 </div>
 
                 <!-- Agents Section -->
-                <div class="agents-section" style="flex: 1; min-height: 0;">
+                <div class="agents-section" style="flex: 1; min-height: 0; overflow: hidden;">
                     <div class="section-header">
                         <h2 class="section-title">🤖 Active Agents</h2>
                         <div style="display: flex; align-items: center; gap: 12px;">
