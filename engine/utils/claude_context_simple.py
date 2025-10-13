@@ -151,15 +151,40 @@ main().catch(console.error);
                     logger.error(f"TypeScript error: {result.stderr}")
                     raise RuntimeError(f"TypeScript execution failed: {result.stderr}")
                 
-                # Parse JSON output
-                output_lines = result.stdout.strip().split('\n')
-                # Last lines should be JSON result
-                json_output = '\n'.join([
-                    line for line in output_lines 
-                    if line.strip().startswith('{') or line.strip().startswith('}') or '"' in line
-                ])
+                # Debug: Print raw output
+                logger.debug(f"🔍 Raw stdout:\n{result.stdout}")
+                logger.debug(f"🔍 Raw stderr:\n{result.stderr}")
                 
-                return json.loads(json_output)
+                # Parse JSON output - look for the final JSON object
+                output = result.stdout.strip()
+                
+                # Find the last complete JSON object (starts with { and ends with })
+                # Work backwards from the end to find the closing }
+                last_brace = output.rfind('}')
+                if last_brace == -1:
+                    logger.error("❌ No closing brace found in output")
+                    raise ValueError("No JSON object found in TypeScript output")
+                
+                # Find the matching opening brace
+                brace_count = 0
+                first_brace = -1
+                for i in range(last_brace, -1, -1):
+                    if output[i] == '}':
+                        brace_count += 1
+                    elif output[i] == '{':
+                        brace_count -= 1
+                        if brace_count == 0:
+                            first_brace = i
+                            break
+                
+                if first_brace == -1:
+                    logger.error("❌ No matching opening brace found")
+                    raise ValueError("Malformed JSON in TypeScript output")
+                
+                json_str = output[first_brace:last_brace+1]
+                logger.debug(f"🔍 Extracted JSON: {json_str[:200]}...")
+                
+                return json.loads(json_str)
                 
             finally:
                 # Clean up temp file

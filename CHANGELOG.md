@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Milvus Vector Database Fixes** (2025-10-13)
+  - Fixed sparse vector indexing in Claude Context Milvus integration
+  - **Changes to** `tools/claude-context/packages/core/src/vectordb/milvus-vectordb.ts`:
+    - Changed sparse vector metric from `BM25` to `IP` (Inner Product) for compatibility
+    - Fixed hybrid search data format: ensure both dense and sparse data are arrays
+    - Added proper type handling in logging for sparse vector data
+  - **Status**: Milvus accepting connections, sparse vector index creates successfully
+  - **Known Issue**: Indexing produces 0 entities - upstream Claude Context tool issue
+  - IssueHandler integration works with graceful fallback to keyword search
+
 - **Semantic Codebase Context Gathering** (2025-10-13)
   - Integrated Claude Context semantic search into IssueHandler workflow
   - **Pre-flight context gathering phase**: Agent now understands codebase BEFORE planning
