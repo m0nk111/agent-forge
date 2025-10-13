@@ -1,22 +1,3 @@
-# Secrets Directory
-
-This directory contains non-committed secret keys used by the project. Files in `secrets/keys/` are ignored by git.
-
-Google AI Studio key: `secrets/keys/google_ai_studio.key`
-llama4 key: `secrets/keys/llama4.key` (DO NOT COMMIT)
-
-Usage:
-```python
-from pathlib import Path
-
-def load_key(name: str) -> str:
-    return Path('secrets/keys') / name
-
-# Example
-# key = Path('secrets/keys/llama4.key').read_text().strip()
-```
-
-Keep this README in repo to document secrets location without exposing keys.
 # Secrets Directory Structure
 
 This directory contains API keys and authentication tokens for Agent-Forge.
@@ -36,6 +17,7 @@ secrets/
 ├── keys/                # LLM API keys (one file per service)
 │   ├── openai.key               # OpenAI API key
 │   ├── openrouter.key           # OpenRouter API key (multi-model gateway)
+│   ├── google_api.key           # Google API key (maps to Google Cloud / Maps / Places, etc.)
 │   ├── anthropic.key (future)   # Anthropic/Claude API key
 │   └── ollama.key (future)      # Ollama API key (if needed)
 │
@@ -53,6 +35,8 @@ ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 # keys/openai.key
 sk-proj-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# keys/google_api.key
+AIzaSyxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
 ## 🔐 Security Notes
@@ -99,6 +83,9 @@ def load_api_key(service: str) -> str:
 openai_key = load_api_key('openai')
 openrouter_key = load_api_key('openrouter')
 anthropic_key = load_api_key('anthropic')  # Future
+google_key = load_api_key('google_api')
+## Note on Development and Production Paths
+In development, use the local paths for keys. In production, ensure the keys are securely managed and accessed.
 ```
 
 ## 📋 Migration from keys.json
