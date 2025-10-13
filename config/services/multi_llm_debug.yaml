@@ -1,0 +1,159 @@
+# Multi-LLM Debug System Configuration
+# Controls behavior of the automatic debug-fix-test loop
+
+# Debug Loop Settings
+debug_loop:
+  # Maximum number of fix-test iterations before giving up
+  max_iterations: 5
+  
+  # Test execution timeout in seconds
+  test_timeout: 300
+  
+  # Enable detailed debug logging
+  debug_mode: false
+
+# Consensus Engine Settings
+consensus:
+  # Minimum weighted confidence required (0.0 to 1.0)
+  # Lower = more lenient, higher = more strict
+  min_confidence: 0.6
+  
+  # Minimum number of LLMs that must agree on a fix
+  # Higher = safer but may fail to reach consensus
+  min_agreement: 2
+  
+  # Similarity threshold for grouping similar fixes (0.0 to 1.0)
+  # Higher = stricter grouping, lower = more liberal grouping
+  similarity_threshold: 0.7
+
+# LLM Provider Configuration
+providers:
+  # GPT-4: Best for complex reasoning and architectural issues
+  gpt4:
+    enabled: true
+    model: "gpt-4-turbo-preview"
+    weight: 1.0
+    api_key_file: "secrets/keys/openai.key"
+    api_endpoint: "https://api.openai.com/v1/chat/completions"
+    timeout: 60
+    max_tokens: 4000
+  
+  # Claude 3.5: Excellent code understanding and API usage
+  claude:
+    enabled: true
+    model: "claude-3-5-sonnet-20241022"
+    weight: 0.9
+    api_key_file: "secrets/keys/anthropic.key"
+    api_endpoint: "https://api.anthropic.com/v1/messages"
+    timeout: 60
+    max_tokens: 4000
+  
+  # Qwen Coder: Fast iteration and syntax fixes
+  qwen:
+    enabled: true
+    model: "qwen/qwen-2.5-coder-32b-instruct"
+    weight: 0.7
+    api_key_file: "secrets/keys/openrouter.key"
+    api_endpoint: "https://openrouter.ai/api/v1/chat/completions"
+    timeout: 45
+    max_tokens: 3000
+  
+  # DeepSeek R1: Bug detection and edge cases
+  deepseek:
+    enabled: true
+    model: "deepseek/deepseek-r1"
+    weight: 0.8
+    api_key_file: "secrets/keys/openrouter.key"
+    api_endpoint: "https://openrouter.ai/api/v1/chat/completions"
+    timeout: 45
+    max_tokens: 3000
+
+# Test Runner Settings
+test_runner:
+  # Default test framework (pytest, unittest, jest)
+  default_framework: "pytest"
+  
+  # Test execution timeout in seconds
+  timeout: 120
+  
+  # Verbose test output
+  verbose: true
+
+# File Editor Settings
+file_editor:
+  # Create backups before applying fixes
+  create_backups: true
+  
+  # Backup directory (relative to project root)
+  backup_dir: ".debug_loop_backups"
+  
+  # Auto-commit fixes to git
+  auto_commit: false
+  
+  # Commit message template
+  commit_template: "fix: automatic fix from multi-LLM debug loop (iteration {iteration})"
+
+# Performance Settings
+performance:
+  # Enable parallel LLM API calls
+  parallel_llm_calls: true
+  
+  # Maximum concurrent API calls
+  max_concurrent_calls: 4
+  
+  # Cache LLM responses for identical queries
+  cache_responses: true
+  
+  # Cache TTL in seconds
+  cache_ttl: 3600
+
+# Logging Settings
+logging:
+  # Log level (DEBUG, INFO, WARNING, ERROR)
+  level: "INFO"
+  
+  # Log file path (relative to project root)
+  log_file: "logs/multi_llm_debug.log"
+  
+  # Log rotation
+  rotate_logs: true
+  max_log_size_mb: 100
+  max_log_files: 10
+  
+  # Include emoji prefixes in logs
+  use_emoji: true
+  
+  # Detailed logging categories
+  categories:
+    llm_requests: true
+    consensus_decisions: true
+    test_results: true
+    fix_applications: true
+
+# Safety Settings
+safety:
+  # Require manual approval for fixes (disables automation)
+  require_approval: false
+  
+  # Dry run mode (analyze but don't apply fixes)
+  dry_run: false
+  
+  # Blacklist patterns (files that should never be modified)
+  file_blacklist:
+    - "secrets/*"
+    - "*.key"
+    - ".git/*"
+    - "external-code/*"
+  
+  # Whitelist patterns (only these files can be modified)
+  # Empty list = no restrictions
+  file_whitelist: []
+
+# Notification Settings (future feature)
+notifications:
+  enabled: false
+  on_success: true
+  on_failure: true
+  channels:
+    - email
+    - slack
