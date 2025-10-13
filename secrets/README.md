@@ -1,3 +1,22 @@
+# Secrets Directory
+
+This directory contains non-committed secret keys used by the project. Files in `secrets/keys/` are ignored by git.
+
+Google AI Studio key: `secrets/keys/google_ai_studio.key`
+llama4 key: `secrets/keys/llama4.key` (DO NOT COMMIT)
+
+Usage:
+```python
+from pathlib import Path
+
+def load_key(name: str) -> str:
+    return Path('secrets/keys') / name
+
+# Example
+# key = Path('secrets/keys/llama4.key').read_text().strip()
+```
+
+Keep this README in repo to document secrets location without exposing keys.
 # Secrets Directory Structure
 
 This directory contains API keys and authentication tokens for Agent-Forge.
