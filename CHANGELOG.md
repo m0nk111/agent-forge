@@ -9,20 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Claude Context Integration in Debug Loop** (2025-10-13)
-  - Semantic code search now finds ALL relevant code files beyond test failures
-  - Two-strategy context loading for better LLM analysis:
-    - Strategy 1 (preferred): Claude Context semantic search finds related functions/classes
-    - Strategy 2 (fallback): Basic file loading from test failures if Claude Context unavailable
-  - Improves success rate by providing complete context to LLMs (not just files from test failures)
-  - Graceful fallback ensures system works even without Claude Context
-  - Configuration: `use_claude_context: true` (default), optional `claude_context_collection`
-  - Modified: `engine/operations/debug_loop.py`
-    - Enhanced `__init__()` with `use_claude_context` and `claude_context_collection` parameters
-    - Completely rewrote `_load_code_context()` with semantic search capability
-    - Updated `_run_iteration()` to pass bug description for semantic queries
-  - Documentation: Added comprehensive Claude Context section to `docs/MULTI_LLM_DEBUG.md`
-
 - **Multi-LLM Automatic Debug System** (2025-10-13)
   - Revolutionary autonomous debugging system with multi-LLM parallel analysis
   - **Core Components**:

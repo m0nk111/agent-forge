@@ -35,7 +35,6 @@ The Multi-LLM Debug System eliminates the frustrating manual testing loop where 
 ✅ **Self-correcting**: Learns from previous failed attempts  
 ✅ **Fast**: Parallel API calls, 30-90s per iteration  
 ✅ **Reliable**: 80%+ success rate on typical bugs  
-✅ **Smart Context**: Claude Context semantic search finds all relevant code  
 
 ### Problem Solved
 
@@ -393,58 +392,6 @@ debug_loop:
   max_iterations: 5        # Stop after 5 attempts
   test_timeout: 300        # 5 minutes
   debug_mode: true         # Enable DEBUG logging
-  use_claude_context: true # Enable semantic code search (recommended)
-```
-
-### Claude Context Integration
-
-**What it does:**  
-Claude Context semantic search finds ALL relevant code files, not just the ones from test failures. This dramatically improves LLM analysis quality by providing complete context.
-
-**How it works:**
-- **Strategy 1** (preferred): Semantic search queries built from bug description + error messages
-- **Strategy 2** (fallback): Basic file loading from test failures if Claude Context unavailable
-
-**Benefits:**
-- 🔍 Finds related functions/classes beyond test failures
-- 📈 Higher success rate (better context → better analysis → better fixes)
-- ⚡ Fewer iterations needed (LLMs get complete picture first time)
-- 🛡️ Graceful fallback ensures system always works
-
-**Configuration:**
-```yaml
-debug_loop:
-  use_claude_context: true              # Enable semantic search (default: true)
-  claude_context_collection: null       # Optional: custom collection name
-```
-
-**Usage in code:**
-```python
-from engine.operations.debug_loop import DebugLoop
-
-# With Claude Context (recommended)
-loop = DebugLoop(
-    project_root="/path/to/project",
-    use_claude_context=True,           # Semantic search enabled
-    claude_context_collection="myapp"  # Optional collection
-)
-
-# Without Claude Context (fallback mode)
-loop = DebugLoop(
-    project_root="/path/to/project",
-    use_claude_context=False  # Only loads files from test failures
-)
-```
-
-**What you'll see:**
-```
-📄 Loading code context from 2 failures...
-🔍 Using Claude Context for semantic search...
-  ✓ Query: "NoneType has no attribute 'read'"
-  ✓ Found 3 relevant files via semantic search
-  ✓ Query: "Expected 'hello' but got None"
-  ✓ Found 2 relevant files via semantic search
-✅ Loaded 5 files (12,345 chars) via Claude Context semantic search
 ```
 
 ### Consensus Settings
