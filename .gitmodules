@@ -1,0 +1,3 @@
+[submodule "tools/claude-context"]
+	path = tools/claude-context
+	url = https://github.com/zilliztech/claude-context.git

@@ -9,6 +9,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Claude Context Semantic Code Search Integration** (2025-10-13)
+  - Integrated Claude Context MCP plugin for semantic codebase search
+  - Added git submodule: `tools/claude-context` (zilliztech/claude-context)
+  - Created Python wrapper: `engine/utils/claude_context_wrapper.py`
+    - High-level API for indexing and searching code
+    - Integrates with Agent-Forge secrets management
+    - Supports Milvus local and Zilliz Cloud
+    - CLI tool for testing: `python -m engine.utils.claude_context_wrapper`
+  - Created comprehensive integration guide: `docs/CLAUDE_CONTEXT_INTEGRATION.md`
+    - Complete setup instructions for Node.js, Milvus, and API keys
+    - Usage examples for Code Agent and Issue Handler integration
+    - MCP server configuration for Claude Code, Continue, Qwen Code
+    - Performance optimization tips and troubleshooting
+  - Created test script: `scripts/test_claude_context.py`
+    - Validates installation, API keys, and Milvus connection
+    - Tests indexing, search, and collection management
+    - Quick mode for rapid validation
+  - **Architecture**: TypeScript MCP server → Python bridge → Agent-Forge wrapper
+  - **Features**: Semantic search, vector embeddings, cost-effective context loading
+  - **Benefits**: 
+    - Find relevant code across millions of lines instantly
+    - Reduce LLM costs by loading only relevant snippets
+    - Enable context-aware code generation and refactoring
+  - **Use Cases**:
+    - Code Agent: Get relevant context for GitHub issues
+    - Issue Handler: Find related code for bug fixes
+    - Polling Service: Understand monitored repositories
+  - Files: `.gitmodules`, `tools/claude-context/` (submodule), `engine/utils/claude_context_wrapper.py`, `docs/CLAUDE_CONTEXT_INTEGRATION.md`, `scripts/test_claude_context.py`
+
 - **OpenRouter API Key Support** (2025-10-12, commit 400b17d)
   - Added OpenRouter API key to secrets structure
   - Key stored at `secrets/keys/openrouter.key` with 600 permissions
