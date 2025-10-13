@@ -54,6 +54,17 @@ DEBUG = os.getenv('DEBUG', 'false').lower() == 'true'
 
 logger = logging.getLogger(__name__)
 
+# Claude Context integration for semantic code search
+try:
+    from engine.utils.claude_context_wrapper import ClaudeContextWrapper
+    CLAUDE_CONTEXT_AVAILABLE = True
+    if DEBUG:
+        logger.debug("✅ Claude Context available for semantic code search")
+except ImportError:
+    CLAUDE_CONTEXT_AVAILABLE = False
+    if DEBUG:
+        logger.debug("⚠️ Claude Context not available - using basic context loading")
+
 
 @dataclass
 class IterationResult:
@@ -96,7 +107,9 @@ class DebugLoop:
         project_root: str,
         max_iterations: int = 5,
         min_confidence: float = 0.6,
-        min_agreement: int = 2
+        min_agreement: int = 2,
+        use_claude_context: bool = True,
+        claude_context_collection: Optional[str] = None
     ):
         """
         Initialize debug loop
@@ -106,9 +119,12 @@ class DebugLoop:
             max_iterations: Maximum fix-test iterations (default 5)
             min_confidence: Minimum consensus confidence (default 0.6)
             min_agreement: Minimum LLMs that must agree (default 2)
+            use_claude_context: Enable Claude Context semantic search (default True)
+            claude_context_collection: Specific collection name (default: auto-generate)
         """
         self.project_root = Path(project_root).resolve()
         self.max_iterations = max_iterations
+        self.use_claude_context = use_claude_context and CLAUDE_CONTEXT_AVAILABLE
         
         # Initialize components
         # Note: TestRunner needs a terminal_ops instance
@@ -120,48 +136,138 @@ class DebugLoop:
         )
         self.file_editor = FileEditor(str(self.project_root))
         
+        # Initialize Claude Context if available
+        self.claude_context = None
+        self.claude_context_collection = claude_context_collection
+        if self.use_claude_context:
+            try:
+                self.claude_context = ClaudeContextWrapper()
+                if DEBUG:
+                    logger.debug(f"✅ Claude Context initialized for semantic search")
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to initialize Claude Context: {e}")
+                self.use_claude_context = False
+        
         if DEBUG:
             logger.debug(f"🔍 DebugLoop initialized")
             logger.debug(f"  - Project root: {self.project_root}")
             logger.debug(f"  - Max iterations: {max_iterations}")
             logger.debug(f"  - Min confidence: {min_confidence}")
             logger.debug(f"  - Min agreement: {min_agreement}")
+            logger.debug(f"  - Claude Context: {'enabled' if self.use_claude_context else 'disabled'}")
     
-    def _load_code_context(self, failures: List[TestFailure]) -> Dict[str, str]:
+    def _load_code_context(self, failures: List[TestFailure], bug_description: str = "") -> Dict[str, str]:
         """
-        Load relevant code files based on test failures
+        Load relevant code files based on test failures.
+        Uses Claude Context for semantic search if available, otherwise loads files directly.
         
         Args:
             failures: List of test failures
+            bug_description: Bug description for semantic search
         
         Returns:
             Dict mapping filename to file content
         """
         code_context = {}
-        files_to_load = set()
         
-        # Add source files from failures
-        for failure in failures:
-            if failure.source_file:
-                files_to_load.add(failure.source_file)
+        # Strategy 1: Claude Context semantic search (if available)
+        if self.use_claude_context and self.claude_context and bug_description:
+            if DEBUG:
+                logger.debug(f"🔍 Using Claude Context for semantic code search")
             
-            # Also add test file
-            if failure.test_file:
-                files_to_load.add(failure.test_file)
-        
-        # Load files
-        for filepath in files_to_load:
-            full_path = self.project_root / filepath
-            if full_path.exists():
-                try:
-                    with open(full_path, 'r') as f:
-                        code_context[filepath] = f.read()
-                    
-                    if DEBUG:
-                        logger.debug(f"📄 Loaded {filepath} ({len(code_context[filepath])} chars)")
+            try:
+                # Build search query from failures and bug description
+                search_queries = []
                 
-                except Exception as e:
-                    logger.error(f"❌ Failed to load {filepath}: {e}")
+                # Add bug description
+                search_queries.append(bug_description)
+                
+                # Add error messages from failures
+                for failure in failures[:3]:  # Limit to first 3 failures
+                    if failure.error_message:
+                        search_queries.append(failure.error_message)
+                
+                # Perform semantic search
+                collection_name = self.claude_context_collection or f"agent-forge-{self.project_root.name}"
+                
+                for query in search_queries:
+                    if DEBUG:
+                        logger.debug(f"🔎 Searching: {query[:100]}...")
+                    
+                    results = self.claude_context.search_code(
+                        query=query,
+                        collection_name=collection_name,
+                        limit=5,
+                        score_threshold=0.7
+                    )
+                    
+                    # Extract file paths from results
+                    for result in results:
+                        # Claude Context returns dict with 'file' and 'content' keys
+                        if isinstance(result, dict):
+                            filepath = result.get('file', '')
+                            content = result.get('content', '')
+                        else:
+                            # Handle alternative result formats
+                            filepath = str(result)
+                            content = None
+                        
+                        if filepath and filepath not in code_context:
+                            if content:
+                                code_context[filepath] = content
+                            else:
+                                # Load file content
+                                full_path = self.project_root / filepath
+                                if full_path.exists():
+                                    try:
+                                        with open(full_path, 'r') as f:
+                                            code_context[filepath] = f.read()
+                                    except Exception as e:
+                                        logger.warning(f"⚠️ Failed to load {filepath}: {e}")
+                            
+                            if DEBUG:
+                                logger.debug(f"📄 Found via Claude Context: {filepath}")
+                
+                if DEBUG:
+                    logger.debug(f"✅ Claude Context found {len(code_context)} relevant files")
+            
+            except Exception as e:
+                logger.warning(f"⚠️ Claude Context search failed: {e}")
+                logger.debug(f"  Falling back to basic context loading")
+                # Fall through to Strategy 2
+        
+        # Strategy 2: Basic file loading from test failures
+        if not code_context:  # If Claude Context didn't find anything or failed
+            if DEBUG:
+                logger.debug(f"📄 Using basic context loading from test failures")
+            
+            files_to_load = set()
+            
+            # Add source files from failures
+            for failure in failures:
+                if failure.source_file:
+                    files_to_load.add(failure.source_file)
+                
+                # Also add test file
+                if failure.test_file:
+                    files_to_load.add(failure.test_file)
+            
+            # Load files
+            for filepath in files_to_load:
+                full_path = self.project_root / filepath
+                if full_path.exists():
+                    try:
+                        with open(full_path, 'r') as f:
+                            code_context[filepath] = f.read()
+                        
+                        if DEBUG:
+                            logger.debug(f"📄 Loaded {filepath} ({len(code_context[filepath])} chars)")
+                    
+                    except Exception as e:
+                        logger.error(f"❌ Failed to load {filepath}: {e}")
+        
+        if DEBUG:
+            logger.debug(f"📊 Total context: {len(code_context)} files, {sum(len(c) for c in code_context.values())} chars")
         
         return code_context
     
@@ -218,9 +324,12 @@ class DebugLoop:
                 fix_content=""
             )
         
-        # Step 2: Load code context
+        # Step 2: Load code context (with Claude Context if available)
         print(f"📄 Loading code context from {len(test_result.failures)} failures...")
-        code_context = self._load_code_context(test_result.failures)
+        if self.use_claude_context:
+            print(f"🔍 Using Claude Context for semantic search...")
+        code_context = self._load_code_context(test_result.failures, bug_description)
+        print(f"✅ Loaded {len(code_context)} relevant files")
         
         # Step 3: Format test failures for LLMs
         test_failures_text = test_runner.format_failures_for_llm(test_result)
