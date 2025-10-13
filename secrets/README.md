@@ -18,6 +18,7 @@ secrets/
 │   ├── openai.key               # OpenAI API key
 │   ├── openrouter.key           # OpenRouter API key (multi-model gateway)
 │   ├── google_api.key           # Google API key (maps to Google Cloud / Maps / Places, etc.)
+│   ├── google_api.key           # Google AI Studio / PaLM API key (for Google Cloud AI services)
 │   ├── anthropic.key (future)   # Anthropic/Claude API key
 │   └── ollama.key (future)      # Ollama API key (if needed)
 │
@@ -37,6 +38,9 @@ ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 sk-proj-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 # keys/google_api.key
 AIzaSyxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# keys/google_api.key
+# Example (DO NOT COMMIT YOUR REAL KEY):
+# AI-ZaSyEXAMPLEKEYFOR-AI-STUDIO-XXXXXXXXXXXX
 ```
 
 ## 🔐 Security Notes
