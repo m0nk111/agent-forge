@@ -114,9 +114,8 @@ class SimpleClaudeContext:
             wrapper_code = f"""
 import {{ testContextEndToEnd }} from './test_context';
 
-// Disable hybrid mode - use dense vectors only
-// This avoids BM25 sparse vector generation issues in Milvus
-process.env.HYBRID_MODE = 'false';
+// Enable hybrid mode with BM25 sparse vectors (client-side generation)
+process.env.HYBRID_MODE = 'true';
 
 async function main() {{
     const result = await testContextEndToEnd({{
