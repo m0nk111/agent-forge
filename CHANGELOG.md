@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Semantic Codebase Context Gathering** (2025-10-13)
+  - Integrated Claude Context semantic search into IssueHandler workflow
+  - **Pre-flight context gathering phase**: Agent now understands codebase BEFORE planning
+  - New method `_gather_codebase_context()`: Semantic search for relevant patterns and architecture
+  - Enhanced `_generate_plan()`: Uses context insights to inform implementation planning
+  - **Benefits**:
+    - Agent discovers existing patterns and implementations automatically
+    - Better code consistency with existing architecture
+    - Reduced duplicate code by finding reusable components
+    - Context-aware planning based on actual codebase structure
+  - **Integration Flow**:
+    1. Fetch GitHub issue
+    2. Parse requirements
+    3. **NEW: Gather semantic context** → Find relevant files using vector search
+    4. Generate plan with context insights
+    5. Execute implementation
+  - Falls back gracefully to keyword search if Claude Context unavailable
+  - Identifies architectural patterns (operations/, core/, utils/, validation/)
+  - Returns top 15 relevant files with relevance scores
+
 - **Multi-LLM Automatic Debug System** (2025-10-13)
   - Revolutionary autonomous debugging system with multi-LLM parallel analysis
   - **Core Components**:

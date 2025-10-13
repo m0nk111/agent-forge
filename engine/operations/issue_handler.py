@@ -56,6 +56,16 @@ class IssueHandler:
         except Exception:
             # Validator is optional - continue without it
             pass
+        
+        # Initialize Claude Context for semantic codebase understanding (optional)
+        self.claude_context = None
+        try:
+            from engine.utils.claude_context_simple import SimpleClaudeContext
+            self.claude_context = SimpleClaudeContext()
+            print("   🔍 Claude Context semantic search enabled")
+        except Exception as e:
+            print(f"   ⚠️  Claude Context not available: {e}")
+            # Continue without semantic search - fallback to keyword search
     
     def assign_to_issue(self, repo: str, issue_number: int) -> Dict:
         """
@@ -102,6 +112,26 @@ class IssueHandler:
 #         if hasattr(self.agent, 'monitor'):
 #             self.agent.monitor.update_agent_status(
 #                 self.agent.agent_id,
+#                 phase='gather_context',
+#                 progress=0.3
+#             )
+#         
+        # Step 3: Gather codebase context (semantic understanding)
+        print("\n🔍 Step 3: Gathering codebase context...")
+        context_insights = self._gather_codebase_context(issue, requirements)
+        
+        if context_insights['relevant_files']:
+            print(f"   📂 Found {len(context_insights['relevant_files'])} relevant files:")
+            for file_info in context_insights['relevant_files'][:5]:  # Show top 5
+                print(f"      • {file_info['path']} (relevance: {file_info['score']:.2f})")
+        
+        if context_insights['patterns']:
+            print(f"   🎯 Identified patterns: {', '.join(context_insights['patterns'][:3])}")
+        
+        # Update monitor
+#         if hasattr(self.agent, 'monitor'):
+#             self.agent.monitor.update_agent_status(
+#                 self.agent.agent_id,
 #                 phase='generate_plan',
 #                 progress=0.4
 #             )
@@ -112,9 +142,9 @@ class IssueHandler:
 #                 {'task_count': len(requirements['tasks'])}
 #             )
 #         
-        # Step 3: Generate implementation plan
-        print("\n🗺️  Step 3: Generating implementation plan...")
-        plan = self._generate_plan(requirements, issue)
+        # Step 4: Generate implementation plan
+        print("\n🗺️  Step 4: Generating implementation plan...")
+        plan = self._generate_plan(requirements, issue, context_insights)
         
         print(f"   📊 Phases: {len(plan['phases'])}")
         for phase in plan['phases']:
@@ -392,7 +422,104 @@ class IssueHandler:
         
         return requirements
     
-    def _generate_plan(self, requirements: Dict, issue: Dict) -> Dict:
+    def _gather_codebase_context(self, issue: Dict, requirements: Dict) -> Dict:
+        """
+        Gather semantic context about the codebase BEFORE planning.
+        
+        This is the PRE-FLIGHT context gathering phase that gives the agent
+        understanding of:
+        - Existing code patterns and architecture
+        - Similar implementations in the codebase
+        - Relevant files and modules
+        - Coding conventions and best practices
+        
+        Args:
+            issue: Full issue dict with title, body, labels
+            requirements: Parsed requirements
+        
+        Returns:
+            Dict with:
+                - relevant_files: List of {path, score, preview}
+                - patterns: List of identified patterns
+                - context_summary: Human-readable summary
+        """
+        context_insights = {
+            'relevant_files': [],
+            'patterns': [],
+            'context_summary': ''
+        }
+        
+        # Only gather context if Claude Context is available
+        if not self.claude_context:
+            print("   ⚠️  Semantic search unavailable - using keyword fallback")
+            return context_insights
+        
+        try:
+            # Build comprehensive search query from issue
+            search_query = f"{issue['title']}\n\n{issue['body']}"
+            
+            # Add context from tasks
+            if requirements['tasks']:
+                search_query += "\n\nTasks:\n"
+                for task in requirements['tasks'][:3]:  # Top 3 tasks
+                    search_query += f"- {task['description']}\n"
+            
+            # Perform semantic search
+            print(f"   🔍 Searching codebase for relevant context...")
+            results = self.claude_context.search_code(
+                codebase_path=str(self.project_root),
+                query=search_query,
+                limit=15  # Get top 15 relevant files
+            )
+            
+            if results:
+                print(f"   ✅ Found {len(results)} semantically relevant files")
+                
+                # Store results
+                context_insights['relevant_files'] = [
+                    {
+                        'path': r['relativePath'],
+                        'score': r['score'],
+                        'preview': r.get('contentPreview', '')[:200]  # First 200 chars
+                    }
+                    for r in results
+                ]
+                
+                # Identify patterns from file paths
+                patterns = set()
+                for r in results:
+                    path = r['relativePath']
+                    if '/operations/' in path:
+                        patterns.add('operations_pattern')
+                    if '/core/' in path:
+                        patterns.add('core_architecture')
+                    if '/utils/' in path:
+                        patterns.add('utility_modules')
+                    if '/validation/' in path:
+                        patterns.add('validation_pattern')
+                    if path.endswith('_handler.py'):
+                        patterns.add('handler_pattern')
+                    if path.endswith('_agent.py'):
+                        patterns.add('agent_pattern')
+                
+                context_insights['patterns'] = list(patterns)
+                
+                # Generate summary
+                top_files = [r['relativePath'] for r in results[:5]]
+                context_insights['context_summary'] = (
+                    f"Found {len(results)} relevant files. "
+                    f"Top matches: {', '.join(top_files)}"
+                )
+            else:
+                print("   ⚠️  No semantic matches found")
+        
+        except Exception as e:
+            print(f"   ❌ Context gathering failed: {e}")
+            # Continue without context - not a critical failure
+        
+        return context_insights
+    
+    def _generate_plan(self, requirements: Dict, issue: Dict, context_insights: Optional[Dict] = None) -> Dict:
         """
         Generate implementation plan from requirements.
         
@@ -413,19 +540,41 @@ class IssueHandler:
             }
         }
         
-        # Phase 1: Analysis
+        # Phase 1: Analysis - Use semantic context if available
         analysis_actions = []
         
+        # Add explicitly mentioned files
         if requirements['files_mentioned']:
             for file_path in requirements['files_mentioned']:
                 analysis_actions.append({
                     'type': 'read_file',
                     'file': file_path,
-                    'description': f'Read {file_path}'
+                    'description': f'Read {file_path} (explicitly mentioned)'
                 })
         
-        # Add codebase search if no files mentioned
-        if not requirements['files_mentioned']:
+        # Add semantically relevant files from context gathering
+        if context_insights and context_insights.get('relevant_files'):
+            print(f"   🎯 Adding {len(context_insights['relevant_files'])} context files to analysis")
+            
+            # Add top relevant files (limit to prevent overwhelming the plan)
+            for file_info in context_insights['relevant_files'][:10]:
+                # Skip if already added
+                already_added = any(
+                    action.get('file') == file_info['path'] 
+                    for action in analysis_actions
+                )
+                if not already_added:
+                    analysis_actions.append({
+                        'type': 'read_file',
+                        'file': file_info['path'],
+                        'description': f"Context: {file_info['path']} (relevance: {file_info['score']:.2f})",
+                        'relevance_score': file_info['score'],
+                        'preview': file_info['preview']
+                    })
+        
+        # Fallback: keyword search if no context gathered
+        elif not requirements['files_mentioned']:
+            print("   ⚠️  No context files available - using keyword fallback")
             analysis_actions.append({
                 'type': 'search',
                 'description': 'Search for relevant code',
