@@ -110,8 +110,13 @@ class SimpleClaudeContext:
         """
         try:
             # Create wrapper script that calls testContextEndToEnd
+            # IMPORTANT: Use dense-only mode to avoid BM25 sparse vector issues
             wrapper_code = f"""
 import {{ testContextEndToEnd }} from './test_context';
+
+// Disable hybrid mode - use dense vectors only
+// This avoids BM25 sparse vector generation issues in Milvus
+process.env.HYBRID_MODE = 'false';
 
 async function main() {{
     const result = await testContextEndToEnd({{
@@ -152,37 +157,36 @@ main().catch(console.error);
                     raise RuntimeError(f"TypeScript execution failed: {result.stderr}")
                 
                 # Debug: Print raw output
-                logger.debug(f"🔍 Raw stdout:\n{result.stdout}")
-                logger.debug(f"🔍 Raw stderr:\n{result.stderr}")
+                logger.debug(f"🔍 Raw stdout length: {len(result.stdout)} chars")
+                if result.stderr:
+                    logger.debug(f"🔍 Stderr: {result.stderr[:500]}")
                 
-                # Parse JSON output - look for the final JSON object
-                output = result.stdout.strip()
+                # Parse JSON output - extract ONLY the final JSON result
+                # The TypeScript script logs various messages, then prints final JSON
+                # We need to find where the JSON starts and extract from there
+                output = result.stdout
                 
-                # Find the last complete JSON object (starts with { and ends with })
-                # Work backwards from the end to find the closing }
+                # Find the last occurrence of '🎉 End-to-end test completed!' 
+                # JSON starts after this message
+                marker = '🎉 End-to-end test completed!'
+                json_start_idx = output.rfind(marker)
+                
+                if json_start_idx != -1:
+                    # Skip past the marker and newline
+                    json_start_idx = output.find('\n', json_start_idx) + 1
+                    output = output[json_start_idx:]
+                
+                # Now extract just the JSON part (from first { to last })
+                first_brace = output.find('{')
                 last_brace = output.rfind('}')
-                if last_brace == -1:
-                    logger.error("❌ No closing brace found in output")
+                
+                if first_brace == -1 or last_brace == -1:
+                    logger.error(f"❌ No JSON braces found")
+                    logger.error(f"Output sample: {output[:500]}")
                     raise ValueError("No JSON object found in TypeScript output")
                 
-                # Find the matching opening brace
-                brace_count = 0
-                first_brace = -1
-                for i in range(last_brace, -1, -1):
-                    if output[i] == '}':
-                        brace_count += 1
-                    elif output[i] == '{':
-                        brace_count -= 1
-                        if brace_count == 0:
-                            first_brace = i
-                            break
-                
-                if first_brace == -1:
-                    logger.error("❌ No matching opening brace found")
-                    raise ValueError("Malformed JSON in TypeScript output")
-                
                 json_str = output[first_brace:last_brace+1]
-                logger.debug(f"🔍 Extracted JSON: {json_str[:200]}...")
+                logger.debug(f"🔍 Extracted JSON: {len(json_str)} chars")
                 
                 return json.loads(json_str)
                 
