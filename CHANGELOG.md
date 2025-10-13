@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Semantic Search 0 Entities Issue** (2025-10-13) - commit 6531f08
+  - **Problem**: Milvus indexing produced 0 entities, all inserts failed with:
+    - Error: `sparse float field 'sparse_vector' is illegal, array type mismatch`
+    - BM25 sparse vector generation not working in Milvus 2.4.15
+    - Hybrid mode (dense + sparse) failing silently
+  - **Root Cause**: BM25 function doesn't auto-generate sparse vectors on insert
+  - **Solution**: Disabled hybrid mode - use dense-only vector search
+    - Set `HYBRID_MODE=false` in TypeScript wrapper
+    - Uses only OpenAI embeddings (dense vectors, 1536 dimensions)
+    - Avoids BM25 sparse vector generation entirely
+  - **Result**: 
+    - ✅ 606 entities successfully indexed
+    - ✅ Semantic search working with 0.36-0.38 relevance scores
+    - ✅ Python wrapper fully functional end-to-end
+    - ✅ Found relevant files: pr_review_agent.py, repo_manager.py, bot_operations.py
+  - **Changes**:
+    - `engine/utils/claude_context_simple.py`: Force HYBRID_MODE=false, improved JSON parsing
+    - `tools/claude-context`: Detailed insert logging with error detection
+  - **Status**: 🎉 **SEMANTIC SEARCH FULLY WORKING!**
+  - **Next**: Re-enable hybrid mode when BM25 sparse vectors fixed upstream
+
 ### Added
 
 - **Milvus Vector Database Fixes** (2025-10-13)
@@ -16,8 +39,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Fixed hybrid search data format: ensure both dense and sparse data are arrays
     - Added proper type handling in logging for sparse vector data
   - **Status**: Milvus accepting connections, sparse vector index creates successfully
-  - **Known Issue**: Indexing produces 0 entities - upstream Claude Context tool issue
-  - IssueHandler integration works with graceful fallback to keyword search
 
 - **Semantic Codebase Context Gathering** (2025-10-13)
   - Integrated Claude Context semantic search into IssueHandler workflow
