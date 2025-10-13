@@ -1,6 +1,10 @@
 # Claude Context Integration Guide for Agent-Forge
 
-Complete guide for integrating semantic code search capabilities into Agent-Forge using Claude Context.
+Complete guide for integrating **hybrid semantic code search** (BM25 + Dense Vectors) into Agent-Forge using Claude Context.
+
+**Status**: ✅ **PRODUCTION READY** - Hybrid search with client-side BM25 fully operational
+
+---
 
 ## 📋 Table of Contents
 
@@ -8,6 +12,7 @@ Complete guide for integrating semantic code search capabilities into Agent-Forg
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
 - [Configuration](#configuration)
+- [BM25 Hybrid Search](#bm25-hybrid-search)
 - [Usage Examples](#usage-examples)
 - [Integration with Agent-Forge](#integration-with-agent-forge)
 - [MCP Server Setup](#mcp-server-setup)
@@ -18,12 +23,18 @@ Complete guide for integrating semantic code search capabilities into Agent-Forg
 
 ## Overview
 
-**Claude Context** is an MCP (Model Context Protocol) plugin that provides semantic code search capabilities. It allows AI agents to:
+**Claude Context** is an MCP (Model Context Protocol) plugin that provides **hybrid semantic code search** capabilities using:
+- 🔍 **Dense vectors** (OpenAI embeddings) for semantic similarity
+- 📝 **Sparse vectors** (BM25 scores) for keyword matching
+- 🎯 **RRF reranking** to combine both for optimal results
 
-- **Index entire codebases** semantically using vector embeddings
-- **Search code** using natural language queries
+This allows AI agents to:
+
+- **Index entire codebases** with hybrid vector embeddings
+- **Search code** using natural language + keywords simultaneously
 - **Find relevant context** across millions of lines of code
 - **Reduce LLM costs** by only loading relevant code snippets
+- **Combine semantic understanding with exact keyword matches**
 
 ### Architecture
 
@@ -32,46 +43,195 @@ Complete guide for integrating semantic code search capabilities into Agent-Forg
 │  Agent-Forge Bot    │
 │                     │
 │  ┌──────────────┐   │
-│  │ Code Agent   │   │
+│  │IssueHandler  │   │ ← Hybrid search integration
 │  └──────┬───────┘   │
 │         │           │
 └─────────┼───────────┘
           │
           ▼
-┌─────────────────────┐
-│ Claude Context      │
-│ (Python Wrapper)    │
-└─────────┬───────────┘
+┌─────────────────────────────────────┐
+│ Claude Context (Python Wrapper)     │
+│ - SimpleClaudeContext                │
+│ - HYBRID_MODE=true                   │
+└─────────┬───────────────────────────┘
           │
           ▼
-┌─────────────────────┐
-│ TypeScript Bridge   │
-│ (MCP Server)        │
-└─────────┬───────────┘
+┌─────────────────────────────────────┐
+│ TypeScript Bridge (MCP Server)      │
+│ - BM25 Encoder (client-side)        │
+│ - Dense embeddings (OpenAI)         │
+│ - Auto-fit vocabulary               │
+└─────────┬───────────────────────────┘
           │
           ▼
 ┌─────────────────────┐     ┌──────────────┐
 │ Milvus Vector DB    │────▶│  OpenAI API  │
-│ (Zilliz Cloud)      │     │  (Embeddings)│
-└─────────────────────┘     └──────────────┘
+│ - Dense vectors     │     │  (Embeddings)│
+│ - Sparse vectors    │     └──────────────┘
+│ - RRF reranking     │
+└─────────────────────┘
 ```
 
 ### Key Components
 
-1. **Python Wrapper** (`engine/utils/claude_context_wrapper.py`)
-   - High-level Python API
+1. **Python Wrapper** (`engine/utils/claude_context_simple.py`)
+   - High-level Python API with hybrid search
    - Integrates with Agent-Forge secrets management
-   - CLI tool for testing
+   - HYBRID_MODE=true enabled
 
 2. **TypeScript MCP Server** (`tools/claude-context/`)
-   - Core indexing and search logic
-   - Vector database integration
-   - Embedding generation
+   - **BM25 Encoder** (`bm25-encoder.ts`) - NEW!
+   - Dense embedding generation (OpenAI)
+   - Hybrid vector database integration
+   - Auto-fit vocabulary from collection data
 
 3. **Milvus Vector Database**
-   - Stores code embeddings
-   - Fast semantic search
+   - Stores dense + sparse embeddings
+   - Fast hybrid search with RRF
    - Can be local or cloud (Zilliz)
+
+---
+
+## BM25 Hybrid Search
+
+### What is Hybrid Search?
+
+Hybrid search combines two complementary approaches:
+
+1. **Dense Vectors** (Semantic Similarity)
+   - OpenAI embeddings (1536 dimensions)
+   - Captures meaning and context
+   - Example: "authentication" matches "login", "credentials", "OAuth"
+
+2. **Sparse Vectors** (Keyword Matching)
+   - BM25 scores (variable dimensions)
+   - Captures exact terms and rare keywords
+   - Example: "GitHub API" matches documents with those exact words
+
+3. **RRF Reranking**
+   - Reciprocal Rank Fusion algorithm
+   - Combines both result sets optimally
+   - Balances semantic + keyword relevance
+
+### BM25 Implementation
+
+We implemented **client-side BM25** sparse vector generation because Milvus server-side BM25 functions don't auto-execute on insert.
+
+#### How BM25 Works
+
+**BM25 (Best Matching 25)** is a ranking function used by search engines:
+
+```
+BM25(query, document) = Σ IDF(term) × (TF × (k1 + 1)) / (TF + k1 × (1 - b + b × (|D| / avgdl)))
+
+Where:
+- IDF(term) = log((N - df + 0.5) / (df + 0.5) + 1)
+- TF = term frequency in document
+- N = total number of documents
+- df = document frequency (how many docs contain term)
+- |D| = document length
+- avgdl = average document length
+- k1 = 1.5 (term saturation parameter)
+- b = 0.75 (length normalization parameter)
+```
+
+**Key Insights**:
+- Rare terms get higher IDF scores
+- Term frequency matters but with diminishing returns (k1)
+- Longer documents are normalized (b parameter)
+- Produces sparse vectors (only non-zero for terms in doc)
+
+#### Client-Side Generation Process
+
+**Step 1: Vocabulary Building** (during indexing)
+```typescript
+// Fit encoder on corpus
+const encoder = new BM25Encoder();
+const corpus = documents.map(doc => doc.content);
+encoder.fit(corpus);  // Builds vocabulary + stats
+
+// Result:
+vocabulary: { "github": 0, "api": 1, "auth": 2, ... }
+documentFrequency: { "github": 45, "api": 123, ... }
+avgDocumentLength: 185.21
+```
+
+**Step 2: Sparse Vector Generation** (per document)
+```typescript
+// Encode document
+const sparseVector = encoder.encode(document.content);
+
+// Result:
+{ 0: 2.43, 1: 1.87, 2: 1.65, ... }
+//  ↑    ↑     term_id: bm25_score
+```
+
+**Step 3: Insert with Both Vectors**
+```typescript
+await milvus.insert({
+    id: "chunk_abc123",
+    content: "GitHub API authentication...",
+    vector: [0.123, -0.456, ...],      // Dense (OpenAI)
+    sparse_vector: { 0: 2.43, 1: 1.87 }, // Sparse (BM25)
+    // ... other fields
+});
+```
+
+**Step 4: Hybrid Search**
+```typescript
+// Dense search (semantic)
+search_param_1 = {
+    data: [openaiEmbedding],
+    anns_field: "vector"
+};
+
+// Sparse search (keyword)
+search_param_2 = {
+    data: [bm25SparseVector],  // Encoded from query
+    anns_field: "sparse_vector"
+};
+
+// Combine with RRF
+results = await milvus.search({
+    data: [search_param_1, search_param_2],
+    rerank: { strategy: "rrf", params: { k: 100 } }
+});
+```
+
+#### Auto-Fit Feature
+
+If encoder isn't fitted (e.g., fresh process doing only search):
+```typescript
+// Auto-fit from collection data
+if (!encoder.isFitted()) {
+    const docs = await milvus.query({
+        collection_name: collectionName,
+        output_fields: ['content'],
+        limit: 10000
+    });
+    
+    encoder.fit(docs.map(d => d.content));
+}
+```
+
+### Why Client-Side BM25?
+
+**Problem with Server-Side**:
+- Milvus BM25 function defined but never executed
+- Sparse vectors remained `nil` causing insert failures
+- Error: `"sparse float field 'sparse_vector' is illegal...got nil"`
+
+**Client-Side Advantages**:
+1. ✅ Full control over tokenization
+2. ✅ Debuggable (inspect vocabulary, scores)
+3. ✅ Portable (any Milvus version)
+4. ✅ Customizable BM25 parameters
+5. ✅ Auto-fit from collection data
+
+**Trade-offs**:
+- ⚠️ Vocabulary in memory (not persisted)
+- ⚠️ Need to fit once per process
+- ⚠️ Minor compute overhead (~1-5ms/doc)
 
 ---
 

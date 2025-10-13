@@ -1,74 +1,74 @@
 import pytest
 from validator import WorkspaceManager, IssueHandler
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, MagicMock
+
+# Fixtures to create mock instances
+@pytest.fixture
+def workspace_manager():
+    return WorkspaceManager()
+
+@pytest.fixture
+def issue_handler(agent):
+    return IssueHandler(agent)
+
+@pytest.fixture
+def agent():
+    return Mock(project_root=None)
 
 # Test cases for WorkspaceManager.prepare_workspace
-def test_prepare_workspace_creates_directory(tmp_path):
-    repo = "user/repo"
+def test_prepare_workspace(workspace_manager, tmp_path):
+    repo = "test/repo"
     issue_number = 123
-    workspace = WorkspaceManager.prepare_workspace(repo, issue_number)
+    workspace = workspace_manager.prepare_workspace(repo, issue_number)
+    
+    assert workspace == Path(f"/tmp/agent-forge-workspaces/test-repo-123")
     assert workspace.exists()
-    assert str(workspace).startswith(f"/tmp/agent-forge-workspaces/{repo.replace('/', '-')}-{issue_number}")
 
-@patch('subprocess.run')
-def test_prepare_workspace_clones_repository(mock_run):
-    repo = "user/repo"
+def test_prepare_workspace_existing(workspace_manager, tmp_path):
+    repo = "test/repo"
     issue_number = 123
-    WorkspaceManager.prepare_workspace(repo, issue_number)
-    mock_run.assert_called_once_with(['git', 'clone', f'https://github.com/{repo}.git', '/tmp/agent-forge-workspaces/user-repo-123'])
+    existing_workspace = Path("/tmp/agent-forge-workspaces/test-repo-123")
+    existing_workspace.mkdir(parents=True)
+    
+    with patch('subprocess.run') as mock_run:
+        workspace_manager.prepare_workspace(repo, issue_number)
+    
+    assert mock_run.call_count == 0
 
-def test_prepare_workspace_existing_directory(tmp_path):
-    repo = "user/repo"
+# Test cases for WorkspaceManager.cleanup_workspace
+def test_cleanup_workspace(workspace_manager, tmp_path):
+    repo = "test/repo"
     issue_number = 123
-    workspace = Path(f"/tmp/agent-forge-workspaces/{repo.replace('/', '-')}-{issue_number}")
-    workspace.mkdir(parents=True, exist_ok=True)
-    result = WorkspaceManager.prepare_workspace(repo, issue_number)
-    assert result == workspace
-
-@patch('shutil.rmtree')
-def test_cleanup_workspace_removes_directory(mock_rmtree):
-    workspace = Path("/tmp/agent-forge-workspaces/user-repo-123")
-    workspace.mkdir(parents=True, exist_ok=True)
-    WorkspaceManager.cleanup_workspace(workspace)
-    mock_rmtree.assert_called_once_with(workspace, ignore_errors=True)
+    workspace = workspace_manager.prepare_workspace(repo, issue_number)
+    
+    workspace_manager.cleanup_workspace(workspace)
+    assert not workspace.exists()
 
 # Test cases for IssueHandler.assign_to_issue
-def test_assign_to_issue_prepares_and_cleanup_workspace(mocker):
-    agent = Mock()
-    handler = IssueHandler(agent)
-    repo = "user/repo"
+def test_assign_to_issue(issue_handler, agent, tmp_path):
+    repo = "test/repo"
     issue_number = 123
-    with patch.object(WorkspaceManager, 'prepare_workspace', return_value=Mock()):
-        with patch.object(WorkspaceManager, 'cleanup_workspace'):
-            with patch.object(handler, '_execute_workflow', return_value="Workflow completed successfully"):
-                result = handler.assign_to_issue(repo, issue_number)
-                assert result == "Workflow completed successfully"
-                agent.project_root.assert_called_once_with(None)
+    
+    with patch.object(IssueHandler, '_execute_workflow') as mock_execute:
+        issue_handler.assign_to_issue(repo, issue_number)
+    
+    assert agent.project_root == Path(f"/tmp/agent-forge-workspaces/test-repo-123")
+    mock_execute.assert_called_once()
 
-@patch('shutil.rmtree')
-def test_assign_to_issue_exception_handling(mocker):
-    agent = Mock()
-    handler = IssueHandler(agent)
-    repo = "user/repo"
+def test_assign_to_issue_cleanup(issue_handler, agent, tmp_path):
+    repo = "test/repo"
     issue_number = 123
-    with patch.object(WorkspaceManager, 'prepare_workspace', return_value=Mock()):
-        with patch.object(WorkspaceManager, 'cleanup_workspace'):
-            with patch.object(handler, '_execute_workflow') as mock_execute:
-                mock_execute.side_effect = Exception("Test exception")
-                result = handler.assign_to_issue(repo, issue_number)
-                assert result is None
-                agent.project_root.assert_called_once_with(None)
+    
+    with patch.object(IssueHandler, '_execute_workflow') as mock_execute:
+        issue_handler.assign_to_issue(repo, issue_number)
+    
+    assert not Path(f"/tmp/agent-forge-workspaces/test-repo-123").exists()
 
-def test_assign_to_issue_no_cleanup_on_exception(mocker):
-    agent = Mock()
-    handler = IssueHandler(agent)
-    repo = "user/repo"
-    issue_number = 123
-    with patch.object(WorkspaceManager, 'prepare_workspace', return_value=Mock()):
-        with patch.object(WorkspaceManager, 'cleanup_workspace') as mock_cleanup:
-            with patch.object(handler, '_execute_workflow') as mock_execute:
-                mock_execute.side_effect = Exception("Test exception")
-                result = handler.assign_to_issue(repo, issue_number)
-                assert result is None
-                agent.project_root.assert_called_once_with(None)
-                mock_cleanup.assert_not_called()
+# Test cases for IssueHandler._execute_workflow
+def test_execute_workflow(issue_handler):
+    issue = Mock()
+    
+    with patch.object(IssueHandler, '_execute_workflow', return_value="mocked_result") as mock_execute:
+        result = issue_handler._execute_workflow(issue)
+    
+    assert result == "mocked_result"

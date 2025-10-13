@@ -1,24 +1,46 @@
 # Claude Context Integration Status
 
 **Date**: 2025-10-13  
-**Status**: ✅ **INTEGRATED** - Semantic Context Gathering Active
+**Status**: ✅ **PRODUCTION READY** - Hybrid Search with BM25 + Dense Vectors Active
 
-**Last Update**: 2025-10-13 21:45 UTC
+**Last Update**: 2025-10-13 23:30 UTC
 
 ---
 
-## 🎯 Integration Complete
+## 🎯 Integration Complete - BM25 Hybrid Search Working
+
+### Current Status: PRODUCTION READY 🚀
+
+**Hybrid Search Fully Operational**:
+- ✅ Dense vectors (OpenAI embeddings, 1536 dimensions)
+- ✅ Sparse vectors (BM25 client-side generation)
+- ✅ RRF (Reciprocal Rank Fusion) reranking
+- ✅ Auto-fit encoder from collection data
+- ✅ Python wrapper working end-to-end
+- ✅ 606 entities indexed successfully
+
+**Test Results**:
+```
+Query: "GitHub API authentication"
+Results: 5 files found
+1. pr_github_client.py     Score: 0.0193
+2. repo_manager.py          Score: 0.0099
+3. team_manager.py          Score: 0.0099
+4. pr_review_agent.py       Score: 0.0098
+5. pr_review_agent.py       Score: 0.0097
+```
 
 ### What Was Implemented
 
 **Pre-flight Context Gathering Phase**:
 - Agent now gathers semantic context BEFORE planning implementation
-- Uses vector search to find relevant code patterns and architecture
+- Uses hybrid vector search (dense + sparse) to find relevant code patterns
 - Provides context-aware implementation planning
+- Combines semantic similarity (dense) with keyword matching (sparse)
 
 **Integration Points**:
 - `IssueHandler.__init__()`: Optional Claude Context initialization
-- `IssueHandler._gather_codebase_context()`: New semantic search phase
+- `IssueHandler._gather_codebase_context()`: New semantic search phase (hybrid)
 - `IssueHandler._generate_plan()`: Enhanced with context insights
 - Falls back gracefully to keyword search if unavailable
 
@@ -32,15 +54,185 @@ GitHub Issue → Parse → Plan → Execute
                 keyword search only
 ```
 
-**After**: Agent understands codebase first
+**After**: Agent understands codebase first with hybrid search
 ```python
 # New flow
 GitHub Issue → Parse → 🔍 Gather Context → Plan → Execute
                               ↑
-                         semantic search
-                         finds patterns
-                         understands architecture
+                    hybrid search (BM25 + dense)
+                    finds patterns & keywords
+                    understands architecture
 ```
+
+---
+
+## 🔧 BM25 Implementation Details
+
+### The Challenge
+
+**Problem**: Milvus BM25 function didn't auto-generate sparse vectors
+- Insert operations failed: `"sparse float field 'sparse_vector' is illegal...got nil"`
+- Server-side BM25 function was declared but never executed
+- 0 entities indexed, hybrid mode completely broken
+
+### The Solution: Client-Side BM25
+
+We implemented **client-side BM25 sparse vector generation** instead of relying on Milvus server-side functions.
+
+#### 1. BM25 Encoder Implementation (`bm25-encoder.ts`)
+
+**Core Components**:
+```typescript
+class BM25Encoder {
+    - vocabulary: Map<string, number>        // term → term_id
+    - documentFrequency: Map<string, number> // term → doc count
+    - avgDocumentLength: number
+    - k1: 1.5, b: 0.75                      // BM25 parameters
+}
+```
+
+**How It Works**:
+
+1. **Tokenization**: Lowercase, remove punctuation, split on whitespace
+   ```typescript
+   "GitHub API client" → ["github", "api", "client"]
+   ```
+
+2. **Vocabulary Building**: Assign unique IDs to terms
+   ```typescript
+   { "github": 0, "api": 1, "client": 2, ... }
+   ```
+
+3. **BM25 Score Calculation**:
+   ```
+   score = IDF(term) × (TF × (k1 + 1)) / (TF + k1 × (1 - b + b × (docLen / avgDocLen)))
+   
+   Where:
+   - IDF = log((N - df + 0.5) / (df + 0.5) + 1)
+   - TF = term frequency in document
+   - N = total documents
+   - df = document frequency of term
+   ```
+
+4. **Sparse Vector Output**:
+   ```typescript
+   { 0: 2.43, 1: 1.87, 2: 1.65 }  // { term_id: bm25_score }
+   ```
+
+#### 2. Insert Integration (`insertHybrid()`)
+
+**Before** (broken):
+```typescript
+const data = documents.map(doc => ({
+    id: doc.id,
+    content: doc.content,
+    vector: doc.vector,  // ✅ dense vector present
+    // sparse_vector: ???  // ❌ missing - caused nil error
+}));
+```
+
+**After** (working):
+```typescript
+// Fit encoder on corpus
+const bm25Encoder = getGlobalBM25Encoder();
+if (!bm25Encoder.isFitted()) {
+    const corpus = documents.map(doc => doc.content);
+    fitGlobalBM25Encoder(corpus);  // Build vocabulary + stats
+}
+
+// Generate sparse vectors
+const sparseVectors = documents.map(doc => 
+    bm25Encoder.encode(doc.content)  // BM25 scores
+);
+
+// Include both vector types
+const data = documents.map((doc, idx) => ({
+    id: doc.id,
+    content: doc.content,
+    vector: doc.vector,              // ✅ dense (OpenAI)
+    sparse_vector: sparseVectors[idx], // ✅ sparse (BM25)
+    // ... other fields
+}));
+```
+
+#### 3. Search Integration (`hybridSearch()`)
+
+**Auto-Fit Encoder**:
+```typescript
+// If encoder not fitted (e.g., fresh process, only searching)
+if (!bm25Encoder.isFitted()) {
+    // Query collection to get all content
+    const allDocs = await this.client.query({
+        collection_name: collectionName,
+        output_fields: ['content'],
+        limit: 10000
+    });
+    
+    // Fit encoder on collection data
+    const corpus = allDocs.data.map(doc => doc.content);
+    fitGlobalBM25Encoder(corpus);
+}
+```
+
+**Query Encoding**:
+```typescript
+// Convert query string to sparse vector
+if (typeof searchRequests[1].data === 'string') {
+    const sparseVector = bm25Encoder.encode(queryString);
+    // sparseVector = { 15: 2.1, 42: 1.8, ... }
+    searchRequests[1].data = sparseVector;
+}
+```
+
+**Hybrid Search Execution**:
+```typescript
+// Two search requests combined with RRF
+const search_param_1 = {
+    data: [denseVector],        // OpenAI embedding
+    anns_field: "vector",
+    limit: 5
+};
+
+const search_param_2 = {
+    data: [sparseVector],       // BM25 scores
+    anns_field: "sparse_vector",
+    limit: 5
+};
+
+// Milvus combines with RRF reranking
+const results = await client.search({
+    data: [search_param_1, search_param_2],
+    rerank: { strategy: "rrf", params: { k: 100 } }
+});
+```
+
+#### 4. Python Wrapper Changes
+
+**Before** (workaround):
+```python
+# Disable hybrid mode - use dense-only
+process.env.HYBRID_MODE = 'false';
+```
+
+**After** (production):
+```python
+# Enable hybrid mode with BM25 sparse vectors
+process.env.HYBRID_MODE = 'true';
+```
+
+### Why Client-Side BM25?
+
+**Advantages**:
+1. ✅ **Full control**: We control tokenization, vocabulary, scoring
+2. ✅ **Debuggable**: Can inspect sparse vectors, vocabulary, scores
+3. ✅ **Portable**: Works with any Milvus version
+4. ✅ **Flexible**: Can customize BM25 parameters (k1, b)
+5. ✅ **Auto-fit**: Can rebuild vocabulary from collection data
+
+**Trade-offs**:
+- ⚠️ Need to fit encoder once per process/collection
+- ⚠️ Vocabulary stored in memory (not in Milvus)
+- ⚠️ Client-side computation overhead (minimal, ~1-5ms per doc)
 
 ---
 
