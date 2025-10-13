@@ -23,7 +23,40 @@ This directory contains two types of documentation:
 - Framework guides
 - Best practices
 
-## 🔒 Internal Documentation (Project-Specific, DO NOT RELEASE)
+## � Technical Deep-Dives
+
+**Recent Additions** (2025-10-13):
+
+### BM25 Hybrid Search Documentation
+
+**[BM25_HYBRID_SEARCH.md](BM25_HYBRID_SEARCH.md)** - Complete technical guide
+- 📖 BM25 algorithm explanation with formulas
+- 🔧 Client-side implementation details
+- 🏗️ Architecture diagrams and data flows
+- 💻 Code examples (TypeScript + Python)
+- ⚡ Performance benchmarks
+- 🔍 Troubleshooting guide
+
+**[CLAUDE_CONTEXT_STATUS.md](CLAUDE_CONTEXT_STATUS.md)** - Current integration status
+- ✅ Production ready status with hybrid search
+- 🎯 BM25 encoder implementation overview
+- 🚀 Auto-fit feature explanation
+- 📊 Test results and benchmarks
+
+**[CLAUDE_CONTEXT_INTEGRATION.md](CLAUDE_CONTEXT_INTEGRATION.md)** - Integration guide
+- 🔄 Updated architecture for hybrid search
+- 📝 Why client-side BM25 (vs server-side)
+- 🛠️ Installation and configuration
+- 🧪 Usage examples
+
+**Key Innovation**: Client-side BM25 sparse vector generation
+- Milvus server-side BM25 functions don't auto-execute
+- Implemented custom BM25 encoder in TypeScript
+- Hybrid search: Dense (OpenAI) + Sparse (BM25) + RRF reranking
+- Auto-fit encoder from collection data on first search
+- **Status**: Fully operational in production 🎉
+
+## �🔒 Internal Documentation (Project-Specific, DO NOT RELEASE)
 
 **Location**: `docs/internal/`
 
