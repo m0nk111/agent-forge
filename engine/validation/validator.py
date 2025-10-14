@@ -1,13 +1,13 @@
 import os
-import shutil
-from typing import Optional, Path
+from pathlib import Path
 import subprocess
+import shutil
+from typing import Optional
 
 class WorkspaceManager:
-    """Class to manage temporary workspaces for repository operations."""
+    """Manages temporary workspaces for cross-repo operations."""
 
-    @staticmethod
-    async def prepare_workspace(repo: str, issue_number: int) -> Path:
+    async def prepare_workspace(self, repo: str, issue_number: int) -> Path:
         """Clone target repository to temporary workspace."""
         workspace = Path(f"/tmp/agent-forge-workspaces/{repo.replace('/', '-')}-{issue_number}")
         
@@ -17,21 +17,17 @@ class WorkspaceManager:
         
         return workspace
 
-    @staticmethod
-    async def cleanup_workspace(workspace: Path):
+    async def cleanup_workspace(self, workspace: Path):
         """Remove temporary workspace after workflow completion."""
         shutil.rmtree(workspace, ignore_errors=True)
 
 class IssueHandler:
-    """Class to handle issue resolution workflows."""
-
     def __init__(self, agent):
         self.agent = agent
-
+    
     async def assign_to_issue(self, repo: str, issue_number: int):
-        """Assign an issue to a repository and resolve it in the correct workspace."""
         # Prepare workspace for target repository
-        workspace = await WorkspaceManager.prepare_workspace(repo, issue_number)
+        workspace = await WorkspaceManager().prepare_workspace(repo, issue_number)
         
         # Override agent's project_root temporarily
         original_root = self.agent.project_root
@@ -39,15 +35,22 @@ class IssueHandler:
         
         try:
             # Execute workflow in target repository
-            result = self._execute_workflow(issue)
+            result = self._execute_workflow(issue_number)
         finally:
             # Restore original project_root
             self.agent.project_root = original_root
-        
-        # Cleanup workspace after completion
-        await WorkspaceManager.cleanup_workspace(workspace)
+            await WorkspaceManager().cleanup_workspace(workspace)
+    
+    def _execute_workflow(self, issue_number: int):
+        """Simulate workflow execution."""
+        print(f"Executing workflow for issue {issue_number}")
+        return "Workflow completed"
 
-    def _execute_workflow(self, issue):
-        """Execute the actual workflow logic for an issue."""
-        # Placeholder for actual workflow implementation
-        pass
+# Example usage:
+class Agent:
+    def __init__(self, project_root: Path):
+        self.project_root = project_root
+
+agent = Agent(Path("/opt/agent-forge"))
+issue_handler = IssueHandler(agent)
+await issue_handler.assign_to_issue("m0nk111/agent-forge-test", 3)

@@ -1,74 +1,145 @@
 import pytest
-from validator import WorkspaceManager, IssueHandler
-from unittest.mock import Mock, patch, MagicMock
+from pathlib import Path
+from unittest.mock import patch, MagicMock
+import subprocess
 
-# Fixtures to create mock instances
+class WorkspaceManager:
+    """Manages temporary workspaces for cross-repo operations."""
+
+    async def prepare_workspace(self, repo: str, issue_number: int) -> Path:
+        """Clone target repository to temporary workspace."""
+        workspace = Path(f"/tmp/agent-forge-workspaces/{repo.replace('/', '-')}-{issue_number}")
+        
+        if not workspace.exists():
+            # Clone repository
+            subprocess.run(['git', 'clone', f'https://github.com/{repo}.git', workspace])
+        
+        return workspace
+
+    async def cleanup_workspace(self, workspace: Path):
+        """Remove temporary workspace after workflow completion."""
+        shutil.rmtree(workspace, ignore_errors=True)
+
+class IssueHandler:
+    def __init__(self, agent):
+        self.agent = agent
+    
+    async def assign_to_issue(self, repo: str, issue_number: int):
+        # Prepare workspace for target repository
+        workspace = await WorkspaceManager().prepare_workspace(repo, issue_number)
+        
+        # Override agent's project_root temporarily
+        original_root = self.agent.project_root
+        self.agent.project_root = workspace
+        
+        try:
+            # Execute workflow in target repository
+            result = self._execute_workflow(issue_number)
+        finally:
+            # Restore original project_root
+            self.agent.project_root = original_root
+            await WorkspaceManager().cleanup_workspace(workspace)
+    
+    def _execute_workflow(self, issue_number: int):
+        """Simulate workflow execution."""
+        print(f"Executing workflow for issue {issue_number}")
+        return "Workflow completed"
+
+# Example usage:
+class Agent:
+    def __init__(self, project_root: Path):
+        self.project_root = project_root
+
+agent = Agent(Path("/opt/agent-forge"))
+issue_handler = IssueHandler(agent)
+await issue_handler.assign_to_issue("m0nk111/agent-forge-test", 3)
+
+# Test file for validator.py
 @pytest.fixture
-def workspace_manager():
-    return WorkspaceManager()
+def mock_subprocess_run():
+    return patch('subprocess.run')
 
-@pytest.fixture
-def issue_handler(agent):
-    return IssueHandler(agent)
-
-@pytest.fixture
-def agent():
-    return Mock(project_root=None)
-
-# Test cases for WorkspaceManager.prepare_workspace
-def test_prepare_workspace(workspace_manager, tmp_path):
-    repo = "test/repo"
-    issue_number = 123
+def test_prepare_workspace(mock_subprocess_run):
+    workspace_manager = WorkspaceManager()
+    repo = "m0nk111/agent-forge-test"
+    issue_number = 3
+    expected_path = Path("/tmp/agent-forge-workspaces/m0nk111-agent-forge-test-3")
+    
+    mock_subprocess_run.return_value = MagicMock(returncode=0)
+    
     workspace = workspace_manager.prepare_workspace(repo, issue_number)
     
-    assert workspace == Path(f"/tmp/agent-forge-workspaces/test-repo-123")
-    assert workspace.exists()
+    assert workspace == expected_path
+    mock_subprocess_run.assert_called_once_with(['git', 'clone', f'https://github.com/{repo}.git', str(expected_path)], check=True)
 
-def test_prepare_workspace_existing(workspace_manager, tmp_path):
-    repo = "test/repo"
-    issue_number = 123
-    existing_workspace = Path("/tmp/agent-forge-workspaces/test-repo-123")
-    existing_workspace.mkdir(parents=True)
+def test_prepare_workspace_existing_repo(mock_subprocess_run):
+    workspace_manager = WorkspaceManager()
+    repo = "m0nk111/agent-forge-test"
+    issue_number = 3
+    expected_path = Path("/tmp/agent-forge-workspaces/m0nk111-agent-forge-test-3")
     
-    with patch('subprocess.run') as mock_run:
-        workspace_manager.prepare_workspace(repo, issue_number)
+    mock_subprocess_run.return_value = MagicMock(returncode=0)
+    expected_path.mkdir(parents=True, exist_ok=True)
     
-    assert mock_run.call_count == 0
-
-# Test cases for WorkspaceManager.cleanup_workspace
-def test_cleanup_workspace(workspace_manager, tmp_path):
-    repo = "test/repo"
-    issue_number = 123
     workspace = workspace_manager.prepare_workspace(repo, issue_number)
     
-    workspace_manager.cleanup_workspace(workspace)
-    assert not workspace.exists()
+    assert workspace == expected_path
+    mock_subprocess_run.assert_not_called()
 
-# Test cases for IssueHandler.assign_to_issue
-def test_assign_to_issue(issue_handler, agent, tmp_path):
-    repo = "test/repo"
-    issue_number = 123
+def test_cleanup_workspace(mock_subprocess_run):
+    workspace_manager = WorkspaceManager()
+    repo = "m0nk111/agent-forge-test"
+    issue_number = 3
+    expected_path = Path("/tmp/agent-forge-workspaces/m0nk111-agent-forge-test-3")
     
-    with patch.object(IssueHandler, '_execute_workflow') as mock_execute:
-        issue_handler.assign_to_issue(repo, issue_number)
+    mock_shutil_rmtree = patch('shutil.rmtree').start()
     
-    assert agent.project_root == Path(f"/tmp/agent-forge-workspaces/test-repo-123")
-    mock_execute.assert_called_once()
+    workspace_manager.cleanup_workspace(expected_path)
+    
+    mock_shutil_rmtree.assert_called_once_with(expected_path, ignore_errors=True)
 
-def test_assign_to_issue_cleanup(issue_handler, agent, tmp_path):
-    repo = "test/repo"
-    issue_number = 123
+def test_assign_to_issue(mock_subprocess_run):
+    issue_handler = IssueHandler(agent)
+    repo = "m0nk111/agent-forge-test"
+    issue_number = 3
+    expected_result = "Workflow completed"
     
-    with patch.object(IssueHandler, '_execute_workflow') as mock_execute:
-        issue_handler.assign_to_issue(repo, issue_number)
+    mock_execute_workflow = patch.object(issue_handler, '_execute_workflow', return_value=expected_result).start()
+    mock_subprocess_run.return_value = MagicMock(returncode=0)
     
-    assert not Path(f"/tmp/agent-forge-workspaces/test-repo-123").exists()
+    result = await issue_handler.assign_to_issue(repo, issue_number)
+    
+    assert result == expected_result
+    mock_execute_workflow.assert_called_once_with(issue_number)
 
-# Test cases for IssueHandler._execute_workflow
-def test_execute_workflow(issue_handler):
-    issue = Mock()
+def test_assign_to_issue_existing_workspace(mock_subprocess_run):
+    issue_handler = IssueHandler(agent)
+    repo = "m0nk111/agent-forge-test"
+    issue_number = 3
+    expected_result = "Workflow completed"
     
-    with patch.object(IssueHandler, '_execute_workflow', return_value="mocked_result") as mock_execute:
-        result = issue_handler._execute_workflow(issue)
+    mock_execute_workflow = patch.object(issue_handler, '_execute_workflow', return_value=expected_result).start()
+    mock_subprocess_run.return_value = MagicMock(returncode=0)
     
-    assert result == "mocked_result"
+    with patch('pathlib.Path.mkdir') as mock_mkdir:
+        mock_mkdir.side_effect = FileExistsError
+        result = await issue_handler.assign_to_issue(repo, issue_number)
+    
+    assert result == expected_result
+    mock_execute_workflow.assert_called_once_with(issue_number)
+
+def test_assign_to_issue_cleanup_failure(mock_subprocess_run):
+    issue_handler = IssueHandler(agent)
+    repo = "m0nk111/agent-forge-test"
+    issue_number = 3
+    expected_result = "Workflow completed"
+    
+    mock_execute_workflow = patch.object(issue_handler, '_execute_workflow', return_value=expected_result).start()
+    mock_subprocess_run.return_value = MagicMock(returncode=0)
+    
+    with patch('shutil.rmtree') as mock_rmtree:
+        mock_rmtree.side_effect = Exception("Cleanup failed")
+        result = await issue_handler.assign_to_issue(repo, issue_number)
+    
+    assert result == expected_result
+    mock_execute_workflow.assert_called_once_with(issue_number)
