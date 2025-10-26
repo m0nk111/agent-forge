@@ -9,6 +9,77 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Infinite Loop Prevention** (2025-10-26)
+  - **Problem**: Agent would continue processing issues indefinitely, repeatedly calling Ollama even when failing
+  - **Root Causes**:
+    1. No timeout mechanism for issue processing (could run forever)
+    2. No failure detection - would retry indefinitely on errors
+    3. Issues not marked as completed on failure, causing re-processing in next poll cycle
+    4. Issue parser interpreted test checklists as implementation tasks
+  - **Solutions Implemented**:
+    1. Added `max_execution_time: 1800` (30 minutes) to PipelineConfig with timeout checks before each phase
+    2. Added consecutive error tracking (threshold: 5 errors) with early termination in IssueHandler
+    3. Modified polling service to always mark issues as completed (even on failure) to prevent infinite reprocessing
+    4. Improved issue parser to skip checklist items `[ ]` and verification steps (verify, check, test keywords)
+  - **Files Modified**:
+    - `engine/core/pipeline_orchestrator.py`: Added timeout mechanism and TimeoutError handling
+    - `engine/operations/issue_handler.py`: Added consecutive error tracking and improved task filtering
+    - `engine/runners/polling_service.py`: Always mark issues as completed to prevent reprocessing
+  - **Result**:
+    - ✅ Issues timeout after 30 minutes maximum
+    - ✅ Agent stops after 5 consecutive errors instead of infinite retry
+    - ✅ Failed issues not reprocessed in next polling cycle
+    - ✅ Test checklists no longer interpreted as implementation tasks
+
+- **Polling Service Duplicate Claim Spam** (2025-10-21)
+  - **Problem**: Multiple "🤖 Agent started working on this issue" comments spammed every few minutes
+  - **Root Causes**:
+    1. Multiple polling service processes running simultaneously (3 instances found)
+    2. Competing agent-forge.service (service_manager) also running polling
+    3. Environment override: `claim_timeout_minutes: 1` in test environment causing all claims to expire immediately
+    4. IssueFilter only checked local state file, not actual GitHub comments
+  - **Solutions Implemented**:
+    1. Single instance lock with `fcntl.LOCK_EX` on `/home/flip/agent-forge/data/polling_service.lock`
+    2. Killed all duplicate polling processes: `pkill -9 -f polling_service`
+    3. Stopped competing service: `systemctl stop agent-forge.service`
+    4. Changed `config/system/environments.yaml` test environment: `claim_timeout_minutes: 1` → `30`
+    5. Added `github_claim_checker` callback to IssueFilter for remote GitHub claim checking
+    6. Modified `is_issue_claimed()` to check actual GitHub comments for recent claims
+  - **Result**:
+    - ✅ No new claim comments since fix (verified on GitHub)
+    - ✅ Lock file prevents multiple instances: "❌ ERROR: Polling service already running"
+    - ✅ 30-minute claim timeout prevents premature re-claiming
+    - ✅ Remote claim checking catches claims from other agents/processes
+    - ✅ Old claims (8+ days) correctly identified as expired
+
+### Added
+
+- **GitHub Copilot MCP Integration** (2025-10-14)
+  - **Claude Context MCP server** configured for GitHub Copilot
+  - **Natural language semantic search** directly in Copilot chat
+  - **Features**:
+    - Ask Copilot: "Search for [topic] in our codebase"
+    - Hybrid search (BM25 + dense vectors) via MCP
+    - Auto-indexed codebase (606 entities)
+    - Context-aware code suggestions
+    - Works with local Milvus or Zilliz Cloud
+  - **Configuration**:
+    - MCP config: `~/.vscode-server/data/User/globalStorage/github.copilot-chat/mcp.json`
+    - HYBRID_MODE=true enabled
+    - OpenAI embeddings + BM25 sparse vectors
+  - **Documentation**: `docs/COPILOT_MCP_INTEGRATION.md`
+  - **Usage Examples**:
+    - "Show me how we handle GitHub authentication"
+    - "Find rate limiting implementations"
+    - "Search for error handling patterns"
+  - **Benefits**:
+    - 🔍 Better context - Copilot sees entire codebase
+    - 💰 Cost efficient - Only loads relevant code
+    - 🎯 Accurate - Hybrid search finds exact + similar
+    - ⚡ Fast - Sub-second search with indexed vectors
+
+### Fixed
+
 - **BM25 Hybrid Search Fixed - Client-Side Sparse Vector Generation** (2025-10-13)
   - **Problem**: BM25 function in Milvus doesn't auto-generate sparse vectors on insert
   - **Solution**: Implemented client-side BM25 sparse vector generation

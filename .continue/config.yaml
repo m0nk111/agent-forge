@@ -1,0 +1,12 @@
+models:
+  - name: Qwen2.5-Coder-14B-Local
+    provider: ollama
+    model: qwen2.5-coder:14b
+
+slashCommandsEnabled: true
+
+# Disable problematic MCP servers on Linux
+mcpServers: {}
+
+# Disable colocated rules to avoid path issues
+rulesPath: null

@@ -23,9 +23,24 @@ This directory contains two types of documentation:
 - Framework guides
 - Best practices
 
-## � Technical Deep-Dives
+## 🔧 Technical Deep-Dives
 
-**Recent Additions** (2025-10-13):
+**Recent Additions** (2025-10-13 - 2025-10-14):
+
+### GitHub Copilot MCP Integration (NEW! 2025-10-14)
+
+**[COPILOT_MCP_INTEGRATION.md](COPILOT_MCP_INTEGRATION.md)** - Use Claude Context in Copilot
+- 🤖 GitHub Copilot MCP server configuration
+- 💬 Natural language semantic search in Copilot chat
+- 🔧 Available MCP tools documentation
+- 🎯 Usage examples and best practices
+- 🔍 Troubleshooting guide
+
+**Key Feature**: Ask Copilot to search your codebase semantically
+- "Search for GitHub authentication in our codebase"
+- "Show me how we handle rate limiting"
+- "Find error handling patterns"
+- Copilot automatically uses Claude Context MCP server!
 
 ### BM25 Hybrid Search Documentation
 

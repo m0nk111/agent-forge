@@ -34,8 +34,8 @@ max_concurrent_issues: 3
 
 # Claim timeout in minutes (how long before another agent can claim an issue)
 # Default: 60 minutes (1 hour)
-# Increased to 24 hours to prevent spam when workflow fails
-claim_timeout_minutes: 1440
+# Set to 30 minutes for reasonable claim duration
+claim_timeout_minutes: 30
 
 # PR Monitoring & Auto-Review (NEW)
 # Monitor pull requests and trigger reviewer agent with intelligent merge

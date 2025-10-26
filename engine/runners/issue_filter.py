@@ -40,7 +40,8 @@ class IssueFilter:
         state_manager: StateManager,
         watch_labels: List[str],
         claim_timeout_minutes: int,
-        creative_logs_enabled: bool = False
+        creative_logs_enabled: bool = False,
+        github_claim_checker=None  # NEW: Optional GitHub claim checker callback
     ):
         """Initialize issue filter.
         
@@ -49,11 +50,13 @@ class IssueFilter:
             watch_labels: Labels that make issues actionable
             claim_timeout_minutes: Minutes before claim expires
             creative_logs_enabled: Whether to enable creative logging
+            github_claim_checker: Optional callback to check GitHub for claims (polling_service.is_issue_claimed)
         """
         self.state_manager = state_manager
         self.watch_labels = watch_labels
         self.claim_timeout_minutes = claim_timeout_minutes
         self.creative_logs_enabled = creative_logs_enabled
+        self.github_claim_checker = github_claim_checker  # NEW
     
     def _get_issue_key(self, issue: Dict) -> str:
         """Generate unique key for issue.
@@ -186,9 +189,23 @@ class IssueFilter:
                 logger.info(f"   ❌ Skipping: already completed")
                 return False
             
-            # Skip if valid claim exists
+            # Skip if valid claim exists (local state check)
             if self._is_claim_valid(issue_key):
                 return False
+            
+            # NEW: Also check GitHub comments for claims (remote check)
+            logger.info(f"   🐛 DEBUG: github_claim_checker = {self.github_claim_checker is not None}")
+            if self.github_claim_checker:
+                logger.info(f"   🔍 Checking GitHub for existing claims...")
+                repo = issue['repository']
+                issue_number = issue['number']
+                if self.github_claim_checker(repo, issue_number):
+                    logger.info(f"   ❌ Skipping: issue claimed on GitHub (remote check)")
+                    return False
+                else:
+                    logger.info(f"   ✅ No active claim found on GitHub")
+            else:
+                logger.warning(f"   ⚠️  GitHub claim checker not configured - skipping remote check")
             
             # Check labels
             has_watch_label = self._has_watch_label(issue_labels)

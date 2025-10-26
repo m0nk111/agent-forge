@@ -48,6 +48,9 @@ class PipelineConfig:
     max_retries: int = 3
     retry_delay: int = 60  # seconds
     
+    # Timeout configuration (prevent infinite loops)
+    max_execution_time: int = 1800  # 30 minutes max per issue
+    
     # Feature flags
     auto_merge_on_approval: bool = False  # Safety: don't auto-merge yet
     require_tests_passing: bool = True
@@ -164,26 +167,38 @@ class PipelineOrchestrator:
         
         logger.info(f"\n{'='*70}")
         logger.info(f"🚀 AUTONOMOUS PIPELINE STARTED: {issue_key}")
+        logger.info(f"   ⏱️  Max execution time: {self.config.max_execution_time}s")
         logger.info(f"{'='*70}")
         
         # Initialize pipeline state
+        start_time = datetime.utcnow()
         pipeline_state = {
             'repo': repo,
             'issue_number': issue_number,
-            'started_at': datetime.utcnow().isoformat(),
+            'started_at': start_time.isoformat(),
             'phase': 'initialization',
             'progress': 0.0,
             'error': None
         }
         self.active_pipelines[issue_key] = pipeline_state
         
+        # Helper function to check timeout
+        def check_timeout():
+            elapsed = (datetime.utcnow() - start_time).total_seconds()
+            if elapsed > self.config.max_execution_time:
+                raise TimeoutError(f"Pipeline exceeded max execution time of {self.config.max_execution_time}s (elapsed: {elapsed:.0f}s)")
+        
         try:
+            # Check timeout before each major phase
+            check_timeout()
+            
             # Verify token availability
             token = self._get_github_token()
             if not token:
                 raise RuntimeError("No GitHub token available - cannot proceed")
             
             # Phase 1: Fetch issue details
+            check_timeout()
             pipeline_state['phase'] = 'fetch_issue'
             pipeline_state['progress'] = 0.1
             logger.info("\n📖 Phase 1: Fetching issue details...")
@@ -196,6 +211,7 @@ class PipelineOrchestrator:
             pipeline_state['issue_title'] = issue_data.get('title')
             
             # Phase 2: Parse requirements
+            check_timeout()
             pipeline_state['phase'] = 'parse_requirements'
             pipeline_state['progress'] = 0.2
             logger.info("\n🔍 Phase 2: Parsing requirements...")
@@ -216,6 +232,7 @@ class PipelineOrchestrator:
             logger.info(f"   ✅ Module path: {requirements.get('module_path')}")
             
             # Phase 3: Generate code
+            check_timeout()
             pipeline_state['phase'] = 'generate_code'
             pipeline_state['progress'] = 0.4
             logger.info("\n⚙️  Phase 3: Generating code...")
@@ -227,6 +244,7 @@ class PipelineOrchestrator:
             logger.info(f"   ✅ Files created: {len(generation_result.get('files', []))}")
             
             # Phase 4: Run tests
+            check_timeout()
             pipeline_state['phase'] = 'run_tests'
             pipeline_state['progress'] = 0.6
             logger.info("\n🧪 Phase 4: Running tests...")
@@ -241,6 +259,7 @@ class PipelineOrchestrator:
                 logger.info("   ⏭️  Tests skipped (not required)")
             
             # Phase 5: Create PR
+            check_timeout()
             pipeline_state['phase'] = 'create_pr'
             pipeline_state['progress'] = 0.7
             logger.info("\n🔀 Phase 5: Creating pull request...")
@@ -262,6 +281,7 @@ class PipelineOrchestrator:
             pipeline_state['pr_number'] = pr_number
             
             # Phase 6: Review PR
+            check_timeout()
             pipeline_state['phase'] = 'review_pr'
             pipeline_state['progress'] = 0.8
             logger.info("\n📝 Phase 6: Reviewing pull request...")
@@ -274,6 +294,7 @@ class PipelineOrchestrator:
                 logger.warning("   ⚠️  No PR number, skipping review")
             
             # Phase 7: Merge PR (if approved and configured)
+            check_timeout()
             pipeline_state['phase'] = 'merge_pr'
             pipeline_state['progress'] = 0.9
             
@@ -288,6 +309,7 @@ class PipelineOrchestrator:
                 logger.info("\n⏭️  Phase 7: Auto-merge disabled (manual merge required)")
             
             # Phase 8: Close issue
+            check_timeout()
             pipeline_state['phase'] = 'close_issue'
             pipeline_state['progress'] = 1.0
             logger.info("\n🎉 Phase 8: Closing issue...")
@@ -317,6 +339,34 @@ class PipelineOrchestrator:
                 'summary': f"Successfully resolved {issue_key} with PR {pr_url}",
                 'files_created': generation_result.get('files', []),
                 'tests_passed': test_result.get('count', 0) if self.config.require_tests_passing else None
+            }
+        
+        except TimeoutError as e:
+            logger.error(f"\n⏱️  PIPELINE TIMEOUT: {issue_key}")
+            logger.error(f"   Error: {e}")
+            logger.error(f"   Phase: {pipeline_state.get('phase')}")
+            
+            pipeline_state['error'] = str(e)
+            pipeline_state['phase'] = 'timeout'
+            
+            # Post timeout comment to issue (if we have a token)
+            try:
+                token = self._get_github_token()
+                if token:
+                    await self._post_issue_comment(
+                        repo, 
+                        issue_number,
+                        f"⏱️ **Pipeline Timeout**\n\nThe autonomous pipeline exceeded the maximum execution time of {self.config.max_execution_time}s.\n\n**Last Phase:** {pipeline_state.get('phase')}\n\nThe issue will need to be reprocessed or handled manually.",
+                        token
+                    )
+            except Exception as comment_error:
+                logger.warning(f"Failed to post timeout comment: {comment_error}")
+            
+            return {
+                'success': False,
+                'error': str(e),
+                'phase': pipeline_state.get('phase'),
+                'summary': f"Pipeline timeout for {issue_key} after {self.config.max_execution_time}s"
             }
         
         except Exception as e:
@@ -901,6 +951,33 @@ class PipelineOrchestrator:
                 'summary': f"Documentation workflow exception: {e}",
                 'workflow_type': 'documentation'
             }
+    
+    async def _post_issue_comment(self, repo: str, issue_number: int, comment_body: str, token: str):
+        """Post a comment to a GitHub issue.
+        
+        Args:
+            repo: Repository in format "owner/repo"
+            issue_number: Issue number
+            comment_body: Comment text (markdown supported)
+            token: GitHub token
+        """
+        try:
+            import requests
+            
+            owner, repo_name = repo.split('/')
+            comment_url = f"https://api.github.com/repos/{owner}/{repo_name}/issues/{issue_number}/comments"
+            headers = {
+                'Authorization': f'token {token}',
+                'Accept': 'application/vnd.github+json',
+                'X-GitHub-Api-Version': '2022-11-28'
+            }
+            
+            response = requests.post(comment_url, json={'body': comment_body}, headers=headers, timeout=30)
+            response.raise_for_status()
+            logger.debug(f"Posted comment to {repo}#{issue_number}")
+        except Exception as e:
+            logger.error(f"Failed to post comment to {repo}#{issue_number}: {e}")
+            raise
     
     async def _close_issue_with_summary(
         self, 

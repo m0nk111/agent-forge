@@ -11,14 +11,17 @@ Features:
 - State persistence across restarts
 - Graceful error handling with retry logic
 - Structured logging for all events
+- Single instance enforcement via PID lock file
 """
 
 import asyncio
 import json
 import logging
 import os
+import sys
 import time
 import subprocess
+import fcntl
 from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -31,6 +34,66 @@ from engine.runners.config_override_handler import ConfigOverrideHandler
 from engine.runners.state_manager import StateManager
 from engine.runners.issue_filter import IssueFilter
 from engine.utils.environment_config import EnvironmentConfig
+
+
+# PID lock file for single instance enforcement
+# Use data directory (accessible with ReadWritePaths)
+LOCK_FILE = "/home/flip/agent-forge/data/polling_service.lock"
+
+
+def ensure_single_instance():
+    """Ensure only one instance of polling service runs at a time.
+    
+    Uses a lock file with exclusive lock (fcntl.LOCK_EX) to prevent
+    multiple instances. If lock fails, checks if existing process is
+    alive and exits if so.
+    
+    Returns:
+        File descriptor of lock file (keep open to maintain lock)
+    """
+    try:
+        # Open lock file (create if doesn't exist, read-write mode)
+        lock_fd = open(LOCK_FILE, 'a+')
+        
+        # Try to acquire exclusive lock (non-blocking)
+        try:
+            fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            # Successfully acquired lock - write our PID
+            lock_fd.seek(0)
+            lock_fd.truncate()
+            lock_fd.write(str(os.getpid()))
+            lock_fd.flush()
+            return lock_fd
+        except IOError:
+            # Lock failed - another instance is running
+            lock_fd.seek(0)
+            existing_pid = lock_fd.read().strip()
+            
+            # Check if process is actually running
+            if existing_pid:
+                try:
+                    # Send signal 0 to check if process exists
+                    os.kill(int(existing_pid), 0)
+                    print(f"❌ ERROR: Polling service already running (PID: {existing_pid})")
+                    print(f"   Lock file: {LOCK_FILE}")
+                    print(f"   To force restart: sudo systemctl restart agent-forge-polling")
+                    sys.exit(1)
+                except (OSError, ValueError):
+                    # Process doesn't exist - stale lock
+                    print(f"⚠️  Stale lock file found (PID {existing_pid} not running)")
+                    print(f"   Removing stale lock and continuing...")
+                    lock_fd.close()
+                    os.remove(LOCK_FILE)
+                    # Retry lock acquisition
+                    return ensure_single_instance()
+            
+            lock_fd.close()
+            print(f"❌ ERROR: Could not acquire lock on {LOCK_FILE}")
+            sys.exit(1)
+            
+    except Exception as e:
+        print(f"❌ ERROR: Failed to create lock file: {e}")
+        sys.exit(1)
 
 
 def _utc_now() -> datetime:
@@ -146,7 +209,8 @@ class PollingService:
             state_manager=self.state_manager,
             watch_labels=self.config.watch_labels,
             claim_timeout_minutes=self.config.claim_timeout_minutes,
-            creative_logs_enabled=os.getenv("POLLING_CREATIVE_LOGS", "0") in {"1", "true", "TRUE"}
+            creative_logs_enabled=os.getenv("POLLING_CREATIVE_LOGS", "0") in {"1", "true", "TRUE"},
+            github_claim_checker=self.is_issue_claimed  # NEW: Pass GitHub claim checker
         )
         
         self.running = False
@@ -1064,19 +1128,17 @@ class PollingService:
         
         logger.info(f"Starting workflow for {issue_key}: {issue['title']}")
         
-        # NOTE: We don't check if issue is claimed here because filter_actionable_issues
-        # already ensures the issue is actionable. If it has a claim, it means the claim
-        # is from our system (issue_opener) and we should proceed with the workflow.
-        # Only check if we need to ADD a claim (if none exists yet)
-        
-        if not self.is_issue_claimed(repo, issue_number):
-            # No claim yet, add one
+        # Check if issue is already claimed by ANY agent (not just ours)
+        # This prevents spamming "started working" comments
+        if self.is_issue_claimed(repo, issue_number):
+            logger.info(f"✅ Issue {issue_key} already claimed, proceeding with workflow without adding new claim")
+        else:
+            # No valid claim exists, add one
             logger.info(f"🔖 Adding claim for {issue_key}")
             if not await self.claim_issue(repo, issue_number):
                 logger.error(f"Failed to claim issue {issue_key}")
                 return False
-        else:
-            logger.info(f"✅ Issue {issue_key} already claimed (by our system), proceeding with workflow")
+
         
         # Update state
         self.state[issue_key] = IssueState(
@@ -1137,19 +1199,29 @@ class PollingService:
             result = await orchestrator.handle_new_issue(repo, issue_number)
             success = result.get('success', False)
             
-            # Update state
-            self.state[issue_key].completed = success
+            # Update state - mark as completed regardless of success/failure
+            self.state[issue_key].completed = True  # Always mark as completed to prevent infinite reprocessing
             self.state[issue_key].completed_at = _utc_iso()
+            if success:
+                logger.info(f"✅ Workflow succeeded for {issue_key}")
+            else:
+                logger.error(f"❌ Workflow failed for {issue_key}: {result.get('error', 'Unknown error')}")
+                self.state[issue_key].last_error = result.get('error', 'Unknown error')
+                self.state[issue_key].error_count += 1
             self.save_state()
             
-            logger.info(f"Workflow completed for {issue_key}: {'success' if success else 'failed'}")
             return success
             
         except Exception as e:
             logger.error(f"Error in workflow for {issue_key}: {e}")
+            
+            # Mark as completed even on exception to prevent infinite reprocessing
+            self.state[issue_key].completed = True
+            self.state[issue_key].completed_at = _utc_iso()
             self.state[issue_key].last_error = str(e)
             self.state[issue_key].error_count += 1
             self.save_state()
+            
             return False
     
     def get_processing_count(self) -> int:
@@ -1368,11 +1440,29 @@ class PollingService:
         """Stop the polling service."""
         logger.info("Stopping polling service...")
         self.running = False
+        
+        # Cleanup lock file
+        try:
+            if os.path.exists(LOCK_FILE):
+                os.remove(LOCK_FILE)
+                logger.info(f"✅ Removed lock file: {LOCK_FILE}")
+        except Exception as e:
+            logger.warning(f"⚠️  Failed to remove lock file: {e}")
 
 
 async def main():
     """Main entry point for standalone polling service."""
     import argparse
+    
+    # Configure logging FIRST (before lock check)
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    
+    # Ensure only one instance runs at a time
+    lock_fd = ensure_single_instance()
+    logger.info(f"✅ Single instance lock acquired (PID: {os.getpid()})")
     
     parser = argparse.ArgumentParser(description="Autonomous GitHub issue polling service")
     parser.add_argument("--interval", type=int, help="Polling interval in seconds")
@@ -1384,11 +1474,7 @@ async def main():
     
     args = parser.parse_args()
     
-    # Configure logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
+    # (removed duplicate logging config)
     
     # Initialize agent registry (required for workflow execution)
     logger.info("🔧 Initializing agent registry...")

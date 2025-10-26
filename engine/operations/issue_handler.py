@@ -350,11 +350,29 @@ class IssueHandler:
         }
         
         # Extract tasks (lines starting with -, *, or numbered)
+        # BUT exclude checklist items (lines with [ ] or [x])
         task_pattern = r'^\s*[-*\d.]+\s+(.+)$'
+        checklist_pattern = r'^\s*[-*\d.]+\s*\[[ xX]\]\s+'  # Lines with checkbox
+        
         for line in body.split('\n'):
+            # Skip if it's a checklist item
+            if re.match(checklist_pattern, line):
+                continue
+            
             match = re.match(task_pattern, line)
             if match:
                 task_text = match.group(1).strip()
+                
+                # Additional filtering: skip verification/testing checklists
+                skip_keywords = [
+                    'verify', 'check', 'test', 'confirm', 'monitor',
+                    'success criteria', 'expected', 'should', 'must'
+                ]
+                
+                # If the task text starts with these keywords, it's likely a verification step
+                if any(task_text.lower().startswith(keyword) for keyword in skip_keywords):
+                    continue
+                
                 if len(task_text) > 10:  # Meaningful tasks
                     requirements['tasks'].append({
                         'description': task_text,
@@ -622,7 +640,9 @@ class IssueHandler:
             'success': True,
             'files_modified': [],
             'actions': [],
-            'results': []
+            'results': [],
+            'consecutive_errors': 0,  # Track consecutive errors
+            'error_threshold': 5  # Max consecutive errors before aborting
         }
         
         for phase in plan['phases']:
@@ -633,6 +653,13 @@ class IssueHandler:
                 description = action['description']
                 
                 print(f"      • {description}...")
+                
+                # Check if we've hit error threshold
+                if result['consecutive_errors'] >= result['error_threshold']:
+                    print(f"      ❌ Aborting: {result['consecutive_errors']} consecutive errors exceeded threshold")
+                    result['success'] = False
+                    result['error'] = f"Aborted after {result['consecutive_errors']} consecutive errors"
+                    return result
                 
                 try:
                     if action_type == 'read_file':
@@ -747,20 +774,37 @@ class IssueHandler:
                         for file_path in result['files_modified']:
                             check_result = self.agent.error_checker.check_syntax(file_path)
                             if not check_result['valid']:
+                                result['consecutive_errors'] += 1
                                 result['success'] = False
                                 result['error'] = f"Syntax error in {file_path}"
                                 return result
+                        # Success: reset error counter
+                        result['consecutive_errors'] = 0
                     
                     elif action_type == 'run_tests':
                         # Run tests
                         test_result = self.agent.test_runner.run_tests([])
                         result['actions'].append(f"Ran tests: {test_result.get('passed', 0)} passed")
+                        # Success: reset error counter
+                        result['consecutive_errors'] = 0
+                    
+                    # Success for this action: reset consecutive error counter
+                    if action_type in ['read_file', 'search', 'edit_file', 'code_generation']:
+                        result['consecutive_errors'] = 0
                 
                 except Exception as e:
                     print(f"      ❌ Error: {e}")
-                    result['success'] = False
-                    result['error'] = str(e)
-                    return result
+                    result['consecutive_errors'] += 1
+                    
+                    # Check if we should abort
+                    if result['consecutive_errors'] >= result['error_threshold']:
+                        print(f"      ❌ Fatal: {result['consecutive_errors']} consecutive errors - aborting")
+                        result['success'] = False
+                        result['error'] = f"Aborted after {result['consecutive_errors']} consecutive errors: {str(e)}"
+                        return result
+                    
+                    # Otherwise continue to next action
+                    print(f"      ⚠️  Error {result['consecutive_errors']}/{result['error_threshold']}, continuing...")
         
         return result
     

@@ -1,39 +1,35 @@
-"""Utility functions for string manipulation."""
+'''Utility module for string manipulation functions.'''
 
 from typing import Optional
 
 def capitalize_words(text: str) -> str:
-    """
-    Capitalizes each word in the given text.
+    '''Capitalizes each word in the provided text.
     
     Args:
-        text (str): The input text to be capitalized.
-    
+        text (str): The input text to be processed.
+
     Returns:
-        str: The capitalized text.
-    
+        str: A new string with each word capitalized.
+
     Raises:
-        TypeError: If the input is not a string.
-    """
+        ValueError: If the input is not a string.
+    '''
     if not isinstance(text, str):
-        raise TypeError("Input must be a string")
-    
+        raise ValueError("Input must be a string")
     return ' '.join(word.capitalize() for word in text.split())
 
 def reverse_string(text: str) -> str:
-    """
-    Reverses the given string.
+    '''Reverses the provided text.
     
     Args:
-        text (str): The input string to be reversed.
-    
+        text (str): The input text to be processed.
+
     Returns:
-        str: The reversed string.
-    
+        str: A new string that is the reverse of the input.
+
     Raises:
-        TypeError: If the input is not a string.
-    """
+        ValueError: If the input is not a string.
+    '''
     if not isinstance(text, str):
-        raise TypeError("Input must be a string")
-    
+        raise ValueError("Input must be a string")
     return text[::-1]
