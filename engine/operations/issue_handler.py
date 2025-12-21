@@ -19,6 +19,16 @@ from engine.runners.monitor_service import AgentStatus
 from engine.operations.llm_file_editor import LLMFileEditor
 from engine.operations.code_generator import CodeGenerator
 
+# RAG imports (optional - gracefully handle if not available)
+try:
+    from engine.rag.retriever import RAGRetriever
+    RAG_AVAILABLE = True
+except ImportError:
+    RAG_AVAILABLE = False
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.warning("⚠️ RAG system not available - issue resolution will work without historical context")
+
 
 class IssueHandler:
     """
@@ -537,6 +547,47 @@ class IssueHandler:
         
         return context_insights
     
+    def _get_rag_historical_context(self, issue: Dict) -> str:
+        """Retrieve similar resolved issues from RAG system.
+        
+        Args:
+            issue: Issue dict with title, body, labels
+            
+        Returns:
+            Formatted context string with similar resolved issues
+        """
+        if not RAG_AVAILABLE:
+            return ""
+        
+        try:
+            # Build search query from issue
+            query = f"{issue['title']} {issue.get('body', '')[:500]}"
+            
+            # Retrieve similar resolved issues
+            retriever = RAGRetriever(top_k=3)
+            context = retriever.get_context_for_issue_resolution(
+                issue_description=query,
+                max_context_length=3000
+            )
+            retriever.close()
+            
+            if context and context.strip():
+                return f"""
+
+📚 SIMILAR RESOLVED ISSUES FROM HISTORY:
+{context}
+
+These similar issues can guide the implementation approach and help avoid common pitfalls.
+"""
+            else:
+                return ""
+                
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"⚠️ RAG historical context retrieval failed: {e}")
+            return ""
+    
     def _generate_plan(self, requirements: Dict, issue: Dict, context_insights: Optional[Dict] = None) -> Dict:
         """
         Generate implementation plan from requirements.
@@ -544,10 +595,16 @@ class IssueHandler:
         Args:
             requirements: Parsed requirements from issue
             issue: Full issue dict with title, body, labels
+            context_insights: Optional semantic context from codebase
         
         Returns:
             Structured plan with phases and actions.
         """
+        # Retrieve historical context from RAG
+        historical_context = self._get_rag_historical_context(issue)
+        if historical_context:
+            print("   📚 Retrieved similar resolved issues from RAG")
+        
         plan = {
             'title': requirements['title'],
             'phases': [],
@@ -555,7 +612,8 @@ class IssueHandler:
                 'title': issue['title'],
                 'body': issue['body'],
                 'labels': issue['labels']
-            }
+            },
+            'historical_context': historical_context  # Add RAG context to plan
         }
         
         # Phase 1: Analysis - Use semantic context if available

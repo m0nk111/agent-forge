@@ -7,7 +7,129 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **RAG Embedding Model Upgrade** (2025-11-01)
+  - **Upgraded from**: `all-MiniLM-L6-v2` (384D, general-purpose, 22M params)
+  - **Upgraded to**: `jinaai/jina-embeddings-v2-base-code` (768D, code-specialized, 137M params)
+  - **Reason**: Code-specialized model provides better semantic understanding of programming concepts
+  - **Stats**: 100K downloads, 124 likes on HuggingFace Hub
+  - **Migration**: All Milvus collections (code, docs, issues) recreated with 768D schema
+  - **Performance**: Model loads in 16.3s, successfully generates 768D embeddings
+  - **Files Modified**:
+    - `config/services/rag.yaml`: Updated model name and embedding_dim to 768
+    - `engine/rag/embedding_service.py`: Changed default model to jina-embeddings-v2-base-code
+    - `engine/rag/vector_store.py`: Updated default dimension to 768D
+    - `engine/rag/indexers/code_indexer.py`: Fixed exclusion patterns (path.match → string matching)
+  - **Status**: Model tested and working, collections recreated, ready for indexing
+
+### Added
+
+- **RAG (Retrieval-Augmented Generation) System** (2025-11-01)
+  - **Purpose**: Provide LLM agents with relevant context from codebase, documentation, and issue history to improve code generation quality and problem-solving accuracy
+  - **Components Implemented**:
+    1. **Embedding Service** (`engine/rag/embedding_service.py`):
+       - Multi-backend support: sentence-transformers (local), Ollama (local), OpenAI (cloud)
+       - Default: all-MiniLM-L6-v2 model (384D embeddings)
+       - Batch processing, vector normalization, code-specific embeddings
+    2. **Vector Store** (`engine/rag/vector_store.py`):
+       - Milvus vector database integration (v2.4.15)
+       - Three collections: code, docs, issues
+       - Schema: id, embedding (384D), content, metadata (JSON), timestamp
+       - IVF_FLAT indexing with Inner Product metric (cosine similarity)
+    3. **Code Indexer** (`engine/rag/indexers/code_indexer.py`):
+       - Python AST parsing for function/class/module extraction
+       - Smart chunking: excludes <20 char and >10KB chunks
+       - Extracts docstrings, tracks line numbers, generates unique IDs
+    4. **Documentation Indexer** (`engine/rag/indexers/docs_indexer.py`):
+       - Markdown parsing with section-based chunking
+       - Heading hierarchy tracking (e.g., "Setup > Installation")
+       - Handles README, CONTRIBUTING, CHANGELOG, and all .md files
+    5. **Issue Indexer** (`engine/rag/indexers/issue_indexer.py`):
+       - GitHub CLI and REST API integration
+       - Problem-solution extraction from closed issues
+       - Metadata: issue number, title, labels, timestamps
+    6. **RAG Retriever** (`engine/rag/retriever.py`):
+       - Query processing and similarity search across all collections
+       - Result reranking and score-based filtering (min_score: 0.5)
+       - Context formatting for LLM prompts with metadata
+       - Specialized methods: `get_context_for_code_generation()`, `get_context_for_issue_resolution()`
+    7. **RAG CLI Tool** (`scripts/rag_cli.py`):
+       - Commands: index-code, index-docs, index-issues, index-all, search, stats, clear
+       - Supports workspace indexing, GitHub repository indexing, and interactive search
+  - **Configuration**:
+    - Created `config/services/rag.yaml` with all settings (embedding backend, Milvus connection, indexing parameters, retrieval parameters)
+    - Docker Compose configuration already existed (`docker-compose-milvus.yml`)
+  - **Dependencies Added**:
+    - pymilvus >= 2.4.0 (Milvus vector database client)
+    - sentence-transformers >= 2.2.0 (local embedding model)
+    - torch >= 2.0.0 (PyTorch for sentence-transformers)
+    - numpy >= 1.24.0 (numerical computing)
+    - openai >= 1.0.0 (OpenAI API client, optional backend)
+  - **Testing**:
+    - Created virtual environment (`venv/`) for dependency isolation
+    - Tested code indexing with small test workspace
+    - Verified search functionality: "hello_world function" → found with score 0.648
+    - Confirmed Milvus connection and collection creation
+  - **Files Created**:
+    - `engine/rag/__init__.py`
+    - `engine/rag/embedding_service.py` (260 lines)
+    - `engine/rag/vector_store.py` (298 lines)
+    - `engine/rag/retriever.py` (333 lines)
+    - `engine/rag/indexers/__init__.py`
+    - `engine/rag/indexers/code_indexer.py` (363 lines)
+    - `engine/rag/indexers/docs_indexer.py` (350 lines)
+    - `engine/rag/indexers/issue_indexer.py` (363 lines)
+    - `config/services/rag.yaml` (191 lines)
+    - `scripts/rag_cli.py` (249 lines, executable)
+  - **Next Steps**:
+    - ✅ **COMPLETED**: Integrated with code generator (`engine/operations/code_generator.py`)
+      - Added `_get_rag_context_for_generation()` method to retrieve relevant code examples
+      - Injects RAG context into LLM prompts before generating implementations
+      - Graceful fallback if RAG unavailable (optional dependency)
+    - ✅ **COMPLETED**: Integrated with issue handler (`engine/operations/issue_handler.py`)
+      - Added `_get_rag_historical_context()` method to retrieve similar resolved issues
+      - Retrieves up to 3 similar issues with problem-solution pairs
+      - Injects historical context into plan generation
+      - Helps agents learn from past resolutions and avoid common pitfalls
+    - Implement incremental indexing and file watching
+    - Add performance metrics and monitoring
+
 ### Fixed
+
+- **Issue Opener Repeated Comment Spam** (2025-11-01)
+  - **Problem**: `m0nk111-qwen-agent` repeatedly commenting on issue #1, creating new claim comments every polling cycle
+  - **Root Causes**:
+    1. Issue Opener workflow had no state tracking (didn't check if issue already processed)
+    2. Issue Opener didn't mark issues as completed after processing (success or failure)
+    3. Expired claim detection logic in main workflow didn't prevent Issue Opener from retriggering
+    4. State file path was hardcoded as `/opt/agent-forge/data/` but actual location is `/home/flip/agent-forge/data/`
+  - **Solutions Implemented**:
+    1. Added state checking before triggering Issue Opener in `check_issues_for_opener()`
+    2. Added state tracking to `trigger_issue_opener()` function:
+       - Creates IssueState entry at start of processing
+       - Marks as completed on success, failure, and exceptions
+       - Saves state after each status change
+    3. Fixed state file path resolution in `_load_config_from_yaml()`:
+       - Converts relative paths to absolute paths (relative to project root `data/`)
+       - Example: `"polling_state.json"` → `"/home/flip/agent-forge/data/polling_state.json"`
+    4. Updated `config/services/polling.yaml` to use relative path `"polling_state.json"` instead of hardcoded absolute path
+  - **Files Modified**:
+    - `engine/runners/polling_service.py`:
+      - Lines 873-887: Added state checking in issue opener triggering logic
+      - Lines 1043-1125: Complete rewrite of `trigger_issue_opener()` with state tracking
+      - Lines 328-336: Added relative-to-absolute path conversion in config loader
+    - `config/services/polling.yaml`: Changed `state_file` from absolute to relative path
+    - `engine/core/service_manager.py`: Added dynamic project root resolution for path handling
+  - **Result**:
+    - ✅ Issue #1 and #3 processed once, marked as completed, no longer retriggered
+    - ✅ State file saves successfully to correct location (`/home/flip/agent-forge/data/polling_state.json`)
+    - ✅ Polling cycle logs show: `"❌ Skipping: already completed"` for previously processed issues
+    - ✅ No new repeated comments observed in GitHub
+  - **Verification**:
+    - Issue #1: Failed with "Code generation failed", marked completed at 11:25:21
+    - Issue #3: Failed with "Validation failed", marked completed at 11:24:19
+    - Next polling cycle (11:30:23): Both issues skipped with "already completed" message
 
 - **Infinite Loop Prevention** (2025-10-26)
   - **Problem**: Agent would continue processing issues indefinitely, repeatedly calling Ollama even when failing

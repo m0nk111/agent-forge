@@ -2,6 +2,13 @@
 
 Track changes to documentation files in the Agent-Forge project.
 
+
+## 2025-11-07
+
+### Multi-Project Guardrails Update
+
+- Updated `.github/copilot-instructions.md` with multi-project scope guardrails, tool configuration policy reminder, and communication guidance to keep workspace instructions aligned across repositories.
+
 ---
 
 ## 2025-10-13
@@ -9,6 +16,7 @@ Track changes to documentation files in the Agent-Forge project.
 ### BM25 Hybrid Search Documentation Suite
 
 **Created**:
+
 - `docs/BM25_HYBRID_SEARCH.md` - Complete technical documentation
   - BM25 algorithm explanation with mathematical formulas
   - Client-side implementation details (bm25-encoder.ts)
@@ -19,6 +27,7 @@ Track changes to documentation files in the Agent-Forge project.
   - Why client-side vs server-side approach
 
 **Updated**:
+
 - `docs/CLAUDE_CONTEXT_STATUS.md`
   - Added "Production Ready" status with hybrid search
   - Documented BM25 encoder implementation overview
@@ -40,6 +49,7 @@ Track changes to documentation files in the Agent-Forge project.
   - Added production status indicator
 
 **Context**:
+
 - Fixed Milvus BM25 server-side function issues
 - Implemented client-side BM25 sparse vector generation
 - Enabled hybrid search (dense + sparse vectors)
@@ -47,6 +57,7 @@ Track changes to documentation files in the Agent-Forge project.
 - Auto-fit encoder from collection data
 
 **Impact**:
+
 - Complete technical reference for BM25 implementation
 - Troubleshooting guide for future issues
 - Architecture documentation for maintenance

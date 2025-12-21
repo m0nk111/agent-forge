@@ -1,3 +1,7 @@
 [submodule "tools/claude-context"]
 	path = tools/claude-context
 	url = https://github.com/zilliztech/claude-context.git
+
+[submodule "tools/llama_cpp"]
+	path = tools/llama_cpp
+	url = https://github.com/ggerganov/llama.cpp.git

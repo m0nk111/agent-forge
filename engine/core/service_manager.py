@@ -153,8 +153,11 @@ class ServiceManager:
             
             logger.info("Starting polling service...")
             
+            # Determine project root dynamically
+            project_root = Path(__file__).resolve().parent.parent.parent
+            
             # Load GitHub token for qwen-agent from secrets
-            token_file = Path("/opt/agent-forge/secrets/agents/m0nk111-qwen-agent.token")
+            token_file = project_root / "secrets/agents/m0nk111-qwen-agent.token"
             github_token = None
             if token_file.exists():
                 try:
@@ -167,7 +170,7 @@ class ServiceManager:
                 github_token = os.getenv("BOT_GITHUB_TOKEN") or os.getenv("GITHUB_TOKEN")
             
             # Load polling config from YAML
-            polling_config_file = Path("/opt/agent-forge/config/services/polling.yaml")
+            polling_config_file = project_root / "config/services/polling.yaml"
             polling_config_data = {}
             if polling_config_file.exists():
                 try:
@@ -178,6 +181,12 @@ class ServiceManager:
                 except Exception as e:
                     logger.warning(f"⚠️ Failed to load polling config: {e}, using defaults")
             
+            # Create polling config with dynamic state file path
+            state_file = polling_config_data.get('state_file', 'polling_state.json')
+            if not state_file.startswith('/'):
+                # Relative path, make it relative to project root data directory
+                state_file = str(project_root / "data" / state_file)
+            
             # Create polling config
             config = PollingConfig(
                 interval_seconds=polling_config_data.get('interval_seconds', self.config.polling_interval),
@@ -187,7 +196,7 @@ class ServiceManager:
                 watch_labels=polling_config_data.get('watch_labels', ["agent-ready", "auto-assign"]),
                 max_concurrent_issues=polling_config_data.get('max_concurrent_issues', 3),
                 claim_timeout_minutes=polling_config_data.get('claim_timeout_minutes', 60),
-                state_file=f"/opt/agent-forge/data/{polling_config_data.get('state_file', 'polling_state.json')}"
+                state_file=state_file
             )
             
             # Create service with monitoring enabled

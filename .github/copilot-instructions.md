@@ -1,8 +1,8 @@
-# WORKSPACE-SPECIFIC COPILOT INSTRUCTIONS - CARAMBA PROJECT ONLY
+# WORKSPACE-SPECIFIC COPILOT INSTRUCTIONS - MULTI-PROJECT ENVIRONMENT
 
-**IMPORTANT: These instructions apply ONLY to this workspace (Caramba AI platform project).**
-**Do NOT apply these rules to other workspaces or projects.**
-**Each workspace should have its own .github/copilot-instructions.md file with project-specific rules.**
+**IMPORTANT: These instructions govern the Agent-Forge workspace while other projects reside on the same host.**
+**Default behaviour: treat non-Agent-Forge repositories as read-only unless the user explicitly authorises cross-project work.**
+**Each workspace should have its own .github/copilot-instructions.md file with project-specific rules; keep them synchronised.**
 
 ---
 
@@ -26,6 +26,8 @@
 - Reason: Long terminal commands waste tokens, create unnecessary context bloat, and are hard to debug/reuse
 - **Keep responses SHORT and TO THE POINT** - No excessive emojis, no verbose explanations with cat/echo commands
 - User has no time for fluff - execute tasks directly, report results concisely
+- **NEVER use `cat << 'EOF'` for status presentations or summaries** - Use the chat directly to communicate
+- Status updates, summaries, and results should be in the chat response, not echoed via terminal commands
 
 ## GitHub Account Usage Policy
 - **CRITICAL**: Never use the `m0nk111` admin account for operations that trigger email notifications (issue assignments, PR reviews, mentions, etc.), unless explicitly requested by the user
@@ -51,6 +53,14 @@
 - **Always check available tools first** before resorting to shell commands - use file/edit tools for file operations
 - **CRITICAL: When claiming a problem is solved, ALWAYS test the solution first using available tools before declaring it fixed**
 - If testing capabilities exist (browser, curl, API calls, etc.), use them to verify functionality works as expected
+- **Tool Configuration Policy**: NEVER hardcode tool enable/disable settings in chatmode files or instructions. Tool availability should be controlled by user via VSCode settings only. Respect whatever tools are available in the current session.
+
+## Cross-Project Scope Guardrails
+- Primary focus is the Agent-Forge repository at `/home/flip/agent-forge/`.
+- Other projects on this host (e.g., `caramba/`, `audiotransfer/`, `mindcraft/`, `basicswap/`) are **read-only by default** during Agent-Forge sessions.
+- Only touch another project when the user gives an explicit request for that codebase; otherwise avoid edits, builds, or dependency changes outside Agent-Forge.
+- Do not run long-running indexing or cleanup tasks across sibling repositories unless the user requests them; this prevents unnecessary context bloat and cost.
+- When a change in another project is unavoidable (e.g., shared dependency updates), document the rationale in both repositories’ changelogs and confirm with the user first.
 
 ## Quality Standards
 - Write clean, maintainable code

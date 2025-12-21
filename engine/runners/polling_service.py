@@ -327,7 +327,13 @@ class PollingService:
             cfg.claim_timeout_minutes = int(data.get('claim_timeout_minutes', cfg.claim_timeout_minutes))
             state_file = data.get('state_file')
             if isinstance(state_file, str) and state_file.strip():
-                cfg.state_file = state_file.strip()
+                state_file = state_file.strip()
+                # Convert relative path to absolute (relative to project root data/)
+                if not state_file.startswith('/'):
+                    # Get project root (3 levels up from this file)
+                    project_root = Path(__file__).resolve().parent.parent.parent
+                    state_file = str(project_root / "data" / state_file)
+                cfg.state_file = state_file
             
             # PR Monitoring (NEW)
             pr_mon = data.get('pr_monitoring', {}) or {}
@@ -870,8 +876,17 @@ class PollingService:
                         logger.debug(f"⏭️ Skipping issue #{issue_number} - missing trigger label")
                         continue
                     
-                    # Check if already claimed
+                    # Check if already claimed or completed
                     issue_key = f"{repo}#{issue_number}"
+                    
+                    # Check if already processed (in state)
+                    if issue_key in self.state:
+                        issue_state = self.state[issue_key]
+                        if issue_state.completed:
+                            logger.debug(f"✅ Issue #{issue_number} already completed, skipping Issue Opener")
+                            continue
+                    
+                    # Check if currently claimed (not expired)
                     if self.is_issue_claimed(repo, issue_number):
                         logger.debug(f"✅ Issue #{issue_number} already claimed")
                         continue
@@ -1035,23 +1050,49 @@ class PollingService:
             issue_number: Issue number
             issue_data: Issue data dictionary from GitHub API
         """
+        issue_key = f"{repo}#{issue_number}"
+        
         try:
-            issue_key = f"{repo}#{issue_number}"
+            # Initialize state tracking for this issue
+            if issue_key not in self.state:
+                self.state[issue_key] = IssueState(
+                    issue_number=issue_number,
+                    repository=repo,
+                    claimed_by=self.config.issue_opener_agent_id,
+                    claimed_at=datetime.now().isoformat(),
+                    completed=False
+                )
+                self.save_state()
             
             # Get code agent from registry (IssueHandler is accessed via CodeAgent)
             if not self.agent_registry:
                 logger.warning(f"⚠️ Agent registry not available, cannot trigger Issue Opener for {issue_key}")
+                # Mark as completed even on failure to prevent retry loops
+                self.state[issue_key].completed = True
+                self.state[issue_key].completed_at = datetime.now().isoformat()
+                self.state[issue_key].last_error = "Agent registry not available"
+                self.save_state()
                 return
             
             # Get the code agent that has IssueHandler capability
             code_agent = self.agent_registry.get_agent(self.config.issue_opener_agent_id)
             if not code_agent:
                 logger.error(f"❌ Code agent '{self.config.issue_opener_agent_id}' not found in registry")
+                # Mark as completed to prevent retry loops
+                self.state[issue_key].completed = True
+                self.state[issue_key].completed_at = datetime.now().isoformat()
+                self.state[issue_key].last_error = f"Code agent '{self.config.issue_opener_agent_id}' not found"
+                self.save_state()
                 return
             
             # Verify the agent has IssueHandler
             if not hasattr(code_agent, 'issue_handler'):
                 logger.error(f"❌ Agent '{self.config.issue_opener_agent_id}' does not have IssueHandler capability")
+                # Mark as completed to prevent retry loops
+                self.state[issue_key].completed = True
+                self.state[issue_key].completed_at = datetime.now().isoformat()
+                self.state[issue_key].last_error = "Agent does not have IssueHandler capability"
+                self.save_state()
                 return
             
             logger.info(f"🤖 Starting Issue Opener with agent {self.config.issue_opener_agent_id}")
@@ -1062,7 +1103,7 @@ class PollingService:
                 issue_number=issue_number
             )
             
-            # Log result
+            # Log result and mark as completed
             if result.get('success'):
                 logger.info(f"✅ Issue Opener completed for {issue_key}")
                 logger.info(f"   📝 Files modified: {len(result.get('files_modified', []))}")
@@ -1070,9 +1111,21 @@ class PollingService:
                     logger.info(f"   🔀 PR created: {result['pr_url']}")
             else:
                 logger.error(f"❌ Issue Opener failed for {issue_key}: {result.get('error', 'UNKNOWN')}")
+                self.state[issue_key].last_error = result.get('error', 'UNKNOWN')
+            
+            # Always mark as completed to prevent retry loops
+            self.state[issue_key].completed = True
+            self.state[issue_key].completed_at = datetime.now().isoformat()
+            self.save_state()
             
         except Exception as e:
             logger.error(f"❌ Failed to trigger Issue Opener for {repo}#{issue_number}: {e}", exc_info=True)
+            # Mark as completed even on exception to prevent infinite retries
+            if issue_key in self.state:
+                self.state[issue_key].completed = True
+                self.state[issue_key].completed_at = datetime.now().isoformat()
+                self.state[issue_key].last_error = str(e)
+                self.save_state()
     
     async def claim_issue(self, repo: str, issue_number: int) -> bool:
         """Claim an issue by adding a comment.

@@ -1,0 +1,210 @@
+# RAG Configuration
+
+# Vector Database (Milvus)
+milvus:
+  host: "localhost"
+  port: 19530
+  connection_timeout: 10
+  collections:
+    code:
+      name: "code"
+      description: "Python source code chunks"
+      embedding_dim: 768
+      index_type: "IVF_FLAT"
+      metric_type: "IP"  # Inner Product (for normalized vectors = cosine)
+      index_params:
+        nlist: 128
+      search_params:
+        nprobe: 10
+    
+    docs:
+      name: "docs"
+      description: "Markdown documentation chunks"
+      embedding_dim: 768
+      index_type: "IVF_FLAT"
+      metric_type: "IP"
+      index_params:
+        nlist: 128
+      search_params:
+        nprobe: 10
+    
+    issues:
+      name: "issues"
+      description: "GitHub issue history"
+      embedding_dim: 768
+      index_type: "IVF_FLAT"
+      metric_type: "IP"
+      index_params:
+        nlist: 128
+      search_params:
+        nprobe: 10
+
+# Embedding Service
+embedding:
+  # Backend: sentence-transformers, ollama, or openai
+  backend: "sentence-transformers"
+  
+  # sentence-transformers config
+  sentence_transformers:
+    model: "jinaai/jina-embeddings-v2-base-code"
+    embedding_dim: 768
+    device: "cpu"  # or "cuda" for GPU
+    batch_size: 32
+  
+  # Ollama config (alternative)
+  ollama:
+    base_url: "http://localhost:11434"
+    model: "nomic-embed-text"
+    embedding_dim: 768
+    timeout: 30
+  
+  # OpenAI config (alternative)
+  openai:
+    model: "text-embedding-3-small"
+    embedding_dim: 1536
+    timeout: 30
+    # API key from OPENAI_API_KEY env variable
+
+# Indexers
+indexers:
+  code:
+    # Directories to exclude
+    exclude_dirs:
+      - "__pycache__"
+      - ".git"
+      - "node_modules"
+      - "venv"
+      - ".venv"
+      - "env"
+      - ".env"
+      - "build"
+      - "dist"
+      - ".pytest_cache"
+      - ".tox"
+    
+    # Files to exclude (by extension)
+    exclude_extensions:
+      - ".pyc"
+      - ".pyo"
+      - ".pyd"
+      - ".so"
+      - ".dll"
+    
+    # Size limits
+    max_file_size: 524288  # 512KB
+    min_chunk_length: 20
+    max_chunk_length: 10240  # 10KB
+    
+    # Batch size for embedding generation
+    batch_size: 32
+  
+  docs:
+    # File patterns to include
+    include_patterns:
+      - "*.md"
+      - "*.MD"
+      - "*.markdown"
+      - "*.MARKDOWN"
+      - "README"
+      - "CONTRIBUTING"
+      - "CHANGELOG"
+      - "LICENSE"
+    
+    # Size limits
+    min_chunk_length: 50
+    max_chunk_length: 8000
+    
+    # Batch size
+    batch_size: 32
+  
+  issues:
+    # GitHub API settings
+    github_token_env: "GITHUB_TOKEN"
+    
+    # Default fetch limits
+    default_limit: 100
+    max_fetch: 1000
+    
+    # Batch size
+    batch_size: 32
+
+# Retrieval
+retrieval:
+  # Default number of results to retrieve
+  default_top_k: 5
+  
+  # Minimum similarity score threshold
+  min_score: 0.5
+  
+  # Maximum context length (characters)
+  max_context_length:
+    code_generation: 3000
+    issue_resolution: 4000
+  
+  # Result reranking
+  reranking:
+    enabled: false  # TODO: Implement reranking
+    model: null
+
+# Incremental Indexing
+incremental:
+  # Enable file watching for auto-reindex
+  file_watching:
+    enabled: false
+    debounce_seconds: 5
+  
+  # Git hooks for commit-based indexing
+  git_hooks:
+    enabled: false
+    hook_types:
+      - "post-commit"
+      - "post-merge"
+
+# Health Checks
+health:
+  # Health check interval (seconds)
+  check_interval: 60
+  
+  # Endpoints to monitor
+  endpoints:
+    - name: "Milvus"
+      type: "milvus"
+      host: "localhost"
+      port: 19530
+    
+    - name: "Embedding Service"
+      type: "embedding"
+      backend: "sentence-transformers"
+
+# Monitoring
+monitoring:
+  # Enable metrics collection
+  enabled: false
+  
+  # Metrics to track
+  metrics:
+    - "retrieval_latency"
+    - "embedding_generation_time"
+    - "relevance_scores"
+    - "cache_hit_rate"
+  
+  # Prometheus export (if enabled)
+  prometheus:
+    enabled: false
+    port: 9091
+
+# Logging
+logging:
+  # Log level: DEBUG, INFO, WARNING, ERROR
+  level: "INFO"
+  
+  # Log format
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  
+  # Log file
+  file: "logs/rag.log"
+  
+  # Rotation
+  rotation:
+    max_bytes: 10485760  # 10MB
+    backup_count: 5

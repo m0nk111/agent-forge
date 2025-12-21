@@ -141,7 +141,8 @@ issue_opener:
   agent_id: "issue-opener-agent"
 
 # State file path (tracks processing issues)
-state_file: "/opt/agent-forge/data/polling_state.json"
+# Can be absolute path or relative to project root data/ directory
+state_file: "polling_state.json"
 
 # Logging configuration
 logging:

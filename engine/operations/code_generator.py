@@ -23,6 +23,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+# RAG imports (optional - gracefully handle if not available)
+try:
+    from engine.rag.retriever import RAGRetriever
+    RAG_AVAILABLE = True
+except ImportError:
+    RAG_AVAILABLE = False
+    logger = logging.getLogger(__name__)
+    logger.warning("⚠️ RAG system not available - code generation will work without context retrieval")
+
 logger = logging.getLogger(__name__)
 
 
@@ -265,8 +274,56 @@ class CodeGenerator:
         logger.error(f"❌ Code generation failed after {self.max_retries} attempts")
         return result
     
+    def _get_rag_context_for_generation(self, spec: ModuleSpec) -> str:
+        """Retrieve relevant code examples and documentation from RAG system.
+        
+        Args:
+            spec: Module specification
+            
+        Returns:
+            Formatted context string for LLM prompt (empty if RAG unavailable)
+        """
+        if not RAG_AVAILABLE:
+            return ""
+        
+        try:
+            # Build search query from spec
+            query_parts = [
+                spec.description,
+                f"implement {spec.module_name}",
+                f"functions: {', '.join(spec.functions)}"
+            ]
+            query = " ".join(query_parts)
+            
+            # Retrieve relevant context
+            retriever = RAGRetriever(top_k=3)
+            context = retriever.get_context_for_code_generation(
+                task_description=query,
+                file_path=spec.module_path,
+                max_context_length=2000
+            )
+            retriever.close()
+            
+            if context and context.strip():
+                return f"""
+RELEVANT CODE EXAMPLES FROM CODEBASE:
+{context}
+
+Use these examples as reference for style, patterns, and best practices.
+---
+"""
+            else:
+                return ""
+                
+        except Exception as e:
+            logger.warning(f"⚠️ RAG context retrieval failed: {e}")
+            return ""
+    
     def _generate_implementation(self, spec: ModuleSpec, previous_errors: List[str]) -> Optional[str]:
         """Generate module implementation via LLM."""
+        
+        # Step 0: Retrieve relevant context from RAG
+        rag_context = self._get_rag_context_for_generation(spec)
         
         error_feedback = ""
         if previous_errors:
@@ -286,6 +343,8 @@ Requirements:
 - Module name: {spec.module_name}
 - Functions to implement: {', '.join(spec.functions)}
 - Dependencies: {', '.join(spec.dependencies) if spec.dependencies else 'None'}
+
+{rag_context}
 
 Guidelines:
 1. **MANDATORY**: Start with ALL necessary import statements
