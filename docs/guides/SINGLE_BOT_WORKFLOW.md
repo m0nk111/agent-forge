@@ -15,23 +15,23 @@ Goals:
 
 ```mermaid
 flowchart TD
-  A[Collaborator creates/updates Issue] --> B[Assign Issue to @bot]
-  B --> C[Poller detects assignee trigger]
-  C --> D[Claim Issue + lock]
-  D --> E[Bot clones repo to temp workspace]
-  E --> F[Bot plans + implements changes]
-  F --> G[Bot commits + pushes branch]
-  G --> H[Bot opens PR]
-  H --> I[Human reviews PR]
+  A["Collaborator creates/updates Issue"] --> B["Assign Issue to @bot"]
+  B --> C["Poller detects assignee trigger"]
+  C --> D["Claim Issue + lock"]
+  D --> E["Bot clones repo to temp workspace"]
+  E --> F["Bot plans + implements changes"]
+  F --> G["Bot commits + pushes branch"]
+  G --> H["Bot opens PR"]
+  H --> I["Human reviews PR"]
 
-  I -->|Approved| J[Human merges PR]
-  J --> K[Done]
+  I -->|Approved| J["Human merges PR"]
+  J --> K["Done"]
 
-  I -->|Requested changes| L[Reviewer comments on PR and mentions @bot]
-  L --> M[Poller detects PR mention trigger]
-  M --> N[Bot fetches PR head branch]
-  N --> O[Bot applies requested changes]
-  O --> P[Bot commits + pushes update]
+  I -->|Requested changes| L["Reviewer comments on PR and mentions @bot"]
+  L --> M["Poller detects PR mention trigger"]
+  M --> N["Bot fetches PR head branch"]
+  N --> O["Bot applies requested changes"]
+  O --> P["Bot commits + pushes update"]
   P --> I
 ```
 
@@ -41,15 +41,15 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-  S[Incoming event] --> Q{Is it a PR?}
+  S["Incoming event"] --> Q{"Is it a PR?"}
 
-  Q -->|No (Issue)| R{Assigned to @bot?}
-  R -->|No| X[Ignore]
-  R -->|Yes| Y[Run Issue→PR pipeline]
+  Q -->|No (Issue)| R{"Assigned to @bot?"}
+  R -->|No| X["Ignore"]
+  R -->|Yes| Y["Run Issue->PR pipeline"]
 
-  Q -->|Yes (PR)| T{Comment mentions @bot?}
+  Q -->|Yes (PR)| T{"Comment mentions @bot?"}
   T -->|No| X
-  T -->|Yes| Z[Run PR update pipeline]
+  T -->|Yes| Z["Run PR update pipeline"]
 ```
 
 ---
@@ -59,16 +59,16 @@ flowchart TD
 ```mermaid
 flowchart LR
   subgraph GH[GitHub]
-    GH1[Issue]
-    GH2[Pull Request]
-    GH3[PR Review Comments]
+    GH1["Issue"]
+    GH2["Pull Request"]
+    GH3["PR Review Comments"]
   end
 
   subgraph AF[Agent-Forge]
-    AF1[Polling Service]
-    AF2[Orchestrator]
-    AF3[Git Workspace (temp)]
-    AF4[LLM (Ollama)]
+    AF1["Polling Service"]
+    AF2["Orchestrator"]
+    AF3["Git Workspace (temp)"]
+    AF4["LLM (Ollama)"]
   end
 
   GH1 --> AF1
