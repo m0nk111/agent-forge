@@ -23,6 +23,7 @@ import asyncio
 import logging
 import os
 import re
+import sys
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -829,14 +830,17 @@ class PipelineOrchestrator:
                     req_file = Path(workspace) / 'requirements.txt'
                     if req_file.exists():
                         logger.info("📦 Installing dependencies from requirements.txt...")
-                        subprocess.run(
-                            ['pip', 'install', '-q', '-r', 'requirements.txt'],
+                        install_res = subprocess.run(
+                            [sys.executable, '-m', 'pip', 'install', '-q', '-r', 'requirements.txt'],
                             cwd=workspace,
                             capture_output=True,
+                            text=True,
                             timeout=300,
                         )
+                        if install_res.returncode != 0:
+                            logger.warning(f"⚠️ pip install failed: {install_res.stderr}")
                     test_res = subprocess.run(
-                        ['pytest', '-q'],
+                        [sys.executable, '-m', 'pytest', '-q'],
                         cwd=workspace,
                         capture_output=True,
                         text=True,
@@ -1359,14 +1363,17 @@ class PipelineOrchestrator:
                     req_file = Path(workspace) / 'requirements.txt'
                     if req_file.exists():
                         logger.info("📦 Installing dependencies from requirements.txt...")
-                        subprocess.run(
-                            ['pip', 'install', '-q', '-r', 'requirements.txt'],
+                        install_res = subprocess.run(
+                            [sys.executable, '-m', 'pip', 'install', '-q', '-r', 'requirements.txt'],
                             cwd=workspace,
                             capture_output=True,
+                            text=True,
                             timeout=300,
                         )
+                        if install_res.returncode != 0:
+                            logger.warning(f"⚠️ pip install failed: {install_res.stderr}")
                     test_res = subprocess.run(
-                        ['pytest', '-q'],
+                        [sys.executable, '-m', 'pytest', '-q'],
                         cwd=workspace,
                         capture_output=True,
                         text=True,
