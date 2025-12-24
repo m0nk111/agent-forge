@@ -800,7 +800,7 @@ class PipelineOrchestrator:
                     if req_file.exists():
                         logger.info("📦 Installing dependencies from requirements.txt...")
                         install_res = subprocess.run(
-                            [sys.executable, '-m', 'pip', 'install', '-q', '-r', 'requirements.txt'],
+                            [sys.executable, '-m', 'pip', 'install', '-q', '--break-system-packages', '-r', 'requirements.txt'],
                             cwd=workspace,
                             capture_output=True,
                             text=True,
@@ -1333,7 +1333,7 @@ class PipelineOrchestrator:
                     if req_file.exists():
                         logger.info("📦 Installing dependencies from requirements.txt...")
                         install_res = subprocess.run(
-                            [sys.executable, '-m', 'pip', 'install', '-q', '-r', 'requirements.txt'],
+                            [sys.executable, '-m', 'pip', 'install', '-q', '--break-system-packages', '-r', 'requirements.txt'],
                             cwd=workspace,
                             capture_output=True,
                             text=True,
