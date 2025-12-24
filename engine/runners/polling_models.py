@@ -18,9 +18,14 @@ class PollingConfig:
     github_username: Optional[str] = None  # Must be configured via YAML or environment
     repositories: List[str] = field(default_factory=list)  # ["owner/repo", ...]
     watch_labels: List[str] = field(default_factory=lambda: ["agent-ready", "auto-assign"])  # labels
+    detection_method: str = "assignee"  # Options: "assignee", "labels", "both", "mentions", "all"
+    monitor_mentions: bool = True  # Monitor @bot mentions in comments
     max_concurrent_issues: int = 3
     claim_timeout_minutes: int = 60
     state_file: str = "data/polling_state.json"  # Sensible default path
+
+    # Agent selection (developer agents used for code changes)
+    developer_agent_ids: List[str] = field(default_factory=list)
     
     # PR Monitoring (NEW)
     pr_monitoring_enabled: bool = False
@@ -34,10 +39,15 @@ class PollingConfig:
     
     # PR Review Configuration (NEW)
     pr_use_llm: bool = True
-    pr_llm_model: Optional[str] = None  # Must be configured via YAML (e.g., "qwen2.5-coder:7b")
+    pr_llm_model: Optional[str] = None  # Must be configured via YAML (e.g., "qwen3-coder-30b-q4km-32k:latest")
     pr_bot_account: Optional[str] = None  # Must be configured via YAML (e.g., "admin")
     pr_full_workflow: bool = True
     pr_post_comments: bool = True
+    
+    # LLM Model Configuration (code editing)
+    code_edit_model: Optional[str] = None  # Primary model for code edits (default: qwen3-coder-30b)
+    code_edit_fallback_model: Optional[str] = None  # Fallback model when primary fails
+    use_cloud_fallback: bool = False  # Whether to fallback to cloud LLM (OpenAI/Claude) on local failure
     
     # PR Merge Configuration (NEW)
     pr_merge_enabled: bool = True

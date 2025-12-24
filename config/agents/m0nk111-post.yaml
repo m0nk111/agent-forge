@@ -4,10 +4,17 @@
 # Agent identification (root level for launcher compatibility)
 agent_id: m0nk111-post
 name: M0nk111 Post Agent
-role: bot
+role: developer
 model_provider: local
-model_name: qwen2.5-coder:7b
+model_name: qwen3-coder-30b-q4km-32k:latest
 api_key_name: null  # No API key needed for local model
+
+# LLM Model Configuration for code editing (JSON-first strategy)
+code_editing:
+  primary_model: qwen3-coder-30b-q4km-32k:latest  # Primary model for code edits
+  fallback_model: deepseek-r1:32b  # Fallback for complex/failing edits
+  use_cloud_fallback: false  # Enable OpenAI/Claude fallback (requires API keys)
+  strategy: json_first  # json_first | patch_first - JSON is more reliable for local LLMs
 
 # GitHub integration
 github:
@@ -205,7 +212,7 @@ bot:
 # Model configuration (legacy nested format)
 model:
   provider: local
-  name: qwen2.5-coder:7b
+  name: qwen3-coder-30b-q4km-32k:latest
   base_url: null  # Uses system default
   temperature: 0.7
   max_tokens: 4096
