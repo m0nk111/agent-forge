@@ -627,14 +627,14 @@ class PipelineOrchestrator:
                         mentioned_paths.add(p)
 
             file_snippets: List[str] = []
-            for rel_path in list(mentioned_paths)[:10]:
+            for rel_path in list(mentioned_paths)[:5]:  # Reduced for local LLMs
                 try:
                     full_path = Path(workspace) / rel_path
                     if not full_path.exists() or full_path.is_dir():
                         continue
                     content = full_path.read_text(errors='ignore')
-                    if len(content) > 5000:
-                        content = content[:5000] + "\n... (file truncated) ...\n"
+                    if len(content) > 2000:  # Reduced for local LLMs
+                        content = content[:2000] + "\n...(truncated)...\n"
                     file_snippets.append(f"FILE: {rel_path}\n" + content)
                 except Exception:
                     continue
@@ -648,8 +648,8 @@ class PipelineOrchestrator:
             )
             repo_files = (ls_res.stdout or '')
             repo_files_lines = repo_files.splitlines()
-            if len(repo_files_lines) > 250:
-                repo_files = "\n".join(repo_files_lines[:250]) + "\n... (file list truncated) ...\n"
+            if len(repo_files_lines) > 50:
+                repo_files = "\n".join(repo_files_lines[:50]) + "\n... (truncated) ...\n"
 
             if not self.agent or not hasattr(self.agent, 'query_llm'):
                 return {'success': False, 'error': 'No LLM agent available for generic issue handling'}
@@ -687,16 +687,10 @@ class PipelineOrchestrator:
                 "Paths must be relative to repo root and must not contain '..'."
             )
             json_prompt = (
-                f"Repository: {repo}\n"
-                f"Issue #{issue_number}: {title}\n\n"
-                "Issue body:\n"
-                f"{body}\n\n"
-                "Repository files (may be truncated):\n"
-                f"{repo_files}\n\n"
-                "Existing relevant files and contents:\n"
+                f"Issue: {title}\n{body[:1500]}\n\n"  # Truncate body for local LLMs
+                f"Files:\n{repo_files}\n\n"
                 f"{file_context}\n\n"
-                "Create the minimal set of file operations to implement the issue. "
-                "For any file you modify, include the COMPLETE updated file content."
+                "Implement this. Return JSON array with file operations."
                 + constraints_block
             )
             raw_ops = self.agent.query_llm(json_prompt, system_prompt=json_system, stream=False) or ''
@@ -747,39 +741,14 @@ class PipelineOrchestrator:
             if not apply_ok:
                 logger.info("🔧 Falling back to unified diff patch...")
                 patch_system = (
-                    "You are an autonomous coding assistant. Return ONLY a unified diff patch that can be applied with `git apply`. "
-                    "Do not include explanations, markdown fences, or any text before/after the diff.\n\n"
-                    "CORRECT FORMAT EXAMPLE:\n"
-                    "diff --git a/path/to/file.py b/path/to/file.py\n"
-                    "--- a/path/to/file.py\n"
-                    "+++ b/path/to/file.py\n"
-                    "@@ -10,3 +10,4 @@\n"
-                    " existing line\n"
-                    "-removed line\n"
-                    "+added line\n"
-                    " another existing line\n\n"
-                    "CRITICAL RULES:\n"
-                    "- Start with 'diff --git a/path b/path'\n"
-                    "- Include '--- a/path' and '+++ b/path' headers\n"
-                    "- Include @@ line number markers\n"
-                    "- Lines starting with ' ' (space) are context (unchanged)\n"
-                    "- Lines starting with '-' are removed\n"
-                    "- Lines starting with '+' are added\n"
-                    "- NO explanation text, NO markdown, ONLY the patch"
+                    "Return ONLY a unified diff. No explanation. No markdown.\n"
+                    "Format: diff --git a/path b/path\\n--- a/path\\n+++ b/path\\n@@ -N,M +N,M @@\\n context\\n-old\\n+new"
                 )
                 patch_prompt = (
-                    f"Repository: {repo}\n"
-                    f"Issue #{issue_number}: {title}\n\n"
-                    "Issue body:\n"
-                    f"{body}\n\n"
-                    f"Base branch: {base_ref}\n"
-                    f"Target branch: {branch_name}\n\n"
-                    "Repository files (may be truncated):\n"
-                    f"{repo_files}\n\n"
-                    "Relevant file contents (may be truncated):\n"
+                    f"Issue: {title}\n{body[:1500]}\n\n"  # Truncate for local LLMs
+                    f"Files:\n{repo_files}\n\n"
                     + "\n\n".join(file_snippets)
-                    + "\n\n"
-                    "Produce a unified diff patch implementing the issue requirements."
+                    + "\n\nCreate unified diff patch."
                     + constraints_block
                 )
 
